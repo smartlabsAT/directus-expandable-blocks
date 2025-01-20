@@ -47,12 +47,24 @@ export function getFieldFromMeta(meta: any, fieldKey: string, fallback: string):
 }
 
 /**
- * Gets display name from metadata with fallback to humanized name
- * @param meta The metadata object
+ * Gets display name from field metadata with fallback to humanized name
+ * @param fieldInfo The field info object containing options, display_options, interface_options
  * @param defaultName The default name to use
  * @returns The display name
  */
-export function getDisplayName(meta: any, defaultName: string): string {
-  const parsed = parseMetadata(meta);
-  return parsed.display || parsed.name || humanizeName(defaultName);
+export function getDisplayName(fieldInfo: any, defaultName: string): string {
+  try {
+    const options = fieldInfo.options ? parseMetadata(fieldInfo.options) : {};
+    const displayOptions = fieldInfo.display_options ? parseMetadata(fieldInfo.display_options) : {};
+    const interfaceOptions = fieldInfo.interface_options ? parseMetadata(fieldInfo.interface_options) : {};
+    
+    // Check for display name in various places
+    return options.display || 
+           displayOptions.display || 
+           interfaceOptions.placeholder || 
+           options.note || 
+           humanizeName(defaultName);
+  } catch (e) {
+    return humanizeName(defaultName);
+  }
 }

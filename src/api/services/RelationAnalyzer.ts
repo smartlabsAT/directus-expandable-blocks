@@ -571,7 +571,7 @@ export class RelationAnalyzer {
       
       // Build batch query with OR conditions
       const query = this.database
-        .select('collection', 'field', 'meta')
+        .select('collection', 'field', 'options', 'display_options', 'interface_options')
         .from('directus_fields')
         .where(function() {
           collectionFieldPairs.forEach(({ collection, field }, index) => {
@@ -596,7 +596,7 @@ export class RelationAnalyzer {
           fieldMetadata.set(info.collection, new Map<string, string>());
         }
         
-        const displayName = getDisplayName(info.meta, info.field);
+        const displayName = getDisplayName(info, info.field);
         fieldMetadata.get(info.collection)!.set(info.field, displayName);
       });
       
