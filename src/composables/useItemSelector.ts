@@ -3,11 +3,16 @@ import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
 import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption, ExpandableBlocksOptions } from '../types';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient, SearchOptions } from '../services/api-client.types';
 
 export function useItemSelector(api: any, _allowedCollections?: string[], options?: ExpandableBlocksOptions) {
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
   const itemRelations = ref<Record<string, any[]>>({});
+  
+  // Initialize API client
+  const apiClient: IDirectusApiClient = createApiClient(api);
 
   // State
   const isOpen = ref(false);
@@ -64,15 +69,42 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
     
     try {
       apiError.value = null;
-      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/metadata`, {
-        headers: getCacheHeaders()
-      });
       
-      const metadata = response.data as CollectionMetadata;
+      // Use the new API client to get metadata
+      const metadata = await apiClient.getCollectionMetadata(selectedCollection.value);
+      
+      // Map native Directus fields to our format
+      // TODO: Once we fully migrate, we can simplify this mapping
+      const metadataCompat: any = {
+        ...metadata,
+        displayableFields: metadata.fields
+          ?.filter(field => !['id', 'user_created', 'user_updated', 'date_created', 'date_updated'].includes(field.field))
+          .map((field: any) => ({
+            field: field.field,
+            type: field.type || field.schema?.data_type || 'string',
+            field_name: field.meta?.display || field.field,
+            name: field.meta?.display || field.field,
+            interface: field.meta?.interface,
+            display: field.meta?.display,
+            options: field.meta?.options,
+            searchable: ['string', 'text', 'json'].includes(field.type || field.schema?.data_type || ''),
+            weight: field.meta?.sort || 0,
+            translatable: metadata.translations?.translatableFields?.includes(field.field) || false,
+            translation_type: metadata.translations?.translatableFields?.includes(field.field) ? 'json' : 'none'
+          })),
+        translationInfo: metadata.translations ? {
+          hasTranslations: true,
+          translationType: 'json',
+          translationsCollection: metadata.translations.translationsCollection,
+          languageField: metadata.translations.languageField,
+          translationFields: metadata.translations.translatableFields,
+          availableLanguages: [] // Will be loaded separately if needed
+        } : undefined
+      };
       
       // Use displayableFields for UI (includes all fields like dropdowns, colors, etc.)
-      if (metadata?.displayableFields) {
-        availableFields.value = metadata.displayableFields.map((field: any) => ({
+      if (metadataCompat?.displayableFields) {
+        availableFields.value = metadataCompat.displayableFields.map((field: any) => ({
           field: field.field,
           type: field.type,
           name: field.field_name || field.name || field.field,
@@ -85,9 +117,9 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           translatable: field.translatable || false,
           translation_type: field.translation_type || 'none'
         }));
-      } else if (metadata?.searchableFields) {
+      } else if (metadataCompat?.searchableFields) {
         // Fallback to searchableFields if displayableFields not available (backward compatibility)
-        availableFields.value = metadata.searchableFields.map((field: any) => ({
+        availableFields.value = metadataCompat.searchableFields.map((field: any) => ({
           field: field.field,
           type: field.type,
           name: field.field_name || field.name || field.field,
@@ -103,22 +135,22 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       }
       
       // Store translation info
-      if (metadata?.translationInfo) {
-        translationInfo.value = metadata.translationInfo;
+      if (metadataCompat?.translationInfo) {
+        translationInfo.value = metadataCompat.translationInfo;
         
         
         // Update available languages if provided
-        if (metadata.translationInfo.availableLanguages) {
-          availableLanguages.value = metadata.translationInfo.availableLanguages;
+        if (metadataCompat.translationInfo.availableLanguages) {
+          availableLanguages.value = metadataCompat.translationInfo.availableLanguages;
         }
         
         // Add translation fields to availableFields for combined translations
-        if (metadata.translationInfo.hasTranslations && 
-            metadata.translationInfo.translationType === 'combined' &&
-            metadata.translationInfo.translationFields) {
+        if (metadataCompat.translationInfo.hasTranslations && 
+            metadataCompat.translationInfo.translationType === 'combined' &&
+            metadataCompat.translationInfo.translationFields) {
           
           // Add translation fields that are not already in availableFields
-          metadata.translationInfo.translationFields.forEach((tf: any) => {
+          metadataCompat.translationInfo.translationFields.forEach((tf: any) => {
             if (!availableFields.value.find(f => f.field === tf.field)) {
               availableFields.value.push({
                 field: tf.field,
@@ -452,13 +484,20 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         hasSearch: !!params.search
       });
       
-      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { 
-        params,
-        headers: getCacheHeaders()
-      });
-
-      availableItems.value = response.data.data || [];
-      totalItems.value = response.data.meta?.filter_count || 0;
+      // Use the new API client for search
+      const searchOptions: SearchOptions = {
+        search: params.search,
+        filter: params.filter,
+        limit: params.limit,
+        offset: params.offset,
+        sort: params.sort,
+        fields: params.fields ? params.fields.split(',') : undefined
+      };
+      
+      const result = await apiClient.searchItems(selectedCollection.value, searchOptions);
+      
+      availableItems.value = result.data || [];
+      totalItems.value = result.meta?.filter_count || 0;
       
       // Clear any previous API errors
       apiError.value = null;
@@ -515,13 +554,11 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
     loadingDetails.value = true;
 
     try {
-      const response = await api.post(
-        `/expandable-blocks-api/${selectedCollection.value}/detail`,
-        { ids: itemIds, fields: '*' },
-        { 
-          signal: detailsAbortController.value.signal,
-          headers: getCacheHeaders()
-        }
+      // Use the new API client to load item details with relations
+      const items = await apiClient.loadItemsWithRelations(
+        selectedCollection.value,
+        itemIds,
+        ['*.*'] // Load with one level of relations
       );
 
       // Only process if this is still the current request
@@ -532,9 +569,13 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       // Transform API data to match UI expectations
       const transformedRelations: Record<string, any[]> = {};
 
-      response.data.data.forEach((item: any) => {
+      // Since we're now using native API, we need to adapt the response
+      // TODO: Once we have proper usage tracking in native API, we can simplify this
+      items.forEach((item: any) => {
 
-        if (item.usage_summary?.total_count > 0) {
+        // For now, we don't have usage data from native API
+        // This will be handled differently in the future
+        if (false && item.usage_summary?.total_count > 0) {
           // Group usage locations by collection
           const byCollection = new Map<string, any>();
           
