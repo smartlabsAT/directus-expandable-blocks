@@ -1,4 +1,6 @@
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
+import { createApiClient } from './api-client';
+import type { IDirectusApiClient } from './api-client.types';
 
 export interface ItemUsageLocation {
   collection: string;
@@ -23,10 +25,12 @@ interface DirectusAPI {
 
 export class RelationChecker {
   private api: DirectusAPI;
+  private apiClient: IDirectusApiClient;
   private currentPageId: string | number | null;
 
   constructor(api: DirectusAPI, currentPageId?: string | number | null) {
     this.api = api;
+    this.apiClient = createApiClient(api as any);
     this.currentPageId = currentPageId || null;
   }
 
@@ -37,16 +41,14 @@ export class RelationChecker {
     try {
       logDebug('Checking item usage', { collection, itemId, currentPageId: this.currentPageId });
 
-      // Call the expandable-blocks API to get usage data
-      const response = await this.api.post(
-        `/expandable-blocks-api/${collection}/detail`,
-        { 
-          ids: [itemId], 
-          fields: '*' 
-        }
+      // Use native API client to get item data with relations
+      const items = await this.apiClient.loadItemsWithRelations(
+        collection,
+        [itemId],
+        ['*.*'] // Load with one level of relations to check usage
       );
 
-      const itemData = response?.data?.data?.[0];
+      const itemData = items?.[0];
       
       if (!itemData || itemData._no_permission) {
         logWarn('No data or permission for item', { collection, itemId });
@@ -136,12 +138,12 @@ export class RelationChecker {
       // Check each collection
       for (const [collection, ids] of itemsByCollection) {
         try {
-          const response = await this.api.post(
-            `/expandable-blocks-api/${collection}/detail`,
-            { ids, fields: '*' }
-          );
-
-          const itemsData = response?.data?.data || [];
+          // Use native API client to get items data with relations
+          const itemsData = await this.apiClient.loadItemsWithRelations(
+            collection,
+            ids,
+            ['*.*']
+          ) || [];
           
           for (const itemData of itemsData) {
             if (!itemData || itemData._no_permission) continue;
