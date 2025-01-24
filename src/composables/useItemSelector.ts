@@ -468,13 +468,8 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         }
       }
 
-      // Convert filter and deep to JSON strings if they exist
-      if (params.filter) {
-        params.filter = JSON.stringify(params.filter);
-      }
-      if (params.deep) {
-        params.deep = JSON.stringify(params.deep);
-      }
+      // Keep filter and deep as objects for the API client
+      // The new API client handles the conversion internally
       
       logDebug('API request params', {
         collection: selectedCollection.value,
@@ -487,11 +482,12 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       // Use the new API client for search
       const searchOptions: SearchOptions = {
         search: params.search,
-        filter: params.filter,
+        filter: params.filter, // Keep as object
         limit: params.limit,
         offset: params.offset,
         sort: params.sort,
-        fields: params.fields ? params.fields.split(',') : undefined
+        fields: Array.isArray(params.fields) ? params.fields : params.fields ? params.fields.split(',') : undefined,
+        deep: params.deep // Keep as object if present
       };
       
       const result = await apiClient.searchItems(selectedCollection.value, searchOptions);
