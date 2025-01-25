@@ -104,6 +104,18 @@
                 ID: {{ item.id }}
               </v-chip>
 
+              <!-- Edit Button -->
+              <v-button
+                x-small
+                icon
+                secondary
+                class="item-edit-button"
+                @click.stop="openEditDrawer(item)"
+                v-tooltip.top="'Edit item'"
+              >
+                <v-icon name="edit" x-small />
+              </v-button>
+
               <!-- Relations/Usage Indicator -->
               <UsagePopover
                 v-if="itemRelations && itemRelations[item.id]"
@@ -182,6 +194,15 @@
       </v-button>
     </template>
   </v-drawer>
+
+  <!-- Item Edit Drawer -->
+  <ItemEditDrawer
+    v-if="editingItem"
+    v-model="editDrawerOpen"
+    :collection="collection"
+    :primary-key="editingItem.id"
+    @refresh="handleEditRefresh"
+  />
 </template>
 
 <script setup lang="ts">
@@ -191,6 +212,7 @@ import ItemSearchPanel from './ItemSearchPanel.vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import FieldSettingsMenu from './FieldSettingsMenu.vue';
+import ItemEditDrawer from './ItemEditDrawer.vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { useUserPresets } from '../composables/useUserPresets';
 
@@ -251,6 +273,8 @@ const displayFields = ref<string[]>([]);
 const selectedLanguageLocal = ref<string>('');
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
+const editingItem = ref<any>(null);
+const editDrawerOpen = ref(false);
 
 // Debug watchers
 watch(() => props.availableFields, (fields) => {
@@ -423,6 +447,18 @@ async function handleLanguageChange(language: string) {
   }
 }
 
+function openEditDrawer(item: any) {
+  logger.debug('Opening edit drawer for item', { item });
+  editingItem.value = item;
+  editDrawerOpen.value = true;
+}
+
+function handleEditRefresh() {
+  logger.debug('Edit drawer requested refresh');
+  // Emit search to trigger reload of items
+  emit('search', searchQuery.value);
+}
+
 // Reset when drawer opens/closes
 watch(() => props.open, async (isOpen) => {
   if (isOpen) {
@@ -543,6 +579,15 @@ onMounted(async () => {
   
   .item-title {
     flex: 0 1 auto;
+  }
+  
+  .item-edit-button {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    
+    &:hover {
+      opacity: 1;
+    }
   }
   
   :deep(.usage-popover) {
