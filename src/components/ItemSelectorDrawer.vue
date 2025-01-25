@@ -104,6 +104,17 @@
                 ID: {{ item.id }}
               </v-chip>
 
+              <!-- Spacer to push items to the right -->
+              <div class="spacer"></div>
+
+              <!-- Relations/Usage Indicator -->
+              <UsagePopover
+                v-if="itemRelations && itemRelations[item.id]"
+                :item-relations="itemRelations[item.id]"
+                :item-id="item.id"
+                @item-click="handleUsageItemClick"
+              />
+
               <!-- Edit Button -->
               <v-button
                 x-small
@@ -115,14 +126,6 @@
               >
                 <v-icon name="edit" x-small />
               </v-button>
-
-              <!-- Relations/Usage Indicator -->
-              <UsagePopover
-                v-if="itemRelations && itemRelations[item.id]"
-                :item-relations="itemRelations[item.id]"
-                :item-id="item.id"
-                @item-click="handleUsageItemClick"
-              />
             </div>
 
             <!-- Usage Warning -->
@@ -581,6 +584,10 @@ onMounted(async () => {
     flex: 0 1 auto;
   }
   
+  .spacer {
+    flex: 1 1 auto;
+  }
+  
   .item-edit-button {
     opacity: 0.7;
     transition: opacity 0.2s;
@@ -591,7 +598,7 @@ onMounted(async () => {
   }
   
   :deep(.usage-popover) {
-    margin-left: auto;
+    /* Remove margin-left auto since we use spacer now */
   }
 }
 </style>
