@@ -6,7 +6,7 @@
  */
 
 import type { AxiosInstance } from 'axios';
-import { logError, logWarn } from '../utils/logger-wrapper';
+import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 import { createApiAvailabilityChecker } from './api-availability-checker';
 import type { ApiAvailabilityChecker, FeatureSet } from './api-availability-checker';
 import type {
@@ -172,6 +172,15 @@ export class DirectusApiClient implements IDirectusApiClient {
           );
           
           const items = response.data.data || [];
+          
+          // Debug: Log what we got from the API
+          if (items.length > 0 && items[0].usage_locations) {
+            logDebug('API returned usage data', {
+              itemId: ids[0],
+              usageLocations: items[0].usage_locations,
+              usageSummary: items[0].usage_summary
+            });
+          }
           
           // External API provides enhanced data with usage_locations and usage_summary
           return items;
@@ -445,12 +454,14 @@ export class DirectusApiClient implements IDirectusApiClient {
       const items = await this.loadItemsWithRelations(collection, [id]);
       const item = items?.[0];
       
-      if (item?.usage_locations && item?.usage_summary) {
-        // Return in the format expected by RelationChecker
+      // Check if we got an item back from the API
+      if (item) {
+        // Even if usage_locations or usage_summary are missing/empty, 
+        // we should still return a result (the API supports usage tracking)
         return {
           locations: item.usage_locations || [],
           total_count: item.usage_summary?.total_count || 0,
-          can_delete: item.usage_summary?.total_count === 0,
+          can_delete: item.usage_summary?.can_delete !== false, // Default to true if not explicitly false
           usage_locations: item.usage_locations || [],
           usage_summary: item.usage_summary || {}
         };
