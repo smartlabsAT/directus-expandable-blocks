@@ -66,13 +66,13 @@
       —
     </v-chip>
     <v-chip
-      v-else-if="(usageData?.externalCount > 0) || (usageCount && usageCount > 0)"
+      v-else-if="(usageData?.externalCount > 0) || (usageData?.internalCount > 0) || (usageCount && usageCount > 0)"
       x-small
       class="usage-indicator"
       v-tooltip="usageTooltip"
     >
       <v-icon name="link" x-small />
-      {{ usageData?.externalCount ?? usageCount }}
+      {{ usageData ? (usageData.externalCount + usageData.internalCount) : usageCount }}
     </v-chip>
     <div
       v-else-if="hasAnyUsageIndicator"
