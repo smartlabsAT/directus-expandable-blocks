@@ -40,15 +40,28 @@ We're actively developing AI integration features that will include:
 
 ### Via NPM (Recommended)
 
+Install directly from the npm registry:
+
 ```bash
 npm install directus-extension-expandable-blocks
 ```
 
+The extension will be automatically loaded by Directus when you restart your instance.
+
 ### Manual Installation
 
-1. Download the latest release
+1. Download the latest release from [GitHub Releases](https://github.com/smartlabsAT/directus-expandable-blocks/releases)
 2. Extract to your Directus `extensions/interfaces/` directory
 3. Restart Directus
+
+### Docker Installation
+
+For Docker setups, install via npm in your Dockerfile or mount the extension directory:
+
+```dockerfile
+RUN npm install directus-extension-expandable-blocks
+# or mount volume: -v ./extensions:/directus/extensions
+```
 
 ## 🚀 Usage
 

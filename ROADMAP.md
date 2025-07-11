@@ -20,7 +20,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 
 ### 🤖 AI-Powered Content Generation (v1.1.0)
 **Status**: Active development on `feature/ai-assistant` branch  
-**Target Release**: Q1 2025
+**Target Release**: Q3 2025
 
 #### Core AI Features
 - 🔄 **Multi-Provider Support**: OpenAI GPT, Anthropic Claude, Custom APIs
@@ -40,7 +40,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 ## 📋 Planned Features
 
 ### 🎨 Enhanced UI/UX (v1.2.0)
-**Target Release**: Q2 2025
+**Target Release**: Q4 2025
 
 - 📝 **Block Templates Library**: Pre-built content block templates
 - 📝 **Drag & Drop Improvements**: Enhanced visual feedback and animations
@@ -50,7 +50,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 - 📝 **Custom Themes**: Customizable appearance and branding
 
 ### 🔧 Developer Experience (v1.3.0)
-**Target Release**: Q2 2025
+**Target Release**: Q1 2026
 
 - 📝 **CLI Tools**: Command-line utilities for extension management
 - 📝 **Block Generator**: Scaffold new block types quickly
@@ -60,7 +60,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 - 📝 **Debug Mode**: Enhanced debugging and logging capabilities
 
 ### 🚀 Performance & Scaling (v1.4.0)
-**Target Release**: Q3 2025
+**Target Release**: Q3 2026
 
 - 📝 **Virtual Scrolling**: Handle thousands of blocks efficiently
 - 📝 **Lazy Loading**: On-demand loading of block content
@@ -72,7 +72,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 ## 🔮 Future Vision
 
 ### 🎯 Advanced Content Management (v2.0.0)
-**Target Release**: Q4 2025
+**Target Release**: Q4 2026
 
 - 📝 **Content Versioning**: Track and revert content changes
 - 📝 **Workflow Engine**: Custom approval and publishing workflows
@@ -82,7 +82,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 - 📝 **Headless CMS Integration**: API-first content delivery
 
 ### 🧠 AI Evolution (v2.1.0+)
-**Target Release**: 2026
+**Target Release**: 2027
 
 - 📝 **AI Content Strategy**: Automated content planning and optimization
 - 📝 **Image Generation**: AI-powered visual content creation
@@ -144,8 +144,8 @@ We welcome contributions to help achieve these roadmap goals!
 
 > 💡 **Note**: This roadmap is subject to change based on community feedback, technical discoveries, and evolving requirements. We regularly review and update our priorities to ensure we're delivering the most valuable features.
 
-**Last Updated**: July 2024  
-**Next Review**: October 2024
+**Last Updated**: July 2025  
+**Next Review**: October 2025
 
 ---
 
