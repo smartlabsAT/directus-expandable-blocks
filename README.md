@@ -1,6 +1,6 @@
 # Directus Expandable Blocks Interface
 
-A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing and AI-powered content generation.
+A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing.
 
 ## ✨ Features
 
@@ -13,12 +13,10 @@ A powerful M2A (Many-to-Any) interface for Directus with inline expandable editi
 - **Keyboard Navigation**: Full keyboard support
 
 ### Advanced Functionality
-- **AI Content Generation**: Generate content using OpenAI GPT, Claude, or custom APIs
-- **Multi-Field Selection**: Target specific fields for AI operations
-- **Content Improvement**: Grammar, style, clarity, and SEO optimization
-- **Translation Support**: Multi-language content translation
+- **Nested M2A Support**: Handle complex nested relationships
+- **Custom Field Filtering**: Show only specific fields in edit mode
 - **Template System**: Pre-configured content templates
-- **Field-Specific Targeting**: Generate content for selected fields only
+- **Status Management**: Built-in content status workflows
 
 ### Configuration Options
 - Enable/disable sorting
@@ -27,7 +25,6 @@ A powerful M2A (Many-to-Any) interface for Directus with inline expandable editi
 - Compact display mode
 - Maximum block limits
 - Custom field filtering
-- AI provider configuration
 
 ## 📦 Installation
 
@@ -52,12 +49,6 @@ npm install directus-extension-expandable-blocks
 3. Configure your allowed collections
 4. Customize options as needed
 
-### AI Configuration (Optional)
-
-1. Enable AI Assistant in interface options
-2. Choose provider (OpenAI, Claude, or Custom)
-3. Add your API key
-4. Configure model and parameters
 
 ### Example M2A Structure
 
@@ -85,30 +76,7 @@ Block Collections:
 | `maxBlocks` | number | `null` | Maximum number of blocks |
 | `isAllowedDelete` | boolean | `true` | Allow block deletion |
 | `isAllowedDuplicate` | boolean | `true` | Allow block duplication |
-| `enableAI` | boolean | `false` | Enable AI features |
-| `aiProvider` | string | `'openai'` | AI provider (openai/claude/custom) |
-| `aiApiKey` | string | `''` | API key for AI provider |
-| `aiModel` | string | `'gpt-3.5-turbo'` | AI model to use |
 
-## 🤖 AI Features
-
-### Supported Providers
-- **OpenAI**: GPT-3.5, GPT-4, GPT-4 Turbo, GPT-4o
-- **Anthropic**: Claude 3 Haiku, Sonnet, Opus, Claude 3.5 Sonnet
-- **Custom APIs**: Any OpenAI-compatible API
-
-### AI Capabilities
-- **Content Generation**: Create new content based on prompts
-- **Content Improvement**: Grammar, style, clarity, tone, SEO
-- **Translation**: Multi-language translation
-- **Field Selection**: Target specific fields for AI operations
-- **Context Awareness**: Uses page and block context for better results
-
-### Usage Tips
-- Select specific fields to generate targeted content
-- Use descriptive prompts for better AI results
-- The AI considers page context and surrounding blocks
-- Generated content respects your brand voice and style
 
 ## 🧪 Testing
 
@@ -158,15 +126,15 @@ MIT License - see LICENSE file for details
 
 ## 🐛 Issues & Support
 
-Report issues on [GitHub Issues](https://github.com/yourusername/directus-extension-expandable-blocks/issues)
+Report issues on [GitHub](https://github.com/smartlabsAT/directus-expandable-blocks/issues) Issues
 
 ## 🔄 Changelog
 
 ### v1.0.0
 - Initial release
-- Inline expandable editing
-- AI content generation
-- Multi-field selection
+- Inline expandable editing for M2A fields
+- Drag & drop sorting with visual feedback
+- Status management with visual indicators
 - Comprehensive testing suite
 - Full TypeScript support
 

@@ -1,7 +1,7 @@
 {
   "name": "directus-extension-expandable-blocks",
   "version": "1.0.0",
-  "description": "M2A interface with inline expandable editing and AI-powered content generation for Directus",
+  "description": "M2A interface with inline expandable editing for Directus",
   "author": "Christopher Schwarz <christopher@neugebauerschwarz.com>",
   "license": "MIT",
   "homepage": "https://github.com/smartlabsAT/directus-expandable-blocks#readme",
@@ -18,9 +18,7 @@
     "directus-custom-interface",
     "m2a",
     "blocks",
-    "cms",
-    "ai",
-    "content-generation"
+    "cms"
   ],
   "type": "module",
   "directus:extension": {

@@ -96,7 +96,6 @@
               
               <!-- DEBUG: Show AI status -->
 <!--              <div v-if="!disabled" style="font-size: 10px; color: red;">-->
-<!--                AI: {{ isAIEnabled ? '✅' : '❌' }}-->
 <!--              </div>-->
               
               <!-- Expand/Collapse Icon or Placeholder -->
@@ -109,17 +108,6 @@
                 />
               </div>
 
-              <v-button
-                  v-if="!disabled && isAIEnabled"
-                  v-tooltip="'AI Assistant'"
-                  x-small
-                  icon
-                  secondary
-                  class="ai-button"
-                  @click.stop="openAIAssistant(item, index)"
-              >
-                <v-icon name="auto_awesome" />
-              </v-button>
               <!-- More Options Menu -->
               <v-menu 
                 v-if="!disabled && (mergedOptions?.isAllowedDuplicate !== false || mergedOptions?.isAllowedDelete !== false)"
@@ -295,14 +283,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- AI Assistant Drawer -->
-    <AIAssistantDrawer
-      v-model="aiAssistantOpen"
-      :item="aiCurrentItem"
-      :all-items="items.map((item, index) => ({ item, index }))"
-      :page-context="pageContext"
-      @update-content="onAIContentUpdate"
-    />
   </div>
 </template>
 
@@ -312,9 +292,7 @@ import { useApi, useStores } from '@directus/extensions-sdk';
 import draggable from 'vuedraggable';
 import { M2AHelper, type M2AFieldInfo } from './utils/m2a-helper';
 import NestedBlocks from './components/NestedBlocks.vue';
-import AIAssistantDrawer from './components/AIAssistantDrawer.vue';
 import { logger } from './utils/logger';
-import { aiService } from './services/ai-service';
 import { 
   buildM2AFieldsString, 
   extractItemTitle, 
@@ -394,21 +372,6 @@ const blockOriginalStates = ref<Map<string, any>>(new Map());
 // Store the original order of items as they came from props.value
 const originalItemOrder = ref<(string | number)[]>([]);
 
-// AI Assistant state
-const aiAssistantOpen = ref(false);
-const aiCurrentItem = ref<{ item: JunctionRecord; index: number } | null>(null);
-
-// Page context for AI
-const pageContext = computed(() => {
-  const currentValues = values.value || {};
-  
-  return {
-    title: currentValues.title || currentValues.name || currentValues.headline || 'Untitled Page',
-    type: currentValues.type || currentValues.template || 'page',
-    description: currentValues.description || currentValues.summary || currentValues.excerpt || '',
-    url: currentValues.slug || currentValues.path || ''
-  };
-});
 
 // Status configuration
 const availableStatuses = [
@@ -460,26 +423,6 @@ const canAddMoreBlocks = computed(() => {
   return items.value.length < maxBlocks;
 });
 
-const isAIEnabled = computed(() => {
-  // Debug log to see what's happening
-  console.log('🤖 AI Debug:', {
-    mergedOptions: mergedOptions.value,
-    enableAI: mergedOptions.value?.enableAI,
-    aiApiKey: mergedOptions.value?.aiApiKey ? '***SET***' : 'NOT SET',
-    aiProvider: mergedOptions.value?.aiProvider,
-    propsOptions: props.options
-  });
-  
-  // Check if AI is enabled in interface options and has required settings
-  // Use default provider if not set
-  const hasProvider = mergedOptions.value?.aiProvider || 'openai';
-  
-  return !!(
-    mergedOptions.value?.enableAI && 
-    mergedOptions.value?.aiApiKey && 
-    hasProvider
-  );
-});
 
 /**
  * Check if a specific block is dirty (has unsaved changes)
@@ -1464,52 +1407,6 @@ async function updateItemStatus(item: JunctionRecord, index: number, newStatus: 
   }
 }
 
-// AI Assistant functions
-function openAIAssistant(item: JunctionRecord, index: number): void {
-  // Configure AI service with interface options
-  if (mergedOptions.value?.enableAI) {
-    const aiConfig = {
-      provider: (mergedOptions.value.aiProvider || 'openai') as 'openai' | 'claude' | 'custom',
-      apiKey: mergedOptions.value.aiApiKey || '',
-      model: mergedOptions.value.aiModel || 'gpt-3.5-turbo',
-      temperature: mergedOptions.value.aiTemperature || 0.7,
-      maxTokens: mergedOptions.value.aiMaxTokens || 1000,
-      baseUrl: mergedOptions.value.aiCustomUrl,
-      enabled: true
-    };
-    
-    console.log('🤖 Configuring AI with:', { ...aiConfig, apiKey: '***' });
-    aiService.saveConfig(aiConfig);
-  }
-  
-  aiCurrentItem.value = { item, index };
-  aiAssistantOpen.value = true;
-}
-
-function onAIContentUpdate(updatedContent: any): void {
-  if (!aiCurrentItem.value) return;
-
-  const { item, index } = aiCurrentItem.value;
-  const updatedItems = [...items.value];
-  
-  // Update the item's content
-  if (updatedItems[index]) {
-    updatedItems[index] = {
-      ...updatedItems[index],
-      item: {
-        ...updatedItems[index].item,
-        ...updatedContent
-      }
-    };
-    
-    items.value = updatedItems;
-    emit('input', prepareItemsForEmit(items.value));
-    
-    // Close the AI assistant
-    aiAssistantOpen.value = false;
-    aiCurrentItem.value = null;
-  }
-}
 
 // Nested M2A functions
 function hasNestedM2A(item: JunctionRecord): boolean {
