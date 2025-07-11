@@ -4,13 +4,13 @@
   "description": "M2A interface with inline expandable editing and AI-powered content generation for Directus",
   "author": "Christopher Schwarz <christopher@neugebauerschwarz.com>",
   "license": "MIT",
-  "homepage": "https://github.com/yourusername/directus-extension-expandable-blocks#readme",
+  "homepage": "https://github.com/smartlabsAT/directus-expandable-blocks#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/directus-extension-expandable-blocks.git"
+    "url": "git+https://github.com/smartlabsAT/directus-expandable-blocks.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/directus-extension-expandable-blocks/issues"
+    "url": "https://github.com/smartlabsAT/directus-expandable-blocks/issues"
   },
   "keywords": [
     "directus",
