@@ -1,0 +1,20 @@
+{
+  "extends": "stylelint-config-standard",
+  "rules": {
+    "custom-property-pattern": null,
+    "selector-class-pattern": null,
+    "value-keyword-case": ["lower", {
+      "ignoreProperties": ["font-family"]
+    }],
+    "property-no-unknown": [true, {
+      "ignoreProperties": ["font-smooth"]
+    }],
+    "at-rule-no-unknown": [true, {
+      "ignoreAtRules": ["apply", "layer", "tailwind"]
+    }]
+  },
+  "ignoreFiles": [
+    "dist/**/*",
+    "node_modules/**/*"
+  ]
+}

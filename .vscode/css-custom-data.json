@@ -1,0 +1,123 @@
+{
+  "version": 1.1,
+  "properties": [
+    {
+      "name": "--background-page",
+      "description": "Main page background color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--background-normal",
+      "description": "Normal background color (white in light theme)",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--background-normal-alt",
+      "description": "Alternative normal background color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--background-subdued",
+      "description": "Subdued background color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--background-highlight",
+      "description": "Highlighted background color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--foreground-normal",
+      "description": "Normal text color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--foreground-subdued",
+      "description": "Subdued text color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--foreground-inverted",
+      "description": "Inverted text color (for dark backgrounds)",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--border-normal",
+      "description": "Normal border color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--border-subdued",
+      "description": "Subdued border color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--primary",
+      "description": "Primary theme color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--primary-rgb",
+      "description": "Primary color in RGB format",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--danger",
+      "description": "Danger/error color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--warning",
+      "description": "Warning color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--success",
+      "description": "Success color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--info",
+      "description": "Info color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--border-radius",
+      "description": "Default border radius",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--input-height",
+      "description": "Default input height",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--input-padding",
+      "description": "Default input padding",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--v-button-color",
+      "description": "Button text color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--v-button-background-color",
+      "description": "Button background color",
+      "browsers": ["all"]
+    },
+    {
+      "name": "--v-list-item-min-height",
+      "description": "Minimum height for list items",
+      "browsers": ["all"]
+    }
+  ],
+  "atDirectives": [
+    {
+      "name": "@import",
+      "description": "Import CSS files"
+    }
+  ],
+  "pseudoClasses": [],
+  "pseudoElements": []
+}

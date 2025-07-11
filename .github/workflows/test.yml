@@ -1,0 +1,144 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run unit tests
+      run: npm test
+    
+    - name: Generate coverage report
+      run: npm run test:coverage
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/coverage-final.json
+        flags: unittests
+        name: codecov-umbrella
+    
+    - name: Build extension
+      run: npm run build
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: directus
+          POSTGRES_PASSWORD: directus
+          POSTGRES_DB: directus
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+    
+    - name: Build extension
+      run: npm run build
+    
+    - name: Setup Directus
+      run: |
+        docker run -d \
+          --name directus \
+          -p 8055:8055 \
+          -e KEY=test-key-123 \
+          -e SECRET=test-secret-123 \
+          -e ADMIN_EMAIL=admin@example.com \
+          -e ADMIN_PASSWORD=d1r3ctu5 \
+          -e DB_CLIENT=pg \
+          -e DB_HOST=localhost \
+          -e DB_PORT=5432 \
+          -e DB_DATABASE=directus \
+          -e DB_USER=directus \
+          -e DB_PASSWORD=directus \
+          --network host \
+          directus/directus:11
+    
+    - name: Wait for Directus
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:8055/server/health; do sleep 2; done'
+    
+    - name: Install extension
+      run: |
+        docker cp ./dist directus:/directus/extensions/interfaces/expandable-blocks
+        docker restart directus
+        sleep 10
+    
+    - name: Setup test data
+      run: |
+        PGPASSWORD=directus psql -h localhost -U directus -d directus -f ./e2e/fixtures/test-setup.sql
+    
+    - name: Run E2E tests
+      run: npm run test:e2e
+      env:
+        DIRECTUS_URL: http://localhost:8055
+    
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
+
+  type-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Type check TypeScript
+      run: npx tsc --noEmit
+    
+    - name: Type check Vue files
+      run: npx vue-tsc --noEmit

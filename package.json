@@ -1,0 +1,61 @@
+{
+  "name": "directus-extension-expandable-blocks",
+  "version": "1.0.0",
+  "description": "M2A interface with inline expandable editing and AI-powered content generation for Directus",
+  "author": "Christopher Schwarz <christopher@neugebauerschwarz.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/yourusername/directus-extension-expandable-blocks#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/directus-extension-expandable-blocks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/directus-extension-expandable-blocks/issues"
+  },
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-custom-interface",
+    "m2a",
+    "blocks",
+    "cms",
+    "ai",
+    "content-generation"
+  ],
+  "type": "module",
+  "directus:extension": {
+    "type": "interface",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^11.0.0"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "build-dev": "directus-extension build --no-minify",
+    "dev": "directus-extension build -w --no-minify",
+    "link": "directus-extension link",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "10.1.11",
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "vue": "^3.3.11",
+    "@vue/test-utils": "^2.4.3",
+    "@vitest/coverage-v8": "^1.1.0",
+    "@vitest/ui": "^1.1.0",
+    "happy-dom": "^12.10.3",
+    "vitest": "^1.1.0",
+    "@testing-library/vue": "^8.0.1",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@playwright/test": "^1.40.1"
+  },
+  "dependencies": {
+    "vuedraggable": "^4.1.0"
+  }
+}

@@ -1,0 +1,117 @@
+/**
+ * Directus CSS Custom Properties (Theme Variables)
+ * These are defined by Directus and available in all extensions
+ * 
+ * This file is for IDE support only - it does NOT set any values!
+ * The actual values come from Directus theme system.
+ */
+
+/* 
+ * IMPORTANT: This file only documents available variables for IDE support.
+ * Do NOT import this file in your CSS!
+ * Directus provides these variables globally.
+ */
+
+:root {
+  /* Background Colors */
+  --background-page: ;
+  --background-normal: ;
+  --background-normal-alt: ;
+  --background-subdued: ;
+  --background-highlight: ;
+  --background-danger: ;
+  --background-warning: ;
+  --background-success: ;
+  --background-info: ;
+
+  /* Foreground/Text Colors */
+  --foreground-normal: ;
+  --foreground-normal-alt: ;
+  --foreground-subdued: ;
+  --foreground-inverted: ;
+
+  /* Border Colors */
+  --border-normal: ;
+  --border-normal-alt: ;
+  --border-subdued: ;
+  --border-highlight: ;
+
+  /* Primary Theme Colors */
+  --primary: ;
+  --primary-alt: ;
+  --primary-subdued: ;
+  --primary-highlight: ;
+  --primary-rgb: ; /* RGB values of primary color */
+
+  /* Status Colors */
+  --success: ;
+  --warning: ;
+  --danger: ;
+  --info: ;
+
+  /* Spacing */
+  --border-radius: ;
+  --border-radius-small: ;
+  --border-radius-large: ;
+
+  /* Form Elements */
+  --form-vertical-gap: ;
+  --form-horizontal-gap: ;
+  --input-height: ;
+  --input-height-small: ;
+  --input-height-large: ;
+  --input-padding: ;
+  --input-font-size: ;
+
+  /* Typography */
+  --v-title-font-size: ;
+  --v-subtitle-font-size: ;
+  --v-list-item-min-height: ;
+
+  /* Layout */
+  --header-bar-height: ;
+  --sidebar-width: ;
+  --content-padding: ;
+
+  /* Transitions */
+  --fast: ;
+  --medium: ;
+  --slow: ;
+
+  /* Shadows */
+  --card-shadow: ;
+  --card-shadow-hover: ;
+
+  /* Z-Index */
+  --z-index-dropdown: ;
+  --z-index-dialog: ;
+  --z-index-tooltip: ;
+
+  /* Theme Colors - Additional */
+  --theme-primary: ;
+  --theme-background: ;
+  --theme-background-accent: ;
+  --theme-foreground: ;
+  --theme-foreground-accent: ;
+  --theme-border-color: ;
+  --theme-border-color-accent: ;
+
+  /* Component Specific */
+  --v-button-background-color: ;
+  --v-button-background-color-hover: ;
+  --v-button-background-color-active: ;
+  --v-button-color: ;
+  --v-button-color-hover: ;
+  --v-button-color-active: ;
+  --v-button-color-disabled: ;
+
+  /* Status Specific */
+  --success-background: ;
+  --success-border: ;
+  --warning-background: ;
+  --warning-border: ;
+  --danger-background: ;
+  --danger-border: ;
+  --info-background: ;
+  --info-border: ;
+}
