@@ -447,17 +447,59 @@ function isBlockDirty(blockId: string, currentItemData: any): boolean {
  * @returns Array with IDs for clean blocks and full objects for dirty blocks
  */
 function prepareItemsForEmit(itemsArray: JunctionRecord[]): any[] {
-  const result = itemsArray.map(item => {
+  logger.log('🔧 PREPARE EMIT - Starting preparation:', {
+    collection: props.collection,
+    field: props.field,
+    primaryKey: props.primaryKey,
+    inputItemsCount: itemsArray.length,
+    originalOrderLength: originalItemOrder.value.length,
+    originalOrder: originalItemOrder.value,
+    inputItems: itemsArray.map(item => ({
+      id: item.id,
+      collection: item.collection,
+      itemType: typeof item.item,
+      hasItem: !!item.item
+    }))
+  });
+  
+  const result = itemsArray.map((item, index) => {
     const blockId = item.id?.toString();
-    if (!blockId) return item; // Safety fallback
+    if (!blockId) {
+      logger.warn('🔧 PREPARE EMIT - Item without ID:', item);
+      return item; // Safety fallback
+    }
     
     const isDirty = isBlockDirty(blockId, item.item);
+    const returnValue = isDirty ? item : item.id;
+    
+    logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
+      blockId,
+      isDirty,
+      returnType: isDirty ? 'full_object' : 'id_only',
+      returnValue: isDirty ? 'object' : returnValue,
+      itemStructure: {
+        id: item.id,
+        collection: item.collection,
+        itemType: typeof item.item,
+        hasItem: !!item.item,
+        foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
+        allKeys: Object.keys(item)
+      }
+    });
     
     // Return full object if dirty, otherwise just ID
-    return isDirty ? item : item.id;
+    return returnValue;
   });
   
   const dirtyCount = result.filter(item => typeof item === 'object').length;
+  
+  logger.log('🔧 PREPARE EMIT - Analysis:', {
+    totalItems: result.length,
+    dirtyCount,
+    cleanCount: result.length - dirtyCount,
+    allClean: dirtyCount === 0,
+    hasOriginalOrder: originalItemOrder.value.length > 0
+  });
   
   // If all blocks are clean, return them in the original order
   if (dirtyCount === 0 && originalItemOrder.value.length > 0) {
@@ -470,8 +512,23 @@ function prepareItemsForEmit(itemsArray: JunctionRecord[]): any[] {
     // Return IDs in the original order
     const orderedResult = originalItemOrder.value.filter(id => itemMap.has(id));
     
+    logger.log('🔧 PREPARE EMIT - Using original order:', {
+      originalOrder: originalItemOrder.value,
+      availableIds: Array.from(itemMap.keys()),
+      finalResult: orderedResult
+    });
+    
     return orderedResult;
   }
+  
+  logger.log('🔧 PREPARE EMIT - Final result:', {
+    resultType: 'standard_processing',
+    result: result.map((item, i) => ({
+      index: i,
+      type: typeof item,
+      value: typeof item === 'object' ? {id: item.id, collection: item.collection} : item
+    }))
+  });
   
   return result;
 }
@@ -513,7 +570,7 @@ onMounted(async () => {
   logger.debug('Component mounted', {
     field: props.field,
     primaryKey: props.primaryKey
-  });
+  }, props);
   
   // Store the original order from props.value
   if (Array.isArray(props.value)) {
@@ -803,6 +860,19 @@ watch(() => initialValues.value?.[props.field], async (newVal, oldVal) => {
   
 }, { deep: true });
 
+
+/**
+ * Watch for primaryKey changes - Extension loads before primaryKey is available
+ */
+watch(() => props.primaryKey, async (newKey, oldKey) => {
+  logger.debug('Primary key changed:', { oldKey, newKey });
+
+  if (newKey && newKey !== '+' && newKey !== 'new' && newKey !== oldKey) {
+    logger.debug('Valid primary key received, loading data...');
+    await loadFullItemData();
+  }
+}, { immediate: false });
+
 /**
  * Load full item data from the API
  */
@@ -1053,7 +1123,19 @@ async function addNewItem(collection: string) {
                       `${props.collection}_id`;
     
     if (foreignKey && props.primaryKey) {
-      junctionData[foreignKey] = props.primaryKey;
+      // Convert primaryKey to number if it's a string number
+      const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
+        ? Number(props.primaryKey) 
+        : props.primaryKey;
+      junctionData[foreignKey] = primaryKeyValue;
+      
+      logger.debug('Foreign key assignment:', {
+        foreignKey,
+        originalPrimaryKey: props.primaryKey,
+        originalType: typeof props.primaryKey,
+        convertedValue: primaryKeyValue,
+        convertedType: typeof primaryKeyValue
+      });
     }
     
     if (relationInfo.value?.sort_field) {
@@ -1068,11 +1150,15 @@ async function addNewItem(collection: string) {
     const junctionRecord = junctionResponse.data.data;
     
     // Create complete item structure
+    const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
+      ? Number(props.primaryKey) 
+      : props.primaryKey;
+      
     const newItem: JunctionRecord = {
       id: junctionRecord.id,
       collection: collection,
       item: createdItem,
-      [foreignKey]: props.primaryKey
+      [foreignKey]: primaryKeyValue
     };
     
     if (relationInfo.value?.sort_field) {
@@ -1084,7 +1170,48 @@ async function addNewItem(collection: string) {
     
     // Emit changes
     isInternalUpdate.value = true;
-    emit('input', prepareItemsForEmit(items.value));
+    const emitValue = prepareItemsForEmit(items.value);
+    
+    logger.log('🔄 SAVE STATE - addNewItem:', {
+      function: 'addNewItem',
+      collection: props.collection,
+      field: props.field,
+      primaryKey: props.primaryKey,
+      newCollection: collection,
+      createdItem: {
+        id: createdItem.id,
+        data: createdItem
+      },
+      junctionRecord: {
+        id: junctionRecord.id,
+        data: junctionRecord
+      },
+      junctionData: junctionData,
+      newItemStructure: {
+        id: newItem.id,
+        collection: newItem.collection,
+        itemType: typeof newItem.item,
+        foreignKey: newItem[foreignKey],
+        allKeys: Object.keys(newItem)
+      },
+      apiCalls: {
+        itemCreation: `POST /items/${collection}`,
+        junctionCreation: `POST /items/${junctionCollection}`,
+        defaultData: defaultData
+      },
+      totalItemsCount: items.value.length,
+      emitValue,
+      emitValueType: typeof emitValue,
+      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
+      relationInfo: {
+        junctionCollection,
+        foreignKey,
+        m2aStructure: m2aStructure.value,
+        relationInfoValue: relationInfo.value
+      }
+    });
+    
+    emit('input', emitValue);
     
     notificationsStore.add({
       title: 'Block Added',
@@ -1154,7 +1281,30 @@ async function confirmDeleteItem() {
     
     // Emit changes
     isInternalUpdate.value = true;
-    emit('input', prepareItemsForEmit(updatedItems));
+    const emitValue = prepareItemsForEmit(updatedItems);
+    
+    logger.log('🔄 SAVE STATE - confirmDeleteItem:', {
+      function: 'confirmDeleteItem',
+      collection: props.collection,
+      field: props.field,
+      primaryKey: props.primaryKey,
+      deletedItem: {
+        id: item.id,
+        collection: item.collection,
+        itemType: typeof item.item,
+        foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown']
+      },
+      remainingItemsCount: updatedItems.length,
+      emitValue,
+      emitValueType: typeof emitValue,
+      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
+      junctionInfo: {
+        junctionCollection: relationInfo.value?.junctionCollection,
+        foreignKeyField: relationInfo.value?.foreignKeyField
+      }
+    });
+    
+    emit('input', emitValue);
     
     itemToDelete.value = null;
     
@@ -1229,7 +1379,19 @@ async function duplicateItem(item: JunctionRecord, index: number) {
     };
     
     if (relationInfo.value?.foreignKeyField && props.primaryKey) {
-      junctionData[relationInfo.value.foreignKeyField] = props.primaryKey;
+      // Convert primaryKey to number if it's a string number
+      const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
+        ? Number(props.primaryKey) 
+        : props.primaryKey;
+      junctionData[relationInfo.value.foreignKeyField] = primaryKeyValue;
+      
+      logger.debug('Foreign key assignment (duplicate):', {
+        foreignKey: relationInfo.value.foreignKeyField,
+        originalPrimaryKey: props.primaryKey,
+        originalType: typeof props.primaryKey,
+        convertedValue: primaryKeyValue,
+        convertedType: typeof primaryKeyValue
+      });
     }
     
     if (relationInfo.value?.sort_field) {
@@ -1248,7 +1410,10 @@ async function duplicateItem(item: JunctionRecord, index: number) {
     };
     
     if (relationInfo.value?.foreignKeyField) {
-      newItem[relationInfo.value.foreignKeyField] = props.primaryKey;
+      const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
+        ? Number(props.primaryKey) 
+        : props.primaryKey;
+      newItem[relationInfo.value.foreignKeyField] = primaryKeyValue;
     }
     
     // Insert at position
@@ -1261,7 +1426,33 @@ async function duplicateItem(item: JunctionRecord, index: number) {
     
     // Emit changes
     isInternalUpdate.value = true;
-    emit('input', prepareItemsForEmit(updatedItems));
+    const emitValue = prepareItemsForEmit(updatedItems);
+    
+    logger.log('🔄 SAVE STATE - duplicateItem:', {
+      function: 'duplicateItem',
+      collection: props.collection,
+      field: props.field,
+      primaryKey: props.primaryKey,
+      originalItem: {
+        id: item.id,
+        collection: item.collection,
+        itemType: typeof item.item
+      },
+      duplicatedItem: {
+        id: createdItem.id,
+        data: createdItem
+      },
+      duplicatedJunction: {
+        id: newJunctionRecord.id,
+        data: newJunctionRecord
+      },
+      itemsCount: updatedItems.length,
+      emitValue,
+      emitValueType: typeof emitValue,
+      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
+    });
+    
+    emit('input', emitValue);
     
     notificationsStore.add({
       title: 'Duplicated',
@@ -1304,6 +1495,20 @@ function discardChanges(item: JunctionRecord, index: number) {
   
   // Emit the change
   const emitValue = prepareItemsForEmit(items.value);
+  
+  logger.log('🔄 SAVE STATE - discardBlockChanges:', {
+    function: 'discardBlockChanges',
+    collection: props.collection,
+    field: props.field,
+    primaryKey: props.primaryKey,
+    blockId,
+    index,
+    itemsCount: items.value.length,
+    emitValue,
+    emitValueType: typeof emitValue,
+    emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
+  });
+  
   emit('input', emitValue);
   
   // Show notification
@@ -1326,7 +1531,21 @@ function onSort() {
   }
   
   isInternalUpdate.value = true;
-  emit('input', prepareItemsForEmit(items.value));
+  const emitValue = prepareItemsForEmit(items.value);
+  
+  logger.log('🔄 SAVE STATE - onSort:', {
+    function: 'onSort',
+    collection: props.collection,
+    field: props.field,
+    primaryKey: props.primaryKey,
+    sortField: relationInfo.value?.sort_field,
+    itemsCount: items.value.length,
+    emitValue,
+    emitValueType: typeof emitValue,
+    emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
+  });
+  
+  emit('input', emitValue);
 }
 
 // Status functions
@@ -1387,7 +1606,28 @@ async function updateItemStatus(item: JunctionRecord, index: number, newStatus: 
     }
     items.value = updatedItems;
     
-    emit('input', prepareItemsForEmit(items.value));
+    const emitValue = prepareItemsForEmit(items.value);
+    
+    logger.log('🔄 SAVE STATE - updateItemStatus:', {
+      function: 'updateItemStatus',
+      collection: props.collection,
+      field: props.field,
+      primaryKey: props.primaryKey,
+      itemId,
+      targetCollection: collection,
+      newStatus,
+      item: {
+        id: item.id,
+        collection: item.collection,
+        itemType: typeof item.item
+      },
+      itemsCount: items.value.length,
+      emitValue,
+      emitValueType: typeof emitValue,
+      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
+    });
+    
+    emit('input', emitValue);
     
     notificationsStore.add({
       title: 'Status Updated',

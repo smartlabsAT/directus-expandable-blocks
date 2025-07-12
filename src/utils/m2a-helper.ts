@@ -130,8 +130,6 @@ export class M2AHelper {
         fieldsParam = '*,item.*';
       }
 
-      console.log('Loading M2A data with fields:', fieldsParam);
-
       // Load junction records
       const response = await this.api.get(`/items/${fieldInfo.junctionCollection}`, {
         params: {
