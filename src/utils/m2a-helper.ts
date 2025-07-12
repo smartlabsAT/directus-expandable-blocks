@@ -221,7 +221,13 @@ export class M2AHelper {
           case 'bigInteger':
           case 'float':
           case 'decimal':
-            defaultData[field.field] = 0;
+            // Check if it's a foreign key field - FKs should be null, not 0
+            if (field.schema?.foreign_key_table) {
+              defaultData[field.field] = null;
+              logger.debug(`Setting FK field ${field.field} to null (references ${field.schema.foreign_key_table})`);
+            } else {
+              defaultData[field.field] = 0;
+            }
             break;
           case 'boolean':
             defaultData[field.field] = false;
@@ -252,6 +258,7 @@ export class M2AHelper {
       logger.warn(`Could not get fields for ${collection}:`, error);
     }
     
+    logger.debug(`Generated default data for ${collection}:`, defaultData);
     return defaultData;
   }
 }
