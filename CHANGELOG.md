@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-07-12
+
+### Fixed
+- **Foreign Key Default Values**: Fixed integer foreign key fields receiving invalid default value `0`
+  - Integer foreign key fields now correctly receive `null` instead of `0` 
+  - Resolves PostgreSQL foreign key constraint violations when creating content blocks
+  - Specifically fixes content_button creation which references pages table
+  - UUID foreign key fields continue to work correctly (e.g., content_image)
+
+### Technical Improvements
+- Enhanced foreign key detection in default data generation
+- Added debug logging for foreign key field processing
+- Improved error handling for content block creation
+
 ## [1.0.1] - 2025-07-12
 
 ### Fixed
@@ -59,5 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart content improvement tools
 - Context-aware AI suggestions
 
+[1.0.2]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.2
 [1.0.1]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.1
 [1.0.0]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.0
