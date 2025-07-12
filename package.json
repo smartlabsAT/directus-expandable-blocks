@@ -48,7 +48,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "prepublishOnly": "npm run build && npm run test",
+    "prepublishOnly": "npm run build && npm run test -- --run",
     "version": "npm run build && git add dist/",
     "postversion": "git push && git push --tags",
     "release:patch": "npm version patch",
