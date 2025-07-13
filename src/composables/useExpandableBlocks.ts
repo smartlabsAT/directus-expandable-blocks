@@ -621,7 +621,7 @@ export function useExpandableBlocks(
           },
           fields: buildM2AFieldsString(allowedCollections.value),
           limit: -1,
-          sort: relationInfo.value?.sort_field || 'id'
+          sort: relationInfo.value?.meta?.sort_field || 'id'
         }
       });
       
@@ -846,8 +846,8 @@ export function useExpandableBlocks(
         });
       }
       
-      if (relationInfo.value?.sort_field) {
-        junctionData[relationInfo.value.sort_field] = items.value.length;
+      if (relationInfo.value?.meta?.sort_field) {
+        junctionData[relationInfo.value.meta.sort_field] = items.value.length;
       }
       
       const junctionCollection = m2aStructure.value?.junctionCollection ||
@@ -869,8 +869,8 @@ export function useExpandableBlocks(
         [foreignKey]: primaryKeyValue
       };
       
-      if (relationInfo.value?.sort_field) {
-        newItem[relationInfo.value.sort_field] = junctionRecord[relationInfo.value.sort_field];
+      if (relationInfo.value?.meta?.sort_field) {
+        newItem[relationInfo.value.meta.sort_field] = junctionRecord[relationInfo.value.meta.sort_field];
       }
       
       // Add to items
@@ -977,10 +977,10 @@ export function useExpandableBlocks(
       updatedItems.splice(index, 1);
       
       // Update sort values
-      if (relationInfo.value?.sort_field) {
+      if (relationInfo.value?.meta?.sort_field) {
         updatedItems.forEach((item, idx) => {
-          if (item[relationInfo.value!.sort_field!] !== idx) {
-            item[relationInfo.value!.sort_field!] = idx;
+          if (item[relationInfo.value!.meta!.sort_field!] !== idx) {
+            item[relationInfo.value!.meta!.sort_field!] = idx;
           }
         });
       }
@@ -1102,8 +1102,8 @@ export function useExpandableBlocks(
         });
       }
       
-      if (relationInfo.value?.sort_field) {
-        junctionData[relationInfo.value.sort_field] = index + 1;
+      if (relationInfo.value?.meta?.sort_field) {
+        junctionData[relationInfo.value.meta.sort_field] = index + 1;
       }
       
       const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
@@ -1231,10 +1231,10 @@ export function useExpandableBlocks(
     if (props.disabled) return;
     
     // Update sort values
-    if (relationInfo.value?.sort_field) {
+    if (relationInfo.value?.meta?.sort_field) {
       items.value = items.value.map((item, index) => ({
         ...item,
-        [relationInfo.value!.sort_field!]: index
+        [relationInfo.value!.meta!.sort_field!]: index
       }));
     }
     
@@ -1246,7 +1246,7 @@ export function useExpandableBlocks(
       collection: props.collection,
       field: props.field,
       primaryKey: props.primaryKey,
-      sortField: relationInfo.value?.sort_field,
+      sortField: relationInfo.value?.meta?.sort_field,
       itemsCount: items.value.length,
       emitValue,
       emitValueType: typeof emitValue,
