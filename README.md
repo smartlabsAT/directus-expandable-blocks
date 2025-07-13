@@ -1,16 +1,29 @@
 # Directus Expandable Blocks Interface
 
-A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing.
+A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing that seamlessly integrates with Directus' native save system.
 
 ![Directus Expandable Blocks Demo](./docs/assets/demo.gif)
+
+## 🎯 Why Expandable Blocks?
+
+Unlike other block editors, this extension **works directly with Directus' native form system**:
+- ✅ **No custom API calls** - Uses Directus' built-in save/revert functionality
+- ✅ **Native Save & Stay** - Works perfectly with Directus' save options
+- ✅ **Global Discard** - Integrates with Directus' "Discard Changes" button
+- ✅ **Proper Dirty State** - Save button only appears when changes exist
+- ✅ **No Data Loss** - All changes tracked through Directus' form state
+
+This means you get all the benefits of a sophisticated block editor while maintaining full compatibility with Directus' workflow!
 
 ## ✨ Features
 
 ### Core Interface
 - **Inline Expandable Editing**: Edit block content directly without opening separate forms
 - **Drag & Drop Sorting**: Reorder blocks with intuitive drag-and-drop
+- **Native Integration**: Uses Directus' save system - no custom API calls
+- **Smart Dirty State**: Only sends changed blocks to the server
 - **Status Management**: Quick status changes with visual indicators
-- **Dirty State Tracking**: Visual feedback for unsaved changes
+- **Visual Feedback**: See which blocks have unsaved changes
 - **Compact & Full View Modes**: Adaptive display options
 - **Keyboard Navigation**: Full keyboard support
 
@@ -69,25 +82,145 @@ RUN npm install directus-extension-expandable-blocks
 
 ### Basic Setup
 
-1. Create an M2A field in your collection
-2. Set the interface to "Expandable Blocks"
-3. Configure your allowed collections
-4. Customize options as needed
+#### 1️⃣ Create an M2A (Many-to-Any) Field
 
+1. Navigate to **Settings → Data Model → [Your Collection]**
+2. Click **"Create Field"** button
+3. Choose **"Many to Any Relationship (M2A)"** field type
+4. Configure the relationship:
+   - **Field Key**: e.g., `content_blocks`
+   - **Related Collections**: Select which collections can be used as blocks
+
+#### 2️⃣ Select the Expandable Blocks Interface
+
+1. In the field configuration, go to the **"Interface"** tab
+2. Click on the interface dropdown (default is "Many to Any")
+3. **Select "Expandable Blocks"** from the list
+4. The interface will change to show expandable blocks options
+
+#### 3️⃣ Configure Interface Options
+
+In the interface configuration panel, you can set:
+
+- **Display Options**
+  - ✅ Enable Sorting - Allow drag & drop reordering
+  - 📂 Start Expanded - Blocks open by default
+  - 🎯 Accordion Mode - Only one block open at a time
+  - 📱 Compact Mode - Condensed view for many blocks
+  
+- **Permissions**
+  - 🗑️ Allow Delete - Users can remove blocks
+  - 📋 Allow Duplicate - Users can copy blocks
+  - 🔢 Max Blocks - Limit number of blocks (empty = unlimited)
+
+#### 4️⃣ Save and Use
+
+1. Click **"Save"** to apply the configuration
+2. Navigate to your collection items
+3. The M2A field will now use the Expandable Blocks interface!
 
 ### Example M2A Structure
 
 ```yaml
+# Main Collection (e.g., "pages")
 Page Collection:
-  - id
-  - title
-  - content_blocks (M2A field)
+  - id: primary key
+  - title: string
+  - slug: string
+  - content_blocks: M2A field → Uses "Expandable Blocks" interface
+  - status: string
+  - date_created: timestamp
 
-Block Collections:
-  - content_text: { headline, subheadline, content }
-  - content_hero: { headline, subheadline, button_text, image }
-  - content_cta: { title, description, button_text, button_link }
+# Junction Collection (auto-created by Directus)
+pages_blocks:
+  - id: primary key
+  - pages_id: foreign key → pages.id
+  - collection: string (which block type)
+  - item: foreign key → block item id
+  - sort: integer (for ordering)
+
+# Block Collections (your content types)
+content_text:
+  - id: primary key
+  - headline: string
+  - subheadline: string
+  - content: text (rich text editor)
+  - alignment: string
+
+content_hero:
+  - id: primary key
+  - headline: string
+  - subheadline: string
+  - button_text: string
+  - button_link: string
+  - image: file (image)
+  - overlay: boolean
+
+content_gallery:
+  - id: primary key
+  - title: string
+  - images: O2M → gallery_images
+  - columns: integer
+  - spacing: string
 ```
+
+### Visual Guide
+
+<details>
+<summary>📸 Click to see setup screenshots</summary>
+
+1. **Creating M2A Field**
+   - Select M2A relationship type
+   - Configure related collections
+
+2. **Selecting Interface**
+   - Change from default "Many to Any" 
+   - Select "Expandable Blocks"
+
+3. **Interface in Action**
+   - Inline editing capability
+   - Drag & drop sorting
+   - Visual status indicators
+
+</details>
+
+## 🔧 How It Works
+
+### Native Save Integration
+
+The extension integrates seamlessly with Directus' form system:
+
+```typescript
+// Traditional approach (what we DON'T do):
+async function saveBlock(block) {
+  await api.post('/items/content_blocks', block) // ❌ Custom API call
+  await refreshData() // ❌ Manual sync
+  updateUI() // ❌ Manual UI update
+}
+
+// Our approach (native integration):
+function handleBlockChange(blocks) {
+  emit('input', blocks) // ✅ Let Directus handle everything
+}
+```
+
+### Smart Change Detection
+
+Only modified blocks are sent to the server:
+
+```javascript
+// Example: 3 blocks, only middle one edited
+[
+  "block-1-id",                    // ✅ Unchanged - send ID only
+  { id: "block-2-id", title: "New" }, // ✅ Changed - send full object
+  "block-3-id"                     // ✅ Unchanged - send ID only  
+]
+```
+
+This means:
+- 🚀 **Faster saves** - Less data transmitted
+- 🛡️ **Conflict prevention** - Unchanged blocks aren't touched
+- 📊 **Better performance** - Server processes only what changed
 
 ## ⚙️ Configuration Options
 
@@ -137,13 +270,26 @@ npm run build
 npm run link
 ```
 
+### 📚 Architecture Documentation
+
+For detailed information about the data flow, state management, and debugging techniques, see our comprehensive [Architecture Documentation](./ARCHITECTURE.md). This includes:
+
+- Complete data flow lifecycle with visual diagrams
+- Detailed state management explanations
+- Store interactions and timing
+- Debugging techniques and helpers
+- Common issues and solutions
+- Performance optimization tips
+
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on:
+
+- Development setup
+- Testing procedures  
+- Pull request process
+- Code standards
+- Issue templates
 
 ## 📄 License
 
@@ -155,6 +301,29 @@ Report issues on [GitHub](https://github.com/smartlabsAT/directus-expandable-blo
 
 ## 🔄 Changelog
 
+### v1.0.4 (Latest)
+- Added type definitions for better TypeScript support
+- Fixed TypeScript errors in composables
+- Updated GitHub Actions to v4
+- Improved CI/CD test infrastructure
+- Enhanced documentation
+
+### v1.0.3
+- Fixed sorting persistence issues
+- Fixed "Save and Stay" functionality
+- Fixed global discard functionality
+- Improved position-based dirty state tracking
+- Enhanced debugging capabilities
+
+### v1.0.2
+- Fixed foreign key default values for PostgreSQL
+- Improved error handling for content block creation
+
+### v1.0.1
+- Fixed props watcher for primaryKey changes
+- Fixed foreign key type consistency
+- Resolved data persistence issues
+
 ### v1.0.0
 - Initial release
 - Inline expandable editing for M2A fields
@@ -162,6 +331,31 @@ Report issues on [GitHub](https://github.com/smartlabsAT/directus-expandable-blo
 - Status management with visual indicators
 - Comprehensive testing suite
 - Full TypeScript support
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
+
+## 🗺️ Roadmap
+
+Check out our [Development Roadmap](./ROADMAP.md) to see what's coming next:
+
+- 🤖 AI-Powered Content Generation (v1.1.0)
+- 🎨 Enhanced UI/UX Features
+- 🔧 Developer Tools & CLI
+- 🚀 Performance Optimizations
+
+## 📖 Additional Documentation
+
+- 📋 **[Examples](./EXAMPLE.md)** - Detailed usage examples and patterns
+- 🏗️ **[Architecture](./ARCHITECTURE.md)** - Technical deep dive
+- 🔄 **[Changelog](./CHANGELOG.md)** - Version history
+- 🤝 **[Contributing](./CONTRIBUTING.md)** - How to contribute
+- 🗺️ **[Roadmap](./ROADMAP.md)** - Future plans
+
+### 🐛 Issue Templates
+
+- [Report a Bug](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Request a Feature](.github/ISSUE_TEMPLATE/feature_request.md)
+- [AI Assistant Feedback](.github/ISSUE_TEMPLATE/ai_feedback.md)
 
 ---
 
