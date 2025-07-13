@@ -4,6 +4,13 @@ This roadmap outlines our development plans and upcoming features for the Direct
 
 ## ✅ Released
 
+### v1.0.4 (July 2025)
+- ✅ Added type definitions for toggle and activator components
+- ✅ Fixed TypeScript TS2339 errors in composables
+- ✅ Updated GitHub Actions from v3 to v4
+- ✅ Improved CI/CD test infrastructure
+- ✅ Enhanced test documentation
+
 ### v1.0.3 (July 2025)
 - ✅ Fixed sorting persistence issues
 - ✅ Fixed "Save and Stay" functionality
