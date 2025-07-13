@@ -179,25 +179,44 @@ export function useExpandableBlocks(
       }
       
       const isDirty = isBlockDirty(blockId, item.item);
-      const returnValue = isDirty ? item : item.id;
       
-      logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
-        blockId,
-        isDirty,
-        returnType: isDirty ? 'full_object' : 'id_only',
-        returnValue: isDirty ? 'object' : returnValue,
-        itemStructure: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item,
-          hasItem: !!item.item,
-          foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
-          allKeys: Object.keys(item)
+      if (isDirty) {
+        // Wenn dirty, müssen wir das sort Feld aktualisieren
+        const itemToEmit = { ...item };
+        
+        // Wenn es ein sort_field gibt, aktualisiere es mit dem aktuellen Index
+        if (relationInfo.value?.meta?.sort_field) {
+          itemToEmit[relationInfo.value.meta.sort_field] = index;
         }
-      });
-      
-      // Return full object if dirty, otherwise just ID
-      return returnValue;
+        
+        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
+          blockId,
+          isDirty: true,
+          returnType: 'full_object_with_sort',
+          sortField: relationInfo.value?.meta?.sort_field,
+          sortValue: index,
+          itemStructure: {
+            id: item.id,
+            collection: item.collection,
+            itemType: typeof item.item,
+            hasItem: !!item.item,
+            foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
+            allKeys: Object.keys(itemToEmit)
+          }
+        });
+        
+        return itemToEmit;
+      } else {
+        // Clean blocks: nur ID
+        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
+          blockId,
+          isDirty: false,
+          returnType: 'id_only',
+          returnValue: item.id
+        });
+        
+        return item.id;
+      }
     });
     
     const dirtyCount = result.filter(item => typeof item === 'object').length;
@@ -232,10 +251,15 @@ export function useExpandableBlocks(
     
     logger.log('🔧 PREPARE EMIT - Final result:', {
       resultType: 'standard_processing',
+      sortField: relationInfo.value?.meta?.sort_field,
       result: result.map((item, i) => ({
         index: i,
         type: typeof item,
-        value: typeof item === 'object' ? {id: item.id, collection: item.collection} : item
+        value: typeof item === 'object' ? {
+          id: item.id,
+          collection: item.collection,
+          sortValue: item[relationInfo.value?.meta?.sort_field || 'sort']
+        } : item
       }))
     });
     
@@ -445,7 +469,20 @@ export function useExpandableBlocks(
   /**
    * Watch for external value changes
    */
-  watch(() => props.value, (newVal, oldVal) => {
+  watch(() => props.value, async (newVal, oldVal) => {
+    // Set originalItemOrder when it's empty and data arrives (initial load)
+    if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
+      console.log('Setting originalItemOrder from value watcher:', newVal);
+      originalItemOrder.value = newVal.map(item => 
+        typeof item === 'object' && item !== null ? item.id : item
+      );
+      checkDelayedOptions();
+      if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+        await loadFullItemData();
+      }
+      isFullyInitialized.value = true;
+      return;
+    }
     
     if (isInitialLoad.value || isInternalUpdate.value) {
       isInternalUpdate.value = false;
@@ -648,6 +685,23 @@ export function useExpandableBlocks(
   function processLoadedRecords(fullRecords: JunctionRecord[]) {
     
     try {
+      // Sort records according to originalItemOrder if available
+      if (originalItemOrder.value.length > 0) {
+        const recordMap = new Map(fullRecords.map(r => [r.id, r]));
+        const sortedRecords = originalItemOrder.value
+          .map(id => recordMap.get(id))
+          .filter(record => record !== undefined) as JunctionRecord[];
+        
+        if (sortedRecords.length > 0) {
+          logger.debug('Sorted records according to originalItemOrder:', {
+            originalOrder: originalItemOrder.value,
+            beforeSort: fullRecords.map(r => r.id),
+            afterSort: sortedRecords.map(r => r.id)
+          });
+          fullRecords = sortedRecords;
+        }
+      }
+      
       // Initial load - don't emit
       if (isInitialLoad.value) {
         items.value = fullRecords;
