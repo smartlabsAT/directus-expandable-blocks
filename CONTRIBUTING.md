@@ -59,25 +59,56 @@ npm test
 
 ## 🧪 Testing
 
-### Unit Tests
+### Running Tests
 ```bash
-npm run test              # Run all tests
-npm run test:coverage     # Generate coverage report
-npm run test:ui           # Interactive test UI
+# Run all tests (unit + type checking)
+npm run test              
+
+# Run unit tests only
+npm run test:unit         
+
+# Generate coverage report
+npm run test:coverage     
+
+# Interactive test UI
+npm run test:ui           
+
+# Type checking
+npm run type-check        # Run vue-tsc and tsc
+npx tsc --noEmit         # Run TypeScript compiler only
+npx vue-tsc --noEmit     # Run Vue TypeScript compiler only
 ```
 
 ### E2E Tests
 ```bash
-npm run test:e2e          # Run E2E tests
-npm run test:e2e:ui       # Interactive E2E tests
-npm run test:e2e:debug    # Debug E2E tests
+# Run E2E tests locally
+npm run test:e2e          
+
+# Interactive E2E UI
+npm run test:e2e:ui       
+
+# Debug E2E tests
+npm run test:e2e:debug    
 ```
+
+**Note**: E2E tests are currently disabled in CI due to Docker networking complexities. They run successfully locally but require proper Directus instance setup.
+
+### CI/CD Testing
+Our GitHub Actions workflow runs:
+- Unit tests with Vitest
+- Type checking with TypeScript
+- Build verification
+- Currently skips E2E tests in CI environment
 
 ### Manual Testing
 1. Build the extension: `npm run build`
 2. Test in real Directus instance
-3. Verify all interface options work
-4. Test drag & drop functionality
+3. Verify all interface options work:
+   - Drag & drop sorting
+   - Save and Stay functionality
+   - Discard all changes
+   - Block dirty state indicators
+4. Test with different collections and field types
 5. Check responsive design
 
 ## 📝 Pull Request Process
