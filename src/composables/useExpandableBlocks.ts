@@ -133,7 +133,18 @@ export function useExpandableBlocks(
     const originalData = blockOriginalStates.value.get(blockId);
     if (!originalData) return true; // New blocks are always dirty
     
-    return JSON.stringify(currentItemData) !== JSON.stringify(originalData);
+    // Check if content has changed
+    const contentChanged = JSON.stringify(currentItemData) !== JSON.stringify(originalData);
+    
+    // Check if position has changed
+    const currentIndex = items.value.findIndex(item => getItemId(item) === blockId);
+    
+    // Convert both to strings for comparison since blockId is always a string
+    const originalIndex = originalItemOrder.value.findIndex(id => String(id) === blockId);
+    
+    const positionChanged = currentIndex !== -1 && originalIndex !== -1 && currentIndex !== originalIndex;
+    
+    return contentChanged || positionChanged;
   }
 
   /**
