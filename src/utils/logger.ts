@@ -3,7 +3,7 @@
  * Enable by setting window.EXPANDABLE_BLOCKS_DEBUG = true in the browser console
  */
 
-const DEBUG = typeof window !== 'undefined' && (window as any).EXPANDABLE_BLOCKS_DEBUG === true;
+const DEBUG = true;
 export const logger = {
   log: (...args: any[]) => {
     if (DEBUG) console.log('[ExpandableBlocks]', ...args);

@@ -133,7 +133,18 @@ export function useExpandableBlocks(
     const originalData = blockOriginalStates.value.get(blockId);
     if (!originalData) return true; // New blocks are always dirty
     
-    return JSON.stringify(currentItemData) !== JSON.stringify(originalData);
+    // Check if content has changed
+    const contentChanged = JSON.stringify(currentItemData) !== JSON.stringify(originalData);
+    
+    // Check if position has changed
+    const currentIndex = items.value.findIndex(item => getItemId(item) === blockId);
+    
+    // Convert both to strings for comparison since blockId is always a string
+    const originalIndex = originalItemOrder.value.findIndex(id => String(id) === blockId);
+    
+    const positionChanged = currentIndex !== -1 && originalIndex !== -1 && currentIndex !== originalIndex;
+    
+    return contentChanged || positionChanged;
   }
 
   /**
@@ -168,25 +179,44 @@ export function useExpandableBlocks(
       }
       
       const isDirty = isBlockDirty(blockId, item.item);
-      const returnValue = isDirty ? item : item.id;
       
-      logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
-        blockId,
-        isDirty,
-        returnType: isDirty ? 'full_object' : 'id_only',
-        returnValue: isDirty ? 'object' : returnValue,
-        itemStructure: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item,
-          hasItem: !!item.item,
-          foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
-          allKeys: Object.keys(item)
+      if (isDirty) {
+        // Wenn dirty, müssen wir das sort Feld aktualisieren
+        const itemToEmit = { ...item };
+        
+        // Wenn es ein sort_field gibt, aktualisiere es mit dem aktuellen Index
+        if (relationInfo.value?.meta?.sort_field) {
+          itemToEmit[relationInfo.value.meta.sort_field] = index;
         }
-      });
-      
-      // Return full object if dirty, otherwise just ID
-      return returnValue;
+        
+        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
+          blockId,
+          isDirty: true,
+          returnType: 'full_object_with_sort',
+          sortField: relationInfo.value?.meta?.sort_field,
+          sortValue: index,
+          itemStructure: {
+            id: item.id,
+            collection: item.collection,
+            itemType: typeof item.item,
+            hasItem: !!item.item,
+            foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
+            allKeys: Object.keys(itemToEmit)
+          }
+        });
+        
+        return itemToEmit;
+      } else {
+        // Clean blocks: nur ID
+        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
+          blockId,
+          isDirty: false,
+          returnType: 'id_only',
+          returnValue: item.id
+        });
+        
+        return item.id;
+      }
     });
     
     const dirtyCount = result.filter(item => typeof item === 'object').length;
@@ -221,10 +251,15 @@ export function useExpandableBlocks(
     
     logger.log('🔧 PREPARE EMIT - Final result:', {
       resultType: 'standard_processing',
+      sortField: relationInfo.value?.meta?.sort_field,
       result: result.map((item, i) => ({
         index: i,
         type: typeof item,
-        value: typeof item === 'object' ? {id: item.id, collection: item.collection} : item
+        value: typeof item === 'object' ? {
+          id: item.id,
+          collection: item.collection,
+          sortValue: item[relationInfo.value?.meta?.sort_field || 'sort']
+        } : item
       }))
     });
     
@@ -434,7 +469,49 @@ export function useExpandableBlocks(
   /**
    * Watch for external value changes
    */
-  watch(() => props.value, (newVal, oldVal) => {
+  watch(() => props.value, async (newVal, oldVal) => {
+    // Set originalItemOrder when it's empty and data arrives (initial load)
+    if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
+      logger.debug('Setting originalItemOrder from value watcher:', newVal);
+      originalItemOrder.value = newVal.map(item => 
+        typeof item === 'object' && item !== null ? item.id : item
+      );
+      checkDelayedOptions();
+      if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+        await loadFullItemData();
+      }
+      isFullyInitialized.value = true;
+      return;
+    }
+    
+    // NEU: Nach einem Save kommt die neue Reihenfolge von Directus
+    // WICHTIG: Wir aktualisieren originalItemOrder nur, wenn ALLE Blöcke als IDs kommen (= clean state nach Save)
+    if (Array.isArray(newVal) && newVal.length > 0 && originalItemOrder.value.length > 0) {
+      // Prüfe ob alle Einträge nur IDs sind (keine Objekte)
+      const allAreIds = newVal.every(item => typeof item !== 'object' || item === null);
+      
+      if (allAreIds) {
+        const newOrder = newVal.map(item => 
+          typeof item === 'object' && item !== null ? item.id : item
+        );
+        
+        // Wenn alle Blöcke nur als IDs kommen UND die Reihenfolge anders ist,
+        // dann war das ein erfolgreicher Save
+        if (JSON.stringify(newOrder) !== JSON.stringify(originalItemOrder.value)) {
+          logger.debug('Save detected - all blocks are clean IDs, updating originalItemOrder:', {
+            previousOriginal: originalItemOrder.value,
+            newOrder: newOrder
+          });
+          originalItemOrder.value = newOrder;
+          
+          // Wichtig: Lade die Daten neu, damit sie in der neuen Reihenfolge sind
+          if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+            await loadFullItemData();
+          }
+          return;
+        }
+      }
+    }
     
     if (isInitialLoad.value || isInternalUpdate.value) {
       isInternalUpdate.value = false;
@@ -453,11 +530,10 @@ export function useExpandableBlocks(
   }, { deep: true });
 
   /**
-   * Watch for global "Discard All Changes" events
+   * Watch for global form resets (when user clicks "Discard Changes")
    * This happens when Directus resets values to initialValues
    */
   watch(() => values.value?.[props.field], (newVal, oldVal) => {
-    
     // Skip if not initialized or if it's our own update
     if (!isFullyInitialized.value || isInternalUpdate.value) {
       return;
@@ -474,17 +550,20 @@ export function useExpandableBlocks(
       return;
     }
     
-    // For comparison, we need to check if it matches either initialValues OR originalItemOrder
-    // because Directus might reset to the original order, not the processLoadedRecords order
+    // For comparison, we need to check if it matches initialValues (the saved state)
     const isResetToInitial = JSON.stringify(newVal) === JSON.stringify(initialVal);
-    const isResetToOriginal = originalItemOrder.value.length > 0 && 
-      JSON.stringify(newVal) === JSON.stringify(originalItemOrder.value);
     
-    const isReset = isResetToInitial || isResetToOriginal;
-    
-    
-    if (isReset) {
+    if (isResetToInitial) {
       logger.debug('Global discard detected - resetting blocks');
+      
+      // WICHTIG: Reset originalItemOrder to the initial/saved order
+      if (Array.isArray(initialVal)) {
+        originalItemOrder.value = initialVal.map(item => 
+          typeof item === 'object' && item !== null ? item.id : item
+        );
+        
+        logger.debug('Reset originalItemOrder to:', originalItemOrder.value);
+      }
       
       // Reset all blocks to their original state
       items.value = items.value.map(item => {
@@ -497,28 +576,35 @@ export function useExpandableBlocks(
           return item;
         }
         
-        
         return {
           ...item,
           item: deepClone(originalData)
         };
       });
       
-      // Keep expanded items open for better UX
-      // expandedItems.value = [];
-      
-      // Emit clean state (only IDs)
-      const cleanIds = items.value.map(item => item.id);
-      
-      // Use original order if available
+      // Reorder items according to the reset order
       if (originalItemOrder.value.length > 0) {
         const itemMap = new Map(items.value.map(item => [item.id, item]));
-        const orderedIds = originalItemOrder.value.filter(id => itemMap.has(id));
-        emit('input', orderedIds);
-      } else {
-        emit('input', cleanIds);
+        const reorderedItems = originalItemOrder.value
+          .map(id => itemMap.get(id))
+          .filter(item => item !== undefined) as JunctionRecord[];
+        
+        if (reorderedItems.length > 0) {
+          items.value = reorderedItems;
+        }
       }
+      
+      // Keep expanded items open for better UX
+      // expandedItems stays the same
+      
+      // Emit the reset state
+      isInternalUpdate.value = true;
+      emit('input', newVal);
+      nextTick(() => {
+        isInternalUpdate.value = false;
+      });
     }
+    // If it's not a reset, it could be individual field updates which we ignore here
   }, { deep: true });
 
   /**
@@ -545,6 +631,10 @@ export function useExpandableBlocks(
     // Set internal update flag to prevent double emit
     isInternalUpdate.value = true;
     
+    // Update originalItemOrder with current order after save
+    originalItemOrder.value = items.value.map(item => item.id);
+    
+    logger.debug('Updated originalItemOrder after save:', originalItemOrder.value);
     // WICHTIG: Warte bis loadFullItemData fertig ist!
     await loadFullItemData();
     
@@ -610,7 +700,7 @@ export function useExpandableBlocks(
           },
           fields: buildM2AFieldsString(allowedCollections.value),
           limit: -1,
-          sort: relationInfo.value?.sort_field || 'id'
+          sort: relationInfo.value?.meta?.sort_field || 'id'
         }
       });
       
@@ -637,6 +727,23 @@ export function useExpandableBlocks(
   function processLoadedRecords(fullRecords: JunctionRecord[]) {
     
     try {
+      // Sort records according to originalItemOrder if available
+      if (originalItemOrder.value.length > 0) {
+        const recordMap = new Map(fullRecords.map(r => [r.id, r]));
+        const sortedRecords = originalItemOrder.value
+          .map(id => recordMap.get(id))
+          .filter(record => record !== undefined) as JunctionRecord[];
+        
+        if (sortedRecords.length > 0) {
+          logger.debug('Sorted records according to originalItemOrder:', {
+            originalOrder: originalItemOrder.value,
+            beforeSort: fullRecords.map(r => r.id),
+            afterSort: sortedRecords.map(r => r.id)
+          });
+          fullRecords = sortedRecords;
+        }
+      }
+      
       // Initial load - don't emit
       if (isInitialLoad.value) {
         items.value = fullRecords;
@@ -835,8 +942,8 @@ export function useExpandableBlocks(
         });
       }
       
-      if (relationInfo.value?.sort_field) {
-        junctionData[relationInfo.value.sort_field] = items.value.length;
+      if (relationInfo.value?.meta?.sort_field) {
+        junctionData[relationInfo.value.meta.sort_field] = items.value.length;
       }
       
       const junctionCollection = m2aStructure.value?.junctionCollection ||
@@ -858,8 +965,8 @@ export function useExpandableBlocks(
         [foreignKey]: primaryKeyValue
       };
       
-      if (relationInfo.value?.sort_field) {
-        newItem[relationInfo.value.sort_field] = junctionRecord[relationInfo.value.sort_field];
+      if (relationInfo.value?.meta?.sort_field) {
+        newItem[relationInfo.value.meta.sort_field] = junctionRecord[relationInfo.value.meta.sort_field];
       }
       
       // Add to items
@@ -966,10 +1073,10 @@ export function useExpandableBlocks(
       updatedItems.splice(index, 1);
       
       // Update sort values
-      if (relationInfo.value?.sort_field) {
+      if (relationInfo.value?.meta?.sort_field) {
         updatedItems.forEach((item, idx) => {
-          if (item[relationInfo.value!.sort_field!] !== idx) {
-            item[relationInfo.value!.sort_field!] = idx;
+          if (item[relationInfo.value!.meta!.sort_field!] !== idx) {
+            item[relationInfo.value!.meta!.sort_field!] = idx;
           }
         });
       }
@@ -1091,8 +1198,8 @@ export function useExpandableBlocks(
         });
       }
       
-      if (relationInfo.value?.sort_field) {
-        junctionData[relationInfo.value.sort_field] = index + 1;
+      if (relationInfo.value?.meta?.sort_field) {
+        junctionData[relationInfo.value.meta.sort_field] = index + 1;
       }
       
       const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
@@ -1220,10 +1327,10 @@ export function useExpandableBlocks(
     if (props.disabled) return;
     
     // Update sort values
-    if (relationInfo.value?.sort_field) {
+    if (relationInfo.value?.meta?.sort_field) {
       items.value = items.value.map((item, index) => ({
         ...item,
-        [relationInfo.value!.sort_field!]: index
+        [relationInfo.value!.meta!.sort_field!]: index
       }));
     }
     
@@ -1235,7 +1342,7 @@ export function useExpandableBlocks(
       collection: props.collection,
       field: props.field,
       primaryKey: props.primaryKey,
-      sortField: relationInfo.value?.sort_field,
+      sortField: relationInfo.value?.meta?.sort_field,
       itemsCount: items.value.length,
       emitValue,
       emitValueType: typeof emitValue,
