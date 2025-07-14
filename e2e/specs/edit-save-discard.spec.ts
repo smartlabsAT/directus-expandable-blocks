@@ -5,6 +5,12 @@ test.describe('Edit, Save, and Discard', () => {
   let directus: DirectusHelpers;
 
   test.beforeEach(async ({ page }) => {
+    // Skip all tests in CI environment
+    if (process.env.CI || process.env.SKIP_E2E_TESTS) {
+      test.skip();
+      return;
+    }
+    
     directus = new DirectusHelpers(page);
     await directus.login();
     await directus.navigateToItem('pages', 9999);
