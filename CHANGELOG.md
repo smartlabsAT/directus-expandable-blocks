@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-07-14
+
+### Fixed
+- **Sorting Persistence**: Fixed issue where block reordering was not persisted when saving
+  - Enhanced isDirty detection to track position changes alongside content changes
+  - Blocks are now correctly marked as dirty when their position changes
+- **Sort Field Access**: Fixed undefined sort field errors throughout the codebase
+  - Corrected access path from `relationInfo.value?.sort_field` to `relationInfo.value?.meta?.sort_field`
+  - Ensures proper sorting functionality across all operations
+- **Save and Stay Functionality**: Fixed blocks reverting to original positions after "Save and Stay"
+  - Added originalItemOrder tracking to detect save completion
+  - Updates originalItemOrder when save is successful
+  - Maintains block order correctly during continuous editing
+- **Global Discard Functionality**: Fixed "Discard all changes" not working
+  - Properly resets originalItemOrder to saved state
+  - Restores blocks to their original positions and content
+  - Distinguishes between save events and discard events
+
+### Technical Improvements
+- Improved position-based dirty state tracking
+- Enhanced save detection mechanism
+- Better state management for block ordering
+- Consistent use of logger instead of console.log
+- Improved debugging capabilities with structured logging
+
 ## [1.0.2] - 2025-07-12
 
 ### Fixed
@@ -73,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart content improvement tools
 - Context-aware AI suggestions
 
+[1.0.3]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.3
 [1.0.2]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.2
 [1.0.1]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.1
 [1.0.0]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.0

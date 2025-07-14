@@ -2,9 +2,25 @@
 
 This roadmap outlines our development plans and upcoming features for the Directus Expandable Blocks extension.
 
-## ✅ Released (v1.0.0)
+## ✅ Released
 
-### Core Interface Features
+### v1.0.3 (July 2025)
+- ✅ Fixed sorting persistence issues
+- ✅ Fixed "Save and Stay" functionality
+- ✅ Fixed global discard functionality
+- ✅ Improved position-based dirty state tracking
+- ✅ Enhanced debugging capabilities
+
+### v1.0.2 (July 2025)
+- ✅ Fixed foreign key default values for PostgreSQL
+- ✅ Improved error handling for content block creation
+
+### v1.0.1 (July 2025)
+- ✅ Fixed props watcher for primaryKey changes
+- ✅ Fixed foreign key type consistency
+- ✅ Resolved data persistence issues
+
+### v1.0.0 (July 2025)
 - ✅ Inline expandable editing for M2A fields
 - ✅ Drag & drop sorting with visual feedback
 - ✅ Status management with visual indicators
