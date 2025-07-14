@@ -472,7 +472,7 @@ export function useExpandableBlocks(
   watch(() => props.value, async (newVal, oldVal) => {
     // Set originalItemOrder when it's empty and data arrives (initial load)
     if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
-      console.log('Setting originalItemOrder from value watcher:', newVal);
+      logger.debug('Setting originalItemOrder from value watcher:', newVal);
       originalItemOrder.value = newVal.map(item => 
         typeof item === 'object' && item !== null ? item.id : item
       );
@@ -498,7 +498,7 @@ export function useExpandableBlocks(
         // Wenn alle Blöcke nur als IDs kommen UND die Reihenfolge anders ist,
         // dann war das ein erfolgreicher Save
         if (JSON.stringify(newOrder) !== JSON.stringify(originalItemOrder.value)) {
-          console.log('Save detected - all blocks are clean IDs, updating originalItemOrder:', {
+          logger.debug('Save detected - all blocks are clean IDs, updating originalItemOrder:', {
             previousOriginal: originalItemOrder.value,
             newOrder: newOrder
           });
@@ -530,11 +530,10 @@ export function useExpandableBlocks(
   }, { deep: true });
 
   /**
-   * Watch for global "Discard All Changes" events
+   * Watch for global form resets (when user clicks "Discard Changes")
    * This happens when Directus resets values to initialValues
    */
   watch(() => values.value?.[props.field], (newVal, oldVal) => {
-    
     // Skip if not initialized or if it's our own update
     if (!isFullyInitialized.value || isInternalUpdate.value) {
       return;
@@ -551,17 +550,20 @@ export function useExpandableBlocks(
       return;
     }
     
-    // For comparison, we need to check if it matches either initialValues OR originalItemOrder
-    // because Directus might reset to the original order, not the processLoadedRecords order
+    // For comparison, we need to check if it matches initialValues (the saved state)
     const isResetToInitial = JSON.stringify(newVal) === JSON.stringify(initialVal);
-    const isResetToOriginal = originalItemOrder.value.length > 0 && 
-      JSON.stringify(newVal) === JSON.stringify(originalItemOrder.value);
     
-    const isReset = isResetToInitial || isResetToOriginal;
-    
-    
-    if (isReset) {
+    if (isResetToInitial) {
       logger.debug('Global discard detected - resetting blocks');
+      
+      // WICHTIG: Reset originalItemOrder to the initial/saved order
+      if (Array.isArray(initialVal)) {
+        originalItemOrder.value = initialVal.map(item => 
+          typeof item === 'object' && item !== null ? item.id : item
+        );
+        
+        logger.debug('Reset originalItemOrder to:', originalItemOrder.value);
+      }
       
       // Reset all blocks to their original state
       items.value = items.value.map(item => {
@@ -574,28 +576,35 @@ export function useExpandableBlocks(
           return item;
         }
         
-        
         return {
           ...item,
           item: deepClone(originalData)
         };
       });
       
-      // Keep expanded items open for better UX
-      // expandedItems.value = [];
-      
-      // Emit clean state (only IDs)
-      const cleanIds = items.value.map(item => item.id);
-      
-      // Use original order if available
+      // Reorder items according to the reset order
       if (originalItemOrder.value.length > 0) {
         const itemMap = new Map(items.value.map(item => [item.id, item]));
-        const orderedIds = originalItemOrder.value.filter(id => itemMap.has(id));
-        emit('input', orderedIds);
-      } else {
-        emit('input', cleanIds);
+        const reorderedItems = originalItemOrder.value
+          .map(id => itemMap.get(id))
+          .filter(item => item !== undefined) as JunctionRecord[];
+        
+        if (reorderedItems.length > 0) {
+          items.value = reorderedItems;
+        }
       }
+      
+      // Keep expanded items open for better UX
+      // expandedItems stays the same
+      
+      // Emit the reset state
+      isInternalUpdate.value = true;
+      emit('input', newVal);
+      nextTick(() => {
+        isInternalUpdate.value = false;
+      });
     }
+    // If it's not a reset, it could be individual field updates which we ignore here
   }, { deep: true });
 
   /**
@@ -625,7 +634,7 @@ export function useExpandableBlocks(
     // Update originalItemOrder with current order after save
     originalItemOrder.value = items.value.map(item => item.id);
     
-    console.log('Updated originalItemOrder after save:', originalItemOrder.value);
+    logger.debug('Updated originalItemOrder after save:', originalItemOrder.value);
     // WICHTIG: Warte bis loadFullItemData fertig ist!
     await loadFullItemData();
     
