@@ -2,7 +2,7 @@
 
 A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing.
 
-![Directus Expandable Blocks Demo](docs/assets/demo.gif)
+![Directus Expandable Blocks Demo](./docs/assets/demo.gif)
 
 ## ✨ Features
 
