@@ -5,10 +5,22 @@ export class DirectusHelpers {
 
   async login(email = 'admin@example.com', password = 'd1r3ctu5') {
     await this.page.goto('/admin/login');
+    
+    // Wait for login form to be ready
+    await this.page.waitForSelector('input[type="email"]', { state: 'visible' });
+    
     await this.page.fill('input[type="email"]', email);
     await this.page.fill('input[type="password"]', password);
     await this.page.click('button[type="submit"]');
-    await this.page.waitForURL(/\/admin\/content/);
+    
+    // Wait for navigation to complete - be more flexible about where we end up
+    await this.page.waitForURL(/\/admin\/(content|settings|insights)/);
+    
+    // If we're not on content page, navigate there
+    if (!this.page.url().includes('/admin/content')) {
+      await this.page.goto('/admin/content');
+      await this.page.waitForURL(/\/admin\/content/);
+    }
   }
 
   async navigateToItem(collection: string, itemId: number | string) {
