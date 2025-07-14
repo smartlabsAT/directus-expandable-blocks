@@ -484,6 +484,35 @@ export function useExpandableBlocks(
       return;
     }
     
+    // NEU: Nach einem Save kommt die neue Reihenfolge von Directus
+    // WICHTIG: Wir aktualisieren originalItemOrder nur, wenn ALLE Blöcke als IDs kommen (= clean state nach Save)
+    if (Array.isArray(newVal) && newVal.length > 0 && originalItemOrder.value.length > 0) {
+      // Prüfe ob alle Einträge nur IDs sind (keine Objekte)
+      const allAreIds = newVal.every(item => typeof item !== 'object' || item === null);
+      
+      if (allAreIds) {
+        const newOrder = newVal.map(item => 
+          typeof item === 'object' && item !== null ? item.id : item
+        );
+        
+        // Wenn alle Blöcke nur als IDs kommen UND die Reihenfolge anders ist,
+        // dann war das ein erfolgreicher Save
+        if (JSON.stringify(newOrder) !== JSON.stringify(originalItemOrder.value)) {
+          console.log('Save detected - all blocks are clean IDs, updating originalItemOrder:', {
+            previousOriginal: originalItemOrder.value,
+            newOrder: newOrder
+          });
+          originalItemOrder.value = newOrder;
+          
+          // Wichtig: Lade die Daten neu, damit sie in der neuen Reihenfolge sind
+          if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+            await loadFullItemData();
+          }
+          return;
+        }
+      }
+    }
+    
     if (isInitialLoad.value || isInternalUpdate.value) {
       isInternalUpdate.value = false;
       return;
@@ -593,6 +622,10 @@ export function useExpandableBlocks(
     // Set internal update flag to prevent double emit
     isInternalUpdate.value = true;
     
+    // Update originalItemOrder with current order after save
+    originalItemOrder.value = items.value.map(item => item.id);
+    
+    console.log('Updated originalItemOrder after save:', originalItemOrder.value);
     // WICHTIG: Warte bis loadFullItemData fertig ist!
     await loadFullItemData();
     
