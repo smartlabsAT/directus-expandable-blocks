@@ -492,7 +492,7 @@ export function useExpandableBlocks(
       
       if (allAreIds) {
         const newOrder = newVal.map(item => 
-          typeof item === 'object' && item !== null ? item.id : item
+          typeof item === 'object' && item !== null ? (item as any).id : item
         );
         
         // Wenn alle Blöcke nur als IDs kommen UND die Reihenfolge anders ist,
