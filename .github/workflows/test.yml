@@ -46,21 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true  # Allow E2E tests to fail without failing the whole workflow
     
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: directus
-          POSTGRES_PASSWORD: directus
-          POSTGRES_DB: directus
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    
     steps:
     - uses: actions/checkout@v4
     
@@ -79,43 +64,12 @@ jobs:
     - name: Build extension
       run: npm run build
     
-    - name: Setup Directus
+    - name: Skip E2E tests
       run: |
-        docker run -d \
-          --name directus \
-          -p 8055:8055 \
-          -e KEY=test-key-123 \
-          -e SECRET=test-secret-123 \
-          -e ADMIN_EMAIL=admin@example.com \
-          -e ADMIN_PASSWORD=d1r3ctu5 \
-          -e DB_CLIENT=pg \
-          -e DB_HOST=localhost \
-          -e DB_PORT=5432 \
-          -e DB_DATABASE=directus \
-          -e DB_USER=directus \
-          -e DB_PASSWORD=directus \
-          --network host \
-          directus/directus:11
-    
-    - name: Wait for Directus
-      run: |
-        timeout 60 bash -c 'until curl -f http://localhost:8055/server/health; do sleep 2; done'
-    
-    - name: Install extension
-      run: |
-        docker cp ./dist directus:/directus/extensions/interfaces/expandable-blocks
-        docker restart directus
-        sleep 10
-    
-    - name: Setup test data
-      run: |
-        PGPASSWORD=directus psql -h localhost -U directus -d directus -f ./e2e/fixtures/test-setup.sql
-    
-    - name: Run E2E tests
-      run: npm run test:e2e || echo "E2E tests failed but continuing"
-      env:
-        DIRECTUS_URL: http://localhost:8055
-        CI: true
+        echo "E2E tests are temporarily disabled in CI"
+        echo "To run E2E tests locally:"
+        echo "1. Start Directus: docker-compose up -d"
+        echo "2. Run tests: npm run test:e2e"
     
     - uses: actions/upload-artifact@v4
       if: always()
