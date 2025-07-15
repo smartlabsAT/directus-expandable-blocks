@@ -215,7 +215,5 @@ export default defineInterface({
       }
     }
   ];
-  },
-  preview: '<div>Expandable Blocks</div>'
-
+  }
 });
