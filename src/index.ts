@@ -4,7 +4,7 @@ import InterfaceComponent from './interface.vue';
 export default defineInterface({
   id: 'expandable-blocks',
   name: 'Expandable Blocks',
-  icon: 'view_stream',
+  icon: 'dashboard_customize',
   description: 'M2A interface with inline expandable editing',
   component: InterfaceComponent,
   types: ['alias'],
