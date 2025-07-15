@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-07-15
+
+### Fixed
+- Changed interface icon from `view_stream` to `dashboard_customize` for better visibility
+  - Previous icon was not displaying correctly in Directus interface
+  - Updated to match the layout-blocks interface for consistency
+
 ## [1.0.4] - 2025-07-14
 
 ### Added
@@ -122,6 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart content improvement tools
 - Context-aware AI suggestions
 
+[1.0.5]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.5
 [1.0.4]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.4
 [1.0.3]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.3
 [1.0.2]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.2

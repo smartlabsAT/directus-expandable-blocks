@@ -1,6 +1,6 @@
 {
   "name": "directus-extension-expandable-blocks",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "M2A interface with inline expandable editing for Directus",
   "author": "Christopher Schwarz <christopher@neugebauerschwarz.com>",
   "license": "MIT",
