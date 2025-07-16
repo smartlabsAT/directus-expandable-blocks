@@ -10,40 +10,40 @@
       @end="onSort"
     >
       <template #item="{ element: item, index }">
-        <div 
-          class="block-item" 
-          :class="{ 
+        <div
+          class="block-item"
+          :class="{
             expanded: expandedItems.includes(getItemId(item)),
             compact: mergedOptions?.compactMode,
             disabled: disabled
           }"
         >
           <!-- Block Header -->
-          <div 
-            class="block-header" 
+          <div
+            class="block-header"
             @click="!disabled && toggleExpand(getItemId(item))"
           >
             <!-- Drag Handle -->
-            <v-icon 
-              v-if="sortable && !disabled" 
-              name="drag_indicator" 
-              class="drag-handle" 
+            <v-icon
+              v-if="sortable && !disabled"
+              name="drag_indicator"
+              class="drag-handle"
               @click.stop
             />
-            
+
             <!-- Collection Icon with Dirty Indicator -->
             <div class="icon-wrapper">
-              <v-icon 
-                :name="getCollectionIcon(item) || 'box'" 
+              <v-icon
+                :name="getCollectionIcon(item) || 'box'"
                 class="collection-icon"
               />
-              <div 
+              <div
                 v-if="isBlockDirty(getItemId(item), item.item)"
                 class="dirty-indicator"
                 v-tooltip="'Unsaved changes'"
               />
             </div>
-            
+
             <!-- Main Info Section -->
             <div class="block-info">
               <div class="block-main">
@@ -55,15 +55,15 @@
                   ID: {{ getActualItemId(item) }}
                 </span>
               </div>
-              
+
               <!-- Status Display -->
-              <v-menu 
+              <v-menu
                 v-if="hasStatusField(item) && !mergedOptions?.compactMode"
-                placement="bottom" 
+                placement="bottom"
                 show-arrow
               >
                 <template #activator="{ toggle }">
-                  <div 
+                  <div
                     class="status-display"
                     @click.stop="toggle"
                   >
@@ -71,7 +71,7 @@
                     <span class="status-text">{{ getStatusLabel(getItemStatus(item)) }}</span>
                   </div>
                 </template>
-                
+
                 <v-list>
                   <v-list-item
                     v-for="status in availableStatuses"
@@ -88,19 +88,19 @@
                 </v-list>
               </v-menu>
             </div>
-            
+
             <!-- Right Section -->
             <div class="block-actions">
               <!-- AI Assistant Button -->
 
-              
+
               <!-- DEBUG: Show AI status -->
 <!--              <div v-if="!disabled" style="font-size: 10px; color: red;">-->
 <!--              </div>-->
-              
+
               <!-- Expand/Collapse Icon or Placeholder -->
               <div class="expand-icon-container">
-                <v-icon 
+                <v-icon
                   v-if="expandedItems.includes(getItemId(item))"
                   name="unfold_less"
                   class="expand-indicator"
@@ -109,9 +109,9 @@
               </div>
 
               <!-- More Options Menu -->
-              <v-menu 
+              <v-menu
                 v-if="!disabled && (mergedOptions?.isAllowedDuplicate !== false || mergedOptions?.isAllowedDelete !== false)"
-                placement="bottom-end" 
+                placement="bottom-end"
                 show-arrow
               >
                 <template #activator="{ toggle }">
@@ -125,11 +125,11 @@
                     <v-icon name="more_vert" />
                   </v-button>
                 </template>
-                
+
                 <v-list>
-                  <v-list-item 
+                  <v-list-item
                     v-if="mergedOptions?.isAllowedDuplicate !== false"
-                    clickable 
+                    clickable
                     @click="duplicateItem(item, index)"
                   >
                     <v-list-item-icon>
@@ -137,10 +137,10 @@
                     </v-list-item-icon>
                     <v-list-item-content>Duplicate</v-list-item-content>
                   </v-list-item>
-                  
-                  <v-list-item 
+
+                  <v-list-item
                     v-if="isBlockDirty(getItemId(item), item.item)"
-                    clickable 
+                    clickable
                     @click="discardChanges(item, index)"
                   >
                     <v-list-item-icon>
@@ -148,13 +148,13 @@
                     </v-list-item-icon>
                     <v-list-item-content>Discard Changes</v-list-item-content>
                   </v-list-item>
-                  
+
                   <v-divider v-if="(mergedOptions?.isAllowedDuplicate !== false || isBlockDirty(getItemId(item), item.item)) && mergedOptions?.isAllowedDelete !== false" />
-                  
-                  <v-list-item 
+
+                  <v-list-item
                     v-if="mergedOptions?.isAllowedDelete !== false"
-                    clickable 
-                    class="danger" 
+                    clickable
+                    class="danger"
                     @click="showDeleteDialog(item, index)"
                   >
                     <v-list-item-icon>
@@ -166,14 +166,14 @@
               </v-menu>
             </div>
           </div>
-          
+
           <!-- Inline Form (Expanded Content) -->
           <transition name="expand">
             <div v-if="expandedItems.includes(getItemId(item))" class="block-content">
               <div v-if="loading[getItemId(item)]" class="loading-state">
                 <v-progress-circular indeterminate />
               </div>
-              
+
               <v-form
                 v-else
                 :initial-values="item.item || item"
@@ -186,7 +186,7 @@
                 :show-validation-errors="false"
                 @update:model-value="updateItem(index, $event)"
               />
-              
+
               <!-- Show nested M2A blocks if present -->
               <template v-if="hasNestedM2A(item)">
                 <div v-for="(fieldValue, fieldName) in getM2AFields(item)" :key="fieldName">
@@ -202,69 +202,75 @@
         </div>
       </template>
     </draggable>
-    
+
     <!-- Empty State -->
     <div v-else-if="!disabled" class="empty-state">
       <p>No blocks yet</p>
     </div>
-    
+
     <!-- Add New Block Button -->
-    <v-button 
-      v-if="!disabled && allowedCollections.length === 1 && canAddMoreBlocks"
-      class="add-block-button"
-      :disabled="disabled"
-      @click="addNewItem(allowedCollections[0].collection)"
-    >
-      <v-icon name="add" />
-      Add Block
-    </v-button>
-    
-    <v-menu 
-      v-else-if="!disabled && allowedCollections.length > 1 && canAddMoreBlocks"
-      placement="bottom-start" 
-      show-arrow
-    >
-      <template #activator="{ toggle }">
-        <v-button 
+
+
+    <div class="add-block-wrapper">
+      <v-button
+          v-if="!disabled && allowedCollections.length === 1 && canAddMoreBlocks"
           class="add-block-button"
           :disabled="disabled"
-          @click="toggle"
-        >
-          <v-icon name="add" />
-          Add Block
-        </v-button>
-      </template>
-      
-      <v-list>
-        <v-list-item
-          v-for="collection in allowedCollections"
-          :key="collection.collection"
-          clickable
-          @click="addNewItem(collection.collection)"
-        >
-          <v-list-item-icon>
-            <v-icon :name="collection.meta?.icon || 'box'" />
-          </v-list-item-icon>
-          <v-list-item-content>
-            {{ collection.name }}
-          </v-list-item-content>
-        </v-list-item>
-      </v-list>
-    </v-menu>
-    
+          @click="addNewItem(allowedCollections[0].collection)"
+      >
+        <v-icon name="add" />
+        Create New
+      </v-button>
+
+      <v-menu
+          v-else-if="!disabled && allowedCollections.length > 1 && canAddMoreBlocks"
+          placement="bottom"
+          show-arrow
+      >
+        <template #activator="{ toggle }">
+          <v-button
+              class="add-block-button with-dropdown"
+              :disabled="disabled"
+              @click="toggle"
+          >
+
+            <span>Create New</span>
+            <v-icon name="arrow_drop_down"/>
+          </v-button>
+        </template>
+
+        <v-list>
+          <v-list-item
+              v-for="collection in allowedCollections"
+              :key="collection.collection"
+              clickable
+              @click="addNewItem(collection.collection)"
+          >
+            <v-list-item-icon>
+              <v-icon :name="collection.meta?.icon || 'box'"/>
+            </v-list-item-icon>
+            <v-list-item-content>
+              {{ collection.name }}
+            </v-list-item-content>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
+
+
     <!-- Max blocks reached message -->
-    <div 
-      v-if="!disabled && allowedCollections.length > 0 && !canAddMoreBlocks" 
+    <div
+      v-if="!disabled && allowedCollections.length > 0 && !canAddMoreBlocks"
       class="max-blocks-message"
     >
       <v-notice type="info">
         Maximum number of blocks ({{ mergedOptions.maxBlocks }}) reached
       </v-notice>
     </div>
-    
+
     <!-- Delete Confirmation Dialog -->
-    <v-dialog 
-      v-model="deleteDialog" 
+    <v-dialog
+      v-model="deleteDialog"
       @esc="deleteDialog = false"
     >
       <v-card>
@@ -325,13 +331,13 @@ const {
   blockOriginalStates,
   originalItemOrder,
   availableStatuses,
-  
+
   // Computed
   sortable,
   saveButtonWouldBeActive,
   shouldShowItemId,
   canAddMoreBlocks,
-  
+
   // Methods
   initialize,
   getItemId,

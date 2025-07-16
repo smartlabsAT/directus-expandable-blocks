@@ -227,9 +227,34 @@
   padding: 12px;
 }
 
+.add-block-wrapper {
+  display: inline-block;
+  margin: 0;
+}
+
 .add-block-container v-button {
   width: 100%;
   max-width: 400px;
+}
+
+/* Add Block Button - M2A Style */
+.add-block-button {
+  margin: 0px;
+}
+
+.add-block-button.with-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.add-block-button.with-dropdown span {
+  margin: 0;
+}
+
+.add-block-button.with-dropdown .v-icon:last-child {
+  margin-left: 4px;
+  opacity: 1;
 }
 
 .empty-state {
