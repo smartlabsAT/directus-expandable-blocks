@@ -4,6 +4,18 @@ A powerful M2A (Many-to-Any) interface for Directus with inline expandable editi
 
 ![Directus Expandable Blocks Demo](./docs/assets/demo.gif)
 
+## 📚 Documentation
+
+For comprehensive documentation, visit our **[GitHub Wiki](https://github.com/smartlabsAT/directus-expandable-blocks/wiki)** which includes:
+- Detailed installation guide
+- Configuration options
+- Architecture overview
+- API integration guide
+- Development & debugging
+- Security best practices
+- Migration guide
+- And much more!
+
 ## 🎯 Why Expandable Blocks?
 
 Unlike other block editors, this extension **works directly with Directus' native form system**:
