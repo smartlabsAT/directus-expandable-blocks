@@ -397,7 +397,7 @@ export function useExpandableBlocks(
         const field = fieldsStore.getField(props.collection, props.field);
         
         // Check if field has special configuration for M2A
-        if (field?.meta?.special?.includes('m2a')) {
+        if (field?.special && (field.special as string[]).includes('m2a')) {
           // Get the junction collection
           const junctionRelation = relations.find(r => r.meta?.junction_field);
           if (junctionRelation) {
@@ -418,9 +418,6 @@ export function useExpandableBlocks(
               m2aConfiguredCollections = oneCollectionField.meta.options.choices
                 .map((choice: any) => typeof choice === 'string' ? choice : choice.value)
                 .filter(Boolean);
-            } else if (oneCollectionField?.schema?.foreign_key_table) {
-              // Sometimes collections are stored as foreign key references
-              m2aConfiguredCollections = [oneCollectionField.schema.foreign_key_table];
             }
           }
         }
