@@ -394,7 +394,7 @@ export function useExpandableBlocks(
       
       // If still no collections found, try to get them from the field configuration
       if (m2aConfiguredCollections.length === 0) {
-        const field = fieldsStore.getField(props.collection, props.field);
+        const field = fieldsStore.getField(props.collection, props.field) as any;
         
         // Check if field has special configuration for M2A
         if (field?.special && (field.special as string[]).includes('m2a')) {
