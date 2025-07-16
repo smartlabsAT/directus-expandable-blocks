@@ -41,7 +41,7 @@ This roadmap outlines our development plans and upcoming features for the Direct
 
 ## 🚧 In Development
 
-### 🤖 AI-Powered Content Generation (v1.1.0)
+### 🤖 AI-Powered Content Generation (v2.0.0)
 **Status**: Active development on `feature/ai-assistant` branch  
 **Target Release**: Q3 2025
 
@@ -49,7 +49,6 @@ This roadmap outlines our development plans and upcoming features for the Direct
 - 🔄 **Multi-Provider Support**: OpenAI GPT, Anthropic Claude, Custom APIs
 - 🔄 **Content Generation**: Create new content based on natural language prompts
 - 🔄 **Smart Improvement**: Grammar, style, clarity, and SEO optimization
-- 🔄 **Multi-Language Translation**: Support for 10+ languages
 - 🔄 **Context Awareness**: AI understands page structure and surrounding content
 - 🔄 **Field-Specific Targeting**: Generate content for selected fields only
 
@@ -57,12 +56,13 @@ This roadmap outlines our development plans and upcoming features for the Direct
 - 🔄 **Multi-Field Generation**: Generate content for multiple fields simultaneously
 - 🔄 **Content Templates**: Pre-configured prompts for different block types
 - 🔄 **Brand Voice Training**: Learn and maintain consistent writing style
-- 🔄 **A/B Testing Support**: Generate multiple content variations
 - 🔄 **Usage Analytics**: Track AI usage and token consumption
+
+> **Note**: Minor releases (v2.1.x, v2.2.x) will include bug fixes, performance improvements, and incremental AI enhancements.
 
 ## 📋 Planned Features
 
-### 🎨 Enhanced UI/UX (v1.2.0)
+### 🎨 Enhanced UI/UX (v3.0.0)
 **Target Release**: Q4 2025
 
 - 📝 **Block Templates Library**: Pre-built content block templates
@@ -71,48 +71,39 @@ This roadmap outlines our development plans and upcoming features for the Direct
 - 📝 **Mobile Optimization**: Improved mobile editing experience
 - 📝 **Accessibility Enhancements**: WCAG 2.1 AA compliance
 - 📝 **Custom Themes**: Customizable appearance and branding
+- 📝 **Import/Export**: Share blocks and templates between projects
 
-### 🔧 Developer Experience (v1.3.0)
+### 🔧 Developer Experience (v4.0.0)
 **Target Release**: Q1 2026
 
 - 📝 **CLI Tools**: Command-line utilities for extension management
 - 📝 **Block Generator**: Scaffold new block types quickly
 - 📝 **Developer API**: Programmatic access to block operations
-- 📝 **Webhook Integration**: Real-time notifications for block changes
 - 📝 **Migration Tools**: Easy updates between versions
 - 📝 **Debug Mode**: Enhanced debugging and logging capabilities
+- 📝 **TypeScript Improvements**: Better type inference and autocompletion
 
-### 🚀 Performance & Scaling (v1.4.0)
+### 🚀 Performance & Scaling (v5.0.0)
 **Target Release**: Q3 2026
 
 - 📝 **Virtual Scrolling**: Handle thousands of blocks efficiently
 - 📝 **Lazy Loading**: On-demand loading of block content
 - 📝 **Caching Layer**: Intelligent content caching
 - 📝 **Background Processing**: Non-blocking operations
-- 📝 **CDN Integration**: Asset optimization and delivery
-- 📝 **Real-time Collaboration**: Multi-user editing support
+- 📝 **Batch Operations**: Bulk actions on multiple blocks
+- 📝 **Memory Optimization**: Reduced memory footprint for large datasets
 
-## 🔮 Future Vision
 
-### 🎯 Advanced Content Management (v2.0.0)
-**Target Release**: Q4 2026
+## 🔧 Maintenance & Compatibility
 
-- 📝 **Content Versioning**: Track and revert content changes
-- 📝 **Workflow Engine**: Custom approval and publishing workflows
-- 📝 **Content Scheduling**: Time-based content publication
-- 📝 **Multi-site Management**: Share blocks across multiple sites
-- 📝 **Content Analytics**: Track block performance and engagement
-- 📝 **Headless CMS Integration**: API-first content delivery
+### Ongoing Support
+- 🔄 **Security Updates**: Regular security patches and vulnerability fixes
+- 🔄 **Directus Compatibility**: Updates for new Directus versions
+- 🔄 **Bug Fixes**: Continuous bug fixes via minor releases (1.x, 2.x, 3.x, etc.)
+- 🔄 **Performance Improvements**: Ongoing optimizations
+- 🔄 **Dependency Updates**: Keep dependencies current and secure
 
-### 🧠 AI Evolution (v2.1.0+)
-**Target Release**: 2027
-
-- 📝 **AI Content Strategy**: Automated content planning and optimization
-- 📝 **Image Generation**: AI-powered visual content creation
-- 📝 **Voice-to-Text**: Audio content transcription and editing
-- 📝 **Smart SEO**: Automated search optimization
-- 📝 **Content Personalization**: Dynamic content based on user behavior
-- 📝 **Predictive Analytics**: AI-driven content performance predictions
+> **Note**: We follow semantic versioning. Patch releases (x.x.1) for bug fixes, minor releases (x.1.0) for new features, major releases (x.0.0) for breaking changes.
 
 ## 🤝 Community & Ecosystem
 
