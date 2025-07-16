@@ -58,7 +58,6 @@ export class M2AHelper {
         const fieldConfig = fields.find((f: any) => f.field === field);
         if (fieldConfig?.meta?.options?.allowedCollections) {
           allowedCollections = fieldConfig.meta.options.allowedCollections;
-          console.log('Found allowed collections in field options:', allowedCollections);
         }
       } catch (e) {
         console.log('Could not get field options:', e);

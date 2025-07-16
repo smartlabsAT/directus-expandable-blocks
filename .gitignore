@@ -57,3 +57,7 @@ pids
 # Temporary folders
 tmp/
 temp/
+
+# Wiki (managed separately on GitHub)
+wiki/
+wiki-repo/
