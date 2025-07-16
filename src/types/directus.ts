@@ -15,6 +15,7 @@ export interface DirectusField {
   field: string;
   collection: string;
   type?: string;
+  special?: string | string[];
   meta?: {
     interface?: string;
     hidden?: boolean;

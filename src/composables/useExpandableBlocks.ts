@@ -362,10 +362,6 @@ export function useExpandableBlocks(
       });
     }
     
-    // Check for delayed options (Directus sometimes loads them late)
-    if (allowedCollections.value.length === 0) {
-      setTimeout(() => checkDelayedOptions(), 1000);
-    }
   }
 
   /**
@@ -375,27 +371,74 @@ export function useExpandableBlocks(
     // Use merged options which already contains field store options
     const fieldOptions = mergedOptions.value || {};
     
-    // First check interface options
-    if (fieldOptions?.allowedCollections && fieldOptions.allowedCollections.length > 0) {
-      logger.debug('Found allowed collections in interface options');
-      setAllowedCollections(fieldOptions.allowedCollections);
-      return;
+    // First, always try to get the M2A configured collections
+    const relations = relationsStore.getRelationsForField(props.collection, props.field);
+    let m2aConfiguredCollections: string[] = [];
+    if (relations && relations.length > 0) {
+      // For M2A, we need to look at all relations to find the configured collections
+      for (const relation of relations) {
+        // Store the first relation as relationInfo
+        if (!relationInfo.value) {
+          relationInfo.value = relation;
+        }
+        
+        // Try to get collections from different places
+        if (relation.meta?.one_allowed_collections) {
+          const collections = parseAllowedCollections(relation.meta.one_allowed_collections);
+          if (collections.length > 0) {
+            m2aConfiguredCollections = collections;
+            break;
+          }
+        }
+      }
+      
+      // If still no collections found, try to get them from the field configuration
+      if (m2aConfiguredCollections.length === 0) {
+        const field = fieldsStore.getField(props.collection, props.field) as any;
+        
+        // Check if field has special configuration for M2A
+        if (field?.special && (field.special as string[]).includes('m2a')) {
+          // Get the junction collection
+          const junctionRelation = relations.find(r => r.meta?.junction_field);
+          if (junctionRelation) {
+            const junctionCollection = junctionRelation.collection;
+            
+            // Get all fields from junction to find related collections
+            const junctionFields = fieldsStore.getFieldsForCollection(junctionCollection);
+            
+            // Find the one_collection field
+            const oneCollectionField = junctionFields.find(f => 
+              f.field === 'collection' || 
+              f.field === 'item' || 
+              (f.type === 'string' && f.meta?.interface === 'select-dropdown')
+            );
+            
+            // Extract collections from field configuration
+            if (oneCollectionField?.meta?.options?.choices) {
+              m2aConfiguredCollections = oneCollectionField.meta.options.choices
+                .map((choice: any) => typeof choice === 'string' ? choice : choice.value)
+                .filter(Boolean);
+            }
+          }
+        }
+      }
     }
     
-    // Try to get from M2A relation metadata
-    const relations = relationsStore.getRelationsForField(props.collection, props.field);
-    if (relations && relations.length > 0) {
-      const m2aRelation = relations[0];
-      relationInfo.value = m2aRelation;
-      
-      const oneAllowedCollections = parseAllowedCollections(
-        m2aRelation.meta?.one_allowed_collections ||
-        m2aRelation.one_allowed_collections || undefined
-      );
-      
-      if (oneAllowedCollections.length > 0) {
-        logger.debug('Found allowed collections in M2A relation');
-        setAllowedCollections(oneAllowedCollections);
+    // Now check the interface options
+    if (fieldOptions?.allowedCollections !== undefined && Array.isArray(fieldOptions.allowedCollections)) {
+      if (fieldOptions.allowedCollections.length > 0) {
+        // Specific collections selected - use only these
+        setAllowedCollections(fieldOptions.allowedCollections);
+      } else {
+        // Empty array means "no restrictions" - use all M2A collections
+        if (m2aConfiguredCollections.length > 0) {
+          setAllowedCollections(m2aConfiguredCollections);
+        }
+      }
+    } else {
+      // allowedCollections not set at all - use M2A collections
+      if (m2aConfiguredCollections.length > 0) {
+        setAllowedCollections(m2aConfiguredCollections);
       }
     }
   }

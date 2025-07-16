@@ -123,6 +123,7 @@ export default defineInterface({
           default_value: true
         }
       },
+      /*
       {
         field: 'startExpanded',
         name: 'Start Expanded',
@@ -139,6 +140,7 @@ export default defineInterface({
           default_value: false
         }
       },
+      */
       {
         field: 'accordionMode',
         name: 'Accordion Mode',
@@ -171,6 +173,7 @@ export default defineInterface({
           default_value: null
         }
       },
+      /*
       {
         field: 'compactMode',
         name: 'Compact Mode',
@@ -187,6 +190,7 @@ export default defineInterface({
           default_value: false
         }
       },
+      */
       {
         field: 'isAllowedDelete',
         name: 'Allow Delete',
