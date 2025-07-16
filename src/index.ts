@@ -72,7 +72,20 @@ export default defineInterface({
             .join(' '),
           value: collectionName
         }))
-      : [];
+      : getAllAvailableCollections();
+    
+    // Check if this is a new field (no M2A configuration yet)
+    const isNewField = allowedCollections.length === 0;
+    
+    // Determine the appropriate note text
+    const getCollectionNote = () => {
+      if (allowedCollections.length > 0) {
+        return 'Select which collections to allow as blocks. Leave empty to use all M2A configured collections.';
+      }
+      
+      // For new fields without M2A configuration
+      return 'This field will automatically use all collections configured in the M2A relationship after saving.';
+    };
     
     
     return [
