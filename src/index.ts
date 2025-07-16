@@ -11,7 +11,7 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field, stores }: any) => {
+  options: ({ relations, field, stores }: any): any => {
     
     // Handle both ref and non-ref cases
     const rels = (relations as any)?.value || relations || {};
@@ -89,7 +89,7 @@ export default defineInterface({
     
     
     // Base options that are always available
-    const baseOptions = [
+    const baseOptions: any[] = [
       {
         field: 'enableSorting',
         name: 'Enable Sorting',
@@ -248,7 +248,7 @@ export default defineInterface({
           interface: 'select-multiple-checkbox',
           options: {
             choices: allowedChoices
-          } as any,
+          },
           note: getCollectionNote()
         },
         schema: {
