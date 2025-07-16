@@ -1,8 +1,35 @@
 # Directus Expandable Blocks Interface
 
+[![npm version](https://img.shields.io/npm/v/directus-extension-expandable-blocks?style=flat-square&color=blue)](https://www.npmjs.com/package/directus-extension-expandable-blocks)
+[![npm downloads](https://img.shields.io/npm/dm/directus-extension-expandable-blocks?style=flat-square)](https://www.npmjs.com/package/directus-extension-expandable-blocks)
+[![GitHub release](https://img.shields.io/github/release/smartlabsAT/directus-expandable-blocks?style=flat-square)](https://github.com/smartlabsAT/directus-expandable-blocks/releases)
+[![license](https://img.shields.io/npm/l/directus-extension-expandable-blocks?style=flat-square)](https://github.com/smartlabsAT/directus-expandable-blocks/blob/master/LICENSE)
+[![Directus 11+](https://img.shields.io/badge/Directus-11%2B-64f?style=flat-square&logo=directus)](https://directus.io)
+
 A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing that seamlessly integrates with Directus' native save system.
 
+[📚 Documentation](https://github.com/smartlabsAT/directus-expandable-blocks/wiki) • 
+[🐛 Report Bug](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=bug_report.md) • 
+[✨ Request Feature](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=feature_request.md) • 
+[📦 NPM Package](https://www.npmjs.com/package/directus-extension-expandable-blocks)
+
 ![Directus Expandable Blocks Demo](./docs/assets/demo.gif)
+
+## 📖 Table of Contents
+
+- [Documentation](#-documentation)
+- [Why Expandable Blocks?](#-why-expandable-blocks)
+- [Features](#-features)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Configuration Options](#️-configuration-options)
+- [Testing](#-testing)
+- [Development](#-development)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Support](#-issues--support)
+- [Changelog](#-changelog)
+- [Roadmap](#️-roadmap)
 
 ## 📚 Documentation
 
