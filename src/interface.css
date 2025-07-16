@@ -276,15 +276,15 @@
 }
 
 .status-dot.status-published {
-  background: var(--success);
+  background: var(--theme--primary);
 }
 
 .status-dot.status-draft {
-  background: var(--warning);
+  background: var(--theme--foreground);
 }
 
 .status-dot.status-archived {
-  background: grey;
+  background: var(--theme--warning);
 }
 
 .status-text {
@@ -430,30 +430,69 @@
 }
 
 /* Status dropdown styles */
-:deep(.v-list) .v-list-item-icon {
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon {
   margin-right: 12px;
   min-width: 20px;
   display: flex;
   align-items: center;
 }
 
-:deep(.v-list) .v-list-item-icon .status-dot {
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--foreground-subdued);
 }
 
-:deep(.v-list) .v-list-item-icon .status-dot.status-published {
-  background: var(--success);
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot.status-published {
+  background: var(--theme--primary) !important;
 }
 
-:deep(.v-list) .v-list-item-icon .status-dot.status-draft {
-  background: var(--warning);
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot.status-draft {
+  background: var(--theme--foreground) !important;
 }
 
-:deep(.v-list) .v-list-item-icon .status-dot.status-archived {
-  background: var(--foreground-subdued);
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot.status-archived {
+  background: var(--theme--warning) !important;
+}
+
+/* Ensure hover states work properly in dropdown */
+.expandable-blocks-interface .v-menu :deep(.v-list-item):hover .status-dot.status-published {
+  background: var(--theme--primary) !important;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list-item):hover .status-dot.status-draft {
+  background: var(--theme--foreground) !important;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list-item):hover .status-dot.status-archived {
+  background: var(--theme--warning) !important;
+}
+
+/* Override Directus default status colors in any v-list */
+.expandable-blocks-interface :deep(.v-list .v-list-item-icon .status-dot.status-published) {
+  background: var(--theme--primary) !important;
+}
+
+.expandable-blocks-interface :deep(.v-list .v-list-item-icon .status-dot.status-draft) {
+  background: var(--theme--foreground) !important;
+}
+
+.expandable-blocks-interface :deep(.v-list .v-list-item-icon .status-dot.status-archived) {
+  background: var(--theme--warning) !important;
+}
+
+/* Global override for v-list status dots - match Directus specificity */
+.v-list .v-list-item-icon .status-dot.status-published {
+  background: var(--theme--primary) !important;
+}
+
+.v-list .v-list-item-icon .status-dot.status-draft {
+  background: var(--theme--foreground) !important;
+}
+
+.v-list .v-list-item-icon .status-dot.status-archived {
+  background: var(--theme--warning) !important;
 }
 
 /* Blocks with unsaved changes */
