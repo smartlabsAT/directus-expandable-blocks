@@ -68,6 +68,9 @@ export function useExpandableBlocks(
 
   // Store original state for each block to track changes
   const blockOriginalStates = ref<Map<string, any>>(new Map());
+  
+  // Store dirty state for each block
+  const blockDirtyStates = ref<Map<string, boolean>>(new Map());
 
   // Store the original order of items as they came from props.value
   const originalItemOrder = ref<(string | number)[]>([]);
@@ -637,6 +640,10 @@ export function useExpandableBlocks(
         }
       }
       
+      // Clear all dirty states on global discard
+      blockDirtyStates.value.clear();
+      logger.debug('Cleared all dirty states on global discard');
+      
       // Keep expanded items open for better UX
       // expandedItems stays the same
       
@@ -793,6 +800,7 @@ export function useExpandableBlocks(
         
         // Store original state for dirty tracking
         blockOriginalStates.value.clear();
+        blockDirtyStates.value.clear();
         fullRecords.forEach(record => {
           if (record.id && record.item && typeof record.item === 'object') {
             blockOriginalStates.value.set(
@@ -817,6 +825,7 @@ export function useExpandableBlocks(
 
       // Update original states with fresh server data
       blockOriginalStates.value.clear();
+      blockDirtyStates.value.clear();
       fullRecords.forEach(record => {
         if (record.id && record.item && typeof record.item === 'object') {
           blockOriginalStates.value.set(
@@ -1358,6 +1367,10 @@ export function useExpandableBlocks(
     
     emit('input', emitValue);
     
+    // Clear dirty state for this block
+    blockDirtyStates.value.delete(blockId);
+    logger.debug('Cleared dirty state for block after discard:', blockId);
+    
     // Show notification
     notificationsStore.add({
       title: 'Changes Discarded',
@@ -1429,13 +1442,9 @@ export function useExpandableBlocks(
         return;
       }
       
-      loading.value[getItemId(item)] = true;
+      // No API call - just update local state
       
-      await api.patch(`/items/${collection}/${itemId}`, {
-        status: newStatus
-      });
-      
-      // Update local state
+      // Update local state only
       const updatedItems = [...items.value];
       if (item.item) {
         updatedItems[index] = {
@@ -1448,10 +1457,17 @@ export function useExpandableBlocks(
       } else {
         updatedItems[index] = {
           ...item,
-          status: newStatus
+          status: newStatus as 'published' | 'draft' | 'archived'
         };
       }
       items.value = updatedItems;
+      
+      // Mark block as dirty
+      const blockId = getItemId(item);
+      if (blockId) {
+        blockDirtyStates.value.set(blockId, true);
+        logger.debug('Block marked as dirty after status update:', blockId);
+      }
       
       const emitValue = prepareItemsForEmit(items.value);
       
@@ -1476,11 +1492,7 @@ export function useExpandableBlocks(
       
       emit('input', emitValue);
       
-      notificationsStore.add({
-        title: 'Status Updated',
-        text: `Status changed to ${getStatusLabel(newStatus)}`,
-        type: 'success'
-      });
+      // Don't show notification - status not saved yet
       
     } catch (error) {
       logger.error('Error updating status:', error);
@@ -1489,8 +1501,6 @@ export function useExpandableBlocks(
         text: 'Failed to update status',
         type: 'error'
       });
-    } finally {
-      delete loading.value[getItemId(item)];
     }
   }
 
