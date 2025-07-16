@@ -313,37 +313,6 @@ Report issues on [GitHub](https://github.com/smartlabsAT/directus-expandable-blo
 
 ## 🔄 Changelog
 
-### v1.0.4 (Latest)
-- Added type definitions for better TypeScript support
-- Fixed TypeScript errors in composables
-- Updated GitHub Actions to v4
-- Improved CI/CD test infrastructure
-- Enhanced documentation
-
-### v1.0.3
-- Fixed sorting persistence issues
-- Fixed "Save and Stay" functionality
-- Fixed global discard functionality
-- Improved position-based dirty state tracking
-- Enhanced debugging capabilities
-
-### v1.0.2
-- Fixed foreign key default values for PostgreSQL
-- Improved error handling for content block creation
-
-### v1.0.1
-- Fixed props watcher for primaryKey changes
-- Fixed foreign key type consistency
-- Resolved data persistence issues
-
-### v1.0.0
-- Initial release
-- Inline expandable editing for M2A fields
-- Drag & drop sorting with visual feedback
-- Status management with visual indicators
-- Comprehensive testing suite
-- Full TypeScript support
-
 See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
 ## 🗺️ Roadmap

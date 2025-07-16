@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2025-07-16
+
+### Fixed
+- **Issue #7**: Removed confusing "No collections configured" warning when creating new M2A fields
+  - The "Allowed Collections" field is now hidden for new M2A fields until after saving
+  - Collections are automatically detected from the M2A configuration
+  - Improved user experience when setting up new fields
+- **Issue #9**: Fixed empty "Allowed Collections" selection preventing all collections
+  - Empty selection now correctly means "no restrictions" (all collections allowed)
+  - When no specific collections are selected, the interface detects available collections from the junction table
+  - Resolves issue where users couldn't add any blocks when "Allowed Collections" was empty
+
+### Changed
+- Temporarily disabled "Start Expanded" and "Compact Mode" options in the interface configuration
+  - These options are commented out pending future UI improvements
+  - Functionality remains in the codebase for future re-enabling
+
 ## [1.0.6] - 2025-07-16
 
 ### Fixed
