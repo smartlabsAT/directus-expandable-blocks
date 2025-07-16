@@ -110,7 +110,6 @@
 
               <!-- More Options Menu -->
               <v-menu
-                v-if="!disabled && (mergedOptions?.isAllowedDuplicate !== false || mergedOptions?.isAllowedDelete !== false)"
                 placement="bottom-end"
                 show-arrow
               >
@@ -139,8 +138,8 @@
                   </v-list-item>
 
                   <v-list-item
-                    v-if="isBlockDirty(getItemId(item), item.item)"
                     clickable
+                    :disabled="!isBlockDirty(getItemId(item), item.item)"
                     @click="discardChanges(item, index)"
                   >
                     <v-list-item-icon>
@@ -149,7 +148,7 @@
                     <v-list-item-content>Discard Changes</v-list-item-content>
                   </v-list-item>
 
-                  <v-divider v-if="(mergedOptions?.isAllowedDuplicate !== false || isBlockDirty(getItemId(item), item.item)) && mergedOptions?.isAllowedDelete !== false" />
+                  <v-divider v-if="mergedOptions?.isAllowedDelete !== false" />
 
                   <v-list-item
                     v-if="mergedOptions?.isAllowedDelete !== false"
