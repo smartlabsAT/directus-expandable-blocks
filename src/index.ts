@@ -11,12 +11,16 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field }: any) => {
+  options: ({ relations, field, stores }: any) => {
     
     // Handle both ref and non-ref cases
     const rels = (relations as any)?.value || relations || {};
     const fieldMeta = (field as any)?.value || field || {};
     const fieldName = fieldMeta.field;
+    
+    // Get collections from store
+    const { useCollections } = stores || {};
+    const collectionsStore = useCollections ? useCollections() : null;
     
     // Get M2A allowed collections - they are stored in m2o.meta
     let allowedCollections: string[] = [];
