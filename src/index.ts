@@ -248,7 +248,7 @@ export default defineInterface({
           interface: 'select-multiple-checkbox',
           options: {
             choices: allowedChoices
-          },
+          } as any,
           note: getCollectionNote()
         },
         schema: {
