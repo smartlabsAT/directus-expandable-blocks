@@ -1,4 +1,5 @@
 import { defineInterface } from '@directus/extensions-sdk';
+import type { ExtensionOptionsContext } from '@directus/types';
 import InterfaceComponent from './interface.vue';
 
 export default defineInterface({
@@ -11,11 +12,11 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field, stores }: any): any => {
+  options: ({ relations, field, collections, stores }: ExtensionOptionsContext & { stores?: any }) => {
     
     // Handle both ref and non-ref cases
-    const rels = (relations as any)?.value || relations || {};
-    const fieldMeta = (field as any)?.value || field || {};
+    const rels = relations || {};
+    const fieldMeta = field || {};
     const fieldName = fieldMeta.field;
     
     // Get collections from store
@@ -27,7 +28,7 @@ export default defineInterface({
     
     // Check in m2o.meta for one_allowed_collections
     if (rels.m2o?.meta?.one_allowed_collections) {
-      allowedCollections = rels.m2o.meta.one_allowed_collections;
+      allowedCollections = rels.m2o.meta.one_allowed_collections as string[];
     }
     
     // Helper function to get all available collections
@@ -248,7 +249,7 @@ export default defineInterface({
           interface: 'select-multiple-checkbox',
           options: {
             choices: allowedChoices
-          },
+          } as any,
           note: getCollectionNote()
         },
         schema: {
