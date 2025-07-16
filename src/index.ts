@@ -30,6 +30,39 @@ export default defineInterface({
       allowedCollections = rels.m2o.meta.one_allowed_collections;
     }
     
+    // Helper function to get all available collections
+    const getAllAvailableCollections = () => {
+      if (!collectionsStore) {
+        return [];
+      }
+      
+      // Get all collections from the store
+      const allCollections = collectionsStore.collections || [];
+      
+      // Filter out system collections and hidden ones
+      return allCollections
+        .filter((col: any) => {
+          return (
+            !col.collection.startsWith('directus_') &&
+            col.meta?.hidden !== true &&
+            col.collection !== 'extra_undefined' // Filter out the junction collection
+          );
+        })
+        .map((col: any) => {
+          const displayName = col.meta?.display_template || col.meta?.name || col.name ||
+            col.collection
+              .split('_')
+              .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+              .join(' ');
+          
+          return {
+            text: displayName,
+            value: col.collection
+          };
+        })
+        .sort((a: any, b: any) => a.text.localeCompare(b.text));
+    };
+    
     // Format allowed collections for use in the interface
     const allowedChoices = Array.isArray(allowedCollections) && allowedCollections.length > 0
       ? allowedCollections.map((collectionName: string) => ({
