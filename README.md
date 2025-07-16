@@ -343,13 +343,26 @@ Check out our [Development Roadmap](./ROADMAP.md) to see what's coming next:
 - 🔧 Developer Tools & CLI
 - 🚀 Performance Optimizations
 
-## 📖 Additional Documentation
+## 📖 Documentation
 
-- 📋 **[Examples](./EXAMPLE.md)** - Detailed usage examples and patterns
-- 🏗️ **[Architecture](./ARCHITECTURE.md)** - Technical deep dive
-- 🔄 **[Changelog](./CHANGELOG.md)** - Version history
+### 📚 Wiki Documentation
+
+For comprehensive documentation, visit our **[GitHub Wiki](https://github.com/smartlabsAT/directus-expandable-blocks/wiki)**:
+
+- 🏠 **[Getting Started](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/01-Home)** - Overview and quick start
+- 📦 **[Installation Guide](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/02-Installation)** - Detailed setup instructions
+- ⚙️ **[Configuration](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/03-Configuration)** - All configuration options
+- 🏗️ **[Architecture](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/04-Architecture-Overview)** - Technical deep dive
+- 💾 **[Data Flow](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/05-Data-Flow)** - State management explained
+- 🔌 **[API Integration](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/06-API-Integration)** - Working with Directus APIs
+- 🛠️ **[Development](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/07-Development)** - Developer guide
+- 💡 **[Examples](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/08-Examples)** - Practical use cases
+
+### 📄 Quick Links
+
 - 🤝 **[Contributing](./CONTRIBUTING.md)** - How to contribute
 - 🗺️ **[Roadmap](./ROADMAP.md)** - Future plans
+- 🔄 **[Changelog](./CHANGELOG.md)** - Version history
 
 ### 🐛 Issue Templates
 

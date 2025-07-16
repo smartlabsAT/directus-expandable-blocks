@@ -1,166 +1,48 @@
-# 🗺️ Roadmap - Directus Expandable Blocks
+# 🗺️ Roadmap
 
-This roadmap outlines our development plans and upcoming features for the Directus Expandable Blocks extension.
+## 📚 Full Roadmap in Wiki
 
-## ✅ Released
+For the complete and detailed roadmap, please visit our **[GitHub Wiki Roadmap](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/10-Roadmap)**.
 
-### v1.0.4 (July 2025)
-- ✅ Added type definitions for toggle and activator components
-- ✅ Fixed TypeScript TS2339 errors in composables
-- ✅ Updated GitHub Actions from v3 to v4
-- ✅ Improved CI/CD test infrastructure
-- ✅ Enhanced test documentation
+## 🚀 Current Development
 
-### v1.0.3 (July 2025)
-- ✅ Fixed sorting persistence issues
-- ✅ Fixed "Save and Stay" functionality
-- ✅ Fixed global discard functionality
-- ✅ Improved position-based dirty state tracking
-- ✅ Enhanced debugging capabilities
+### 🏗️ Active Development
+- **v2.0.0** - AI-Powered Content Generation (Q3 2025)
+  - Status: 85% complete on `feature/ai-assistant` branch
+  - [Track Progress](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/6)
 
-### v1.0.2 (July 2025)
-- ✅ Fixed foreign key default values for PostgreSQL
-- ✅ Improved error handling for content block creation
+### 📅 Upcoming Releases
 
-### v1.0.1 (July 2025)
-- ✅ Fixed props watcher for primaryKey changes
-- ✅ Fixed foreign key type consistency
-- ✅ Resolved data persistence issues
+| Version | Feature | Target | Status |
+|---------|---------|--------|--------|
+| v2.0.0 | AI-Powered Features | Q3 2025 | In Development |
+| v3.0.0 | Enhanced UI/UX | Q4 2025 | Planning |
+| v4.0.0 | Developer Experience | Q1 2026 | Research |
+| v5.0.0 | Performance & Scaling | Q3 2026 | Research |
 
-### v1.0.0 (July 2025)
-- ✅ Inline expandable editing for M2A fields
-- ✅ Drag & drop sorting with visual feedback
-- ✅ Status management with visual indicators
-- ✅ Dirty state tracking for unsaved changes
-- ✅ Compact & full view modes
-- ✅ Accordion mode (one block expanded at a time)
-- ✅ Maximum block limits
-- ✅ Custom field filtering
-- ✅ Comprehensive TypeScript support
-- ✅ Full test coverage (Unit + E2E)
+## 🎯 GitHub Milestones
 
-## 🚧 In Development
-
-### 🤖 AI-Powered Content Generation (v2.0.0)
-**Status**: Active development on `feature/ai-assistant` branch  
-**Target Release**: Q3 2025
-
-#### Core AI Features
-- 🔄 **Multi-Provider Support**: OpenAI GPT, Anthropic Claude, Custom APIs
-- 🔄 **Content Generation**: Create new content based on natural language prompts
-- 🔄 **Smart Improvement**: Grammar, style, clarity, and SEO optimization
-- 🔄 **Context Awareness**: AI understands page structure and surrounding content
-- 🔄 **Field-Specific Targeting**: Generate content for selected fields only
-
-#### Advanced AI Capabilities
-- 🔄 **Multi-Field Generation**: Generate content for multiple fields simultaneously
-- 🔄 **Content Templates**: Pre-configured prompts for different block types
-- 🔄 **Brand Voice Training**: Learn and maintain consistent writing style
-- 🔄 **Usage Analytics**: Track AI usage and token consumption
-
-> **Note**: Minor releases (v2.1.x, v2.2.x) will include bug fixes, performance improvements, and incremental AI enhancements.
-
-## 📋 Planned Features
-
-### 🎨 Enhanced UI/UX (v3.0.0)
-**Target Release**: Q4 2025
-
-- 📝 **Block Templates Library**: Pre-built content block templates
-- 📝 **Drag & Drop Improvements**: Enhanced visual feedback and animations
-- 📝 **Dark Mode Support**: Full dark theme compatibility
-- 📝 **Mobile Optimization**: Improved mobile editing experience
-- 📝 **Accessibility Enhancements**: WCAG 2.1 AA compliance
-- 📝 **Custom Themes**: Customizable appearance and branding
-- 📝 **Import/Export**: Share blocks and templates between projects
-
-### 🔧 Developer Experience (v4.0.0)
-**Target Release**: Q1 2026
-
-- 📝 **CLI Tools**: Command-line utilities for extension management
-- 📝 **Block Generator**: Scaffold new block types quickly
-- 📝 **Developer API**: Programmatic access to block operations
-- 📝 **Migration Tools**: Easy updates between versions
-- 📝 **Debug Mode**: Enhanced debugging and logging capabilities
-- 📝 **TypeScript Improvements**: Better type inference and autocompletion
-
-### 🚀 Performance & Scaling (v5.0.0)
-**Target Release**: Q3 2026
-
-- 📝 **Virtual Scrolling**: Handle thousands of blocks efficiently
-- 📝 **Lazy Loading**: On-demand loading of block content
-- 📝 **Caching Layer**: Intelligent content caching
-- 📝 **Background Processing**: Non-blocking operations
-- 📝 **Batch Operations**: Bulk actions on multiple blocks
-- 📝 **Memory Optimization**: Reduced memory footprint for large datasets
-
+Track our progress through [GitHub Milestones](https://github.com/smartlabsAT/directus-expandable-blocks/milestones):
+- [v2.0.0 - AI Features](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/6)
+- [v3.0.0 - UI/UX](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/7)
+- [v4.0.0 - Developer Tools](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/8)
+- [v5.0.0 - Performance](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/9)
 
 ## 🔧 Maintenance & Compatibility
 
-### Ongoing Support
-- 🔄 **Security Updates**: Regular security patches and vulnerability fixes
-- 🔄 **Directus Compatibility**: Updates for new Directus versions
-- 🔄 **Bug Fixes**: Continuous bug fixes via minor releases (1.x, 2.x, 3.x, etc.)
-- 🔄 **Performance Improvements**: Ongoing optimizations
-- 🔄 **Dependency Updates**: Keep dependencies current and secure
+We continuously maintain:
+- Security updates
+- Directus compatibility
+- Bug fixes via minor releases
+- Performance improvements
+- Dependency updates
 
-> **Note**: We follow semantic versioning. Patch releases (x.x.1) for bug fixes, minor releases (x.1.0) for new features, major releases (x.0.0) for breaking changes.
+## 💬 Get Involved
 
-## 🤝 Community & Ecosystem
-
-### Current Initiatives
-- 🔄 **Documentation**: Comprehensive guides and tutorials
-- 🔄 **Community Discord**: Real-time support and discussions
-- 🔄 **Video Tutorials**: Step-by-step implementation guides
-- 🔄 **Best Practices**: Curated examples and patterns
-
-### Planned Community Features
-- 📝 **Plugin Marketplace**: Share custom block types
-- 📝 **Community Themes**: User-contributed visual themes
-- 📝 **Extension Gallery**: Showcase real-world implementations
-- 📝 **Contributor Program**: Recognition and rewards for contributors
-
-## 🎯 How to Contribute
-
-We welcome contributions to help achieve these roadmap goals!
-
-### For Developers
-- 🔗 Check our [Contributing Guide](CONTRIBUTING.md)
-- 🔗 Browse [Good First Issues](https://github.com/smartlabsAT/directus-expandable-blocks/labels/good%20first%20issue)
-- 🔗 Join our [Discord Community](https://discord.gg/directus-expandable-blocks)
-
-### For Users
-- 🔗 [Request Features](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=feature_request.md)
-- 🔗 [Report Bugs](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=bug_report.md)
-- 🔗 Share your use cases and feedback
-
-### For Organizations
-- 🔗 [Sponsor Development](https://github.com/sponsors/smartlabsAT)
-- 🔗 Commission custom features
-- 🔗 Priority support packages
-
-## 📊 Development Status
-
-| Feature Category | Progress | Next Milestone |
-|------------------|----------|----------------|
-| 🤖 AI Integration | 85% | Beta Release |
-| 🎨 UI/UX Enhancement | 20% | Design Phase |
-| 🔧 Developer Tools | 10% | Planning Phase |
-| 🚀 Performance | 5% | Research Phase |
-
-## 📞 Stay Updated
-
-- 🔗 **GitHub Releases**: Watch this repository for release notifications
-- 🔗 **Twitter**: Follow [@smartlabsAT](https://twitter.com/smartlabsAT) for updates
-- 🔗 **Newsletter**: Subscribe to our developer newsletter
-- 🔗 **Discord**: Join our community for real-time updates
+- **Request Features**: [Open an issue](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=feature_request.md)
+- **Vote on Features**: [Join the discussion](https://github.com/smartlabsAT/directus-expandable-blocks/discussions)
+- **Contribute**: See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 
-> 💡 **Note**: This roadmap is subject to change based on community feedback, technical discoveries, and evolving requirements. We regularly review and update our priorities to ensure we're delivering the most valuable features.
-
-**Last Updated**: July 2025  
-**Next Review**: October 2025
-
----
-
-Made with ❤️ by the Smartlabs team
+> 📖 For the complete roadmap with all features, timelines, and technical details, visit the **[Wiki Roadmap](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/10-Roadmap)**.
