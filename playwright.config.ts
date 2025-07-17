@@ -1,14 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './test/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : 5,
   reporter: 'html',
   timeout: 30000,
-  globalSetup: require.resolve('./e2e/global-setup.ts'),
+  globalSetup: require.resolve('./test/e2e/global-setup.ts'),
   
   use: {
     baseURL: process.env.DIRECTUS_URL || 'http://localhost:8055',
