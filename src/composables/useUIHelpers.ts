@@ -97,7 +97,7 @@ export function useUIHelpers(
     if (!m2aStructure.value?.nestedM2AFields) return false;
     
     const collection = item.collection;
-    return !!m2aStructure.value.nestedM2AFields[collection];
+    return !!m2aStructure.value?.nestedM2AFields?.[collection];
   }
 
   function getM2AFields(item: JunctionRecord): Record<string, any> {

@@ -90,6 +90,15 @@ export function useBlockWatchers(
             blockDirtyStates.value.clear();
             logger.debug('Cleared all dirty states after save');
             
+            // Update original states with current data immediately after save
+            items.value.forEach(item => {
+              const itemId = String(item.id);
+              if (item.item && itemId) {
+                blockOriginalStates.value.set(itemId, deepClone(item.item));
+                logger.debug(`Updated original state for block ${itemId} after save`);
+              }
+            });
+            
             // Reload data in new order after save
             if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
               await loadFullItemData(true);  // Pass true to indicate this is after a save
@@ -102,6 +111,15 @@ export function useBlockWatchers(
             // Clear all dirty states after successful save
             blockDirtyStates.value.clear();
             logger.debug('Cleared all dirty states after save');
+            
+            // Update original states with current data immediately after save
+            items.value.forEach(item => {
+              const itemId = String(item.id);
+              if (item.item && itemId) {
+                blockOriginalStates.value.set(itemId, deepClone(item.item));
+                logger.debug(`Updated original state for block ${itemId} after save`);
+              }
+            });
             
             // Reload data to get fresh state after save
             if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {

@@ -524,10 +524,13 @@ export function useM2AData(
     });
     
     // Update original item order
-    const currentOrder = fullRecords
-      .map(record => record.id)
-      .filter((id): id is string | number => id !== undefined);
-    updateOriginalItemOrder(currentOrder);
+    // Skip updating order after save, as it's already updated in watchSaveEvents
+    if (!isAfterSave) {
+      const currentOrder = fullRecords
+        .map(record => record.id)
+        .filter((id): id is string | number => id !== undefined);
+      updateOriginalItemOrder(currentOrder);
+    }
     
     logger.log('📥 PROCESS LOADED RECORDS - Complete:', {
       itemsCount: items.value.length,

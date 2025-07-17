@@ -1,8 +1,8 @@
 import { ref, computed, nextTick, type Ref } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
-import { logger } from '../utils/logger';
 import { deepClone } from '../utils/helpers';
+import { logDebug, logError } from '../utils/logger-wrapper';
 import { useBlockState } from './useBlockState';
 import { useBlockActions } from './useBlockActions';
 import { useM2AData } from './useM2AData';
@@ -118,7 +118,6 @@ export function useExpandableBlocks(
     blockDirtyStates,
     originalItemOrder,
     isInternalUpdate,
-    isInitialLoad,
     getItemId,
     isNewItem,
     prepareItemsForEmit,
@@ -206,24 +205,25 @@ export function useExpandableBlocks(
       const fieldConfig = fields.find((f: any) => f.field === props.field);
       if (fieldConfig?.meta?.options) {
         fieldOptions = { ...fieldOptions, ...fieldConfig.meta.options };
-        logger.debug('Loaded field options from store:', fieldConfig.meta.options);
+        logDebug('Loaded field options from store', { options: fieldConfig.meta.options });
       }
     } catch (error) {
-      logger.debug('Failed to get field options from store:', error);
+      logDebug('Failed to get field options from store', { error });
     }
     
     mergedOptions.value = fieldOptions;
-    logger.debug('Final merged options:', mergedOptions.value);
+    logDebug('Final merged options', { options: mergedOptions.value });
   }
 
   /**
    * Initialize the component
    */
   async function initialize() {
-    logger.debug('Component mounted', {
+    logDebug('Component mounted', {
       field: props.field,
-      primaryKey: props.primaryKey
-    }, props);
+      primaryKey: props.primaryKey,
+      props
+    });
     
     // Store the original order from props.value
     if (Array.isArray(props.value)) {
@@ -261,7 +261,7 @@ export function useExpandableBlocks(
       }, 100);
       
     } catch (error) {
-      logger.error('Error initializing expandable blocks:', error);
+      logError('Error initializing expandable blocks', error);
       notificationsStore.add({
         title: 'Initialization Error',
         text: 'Failed to initialize expandable blocks. Please refresh the page.',

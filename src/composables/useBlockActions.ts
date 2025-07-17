@@ -1,6 +1,7 @@
-import { nextTick, type Ref } from 'vue';
-import { logger } from '../utils/logger';
+import { type Ref } from 'vue';
 import { deepClone } from '../utils/helpers';
+import { emitChanges as emitHelper } from '../utils/emit-helpers';
+import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
 import type { JunctionRecord, ExpandableBlocksOptions, UseExpandableBlocksProps, ItemRecord } from '../types';
 import type { M2AHelper } from '../utils/m2a-helper';
 
@@ -22,7 +23,6 @@ export function useBlockActions(
   blockDirtyStates: Ref<Map<string, boolean>>,
   originalItemOrder: Ref<(string | number)[]>,
   isInternalUpdate: Ref<boolean>,
-  isInitialLoad: Ref<boolean>,
   
   // Functions from useBlockState
   getItemId: (item: JunctionRecord) => string,
@@ -56,21 +56,108 @@ export function useBlockActions(
   }
 
   /**
+   * Convert primary key to proper type (number if numeric string)
+   */
+  function getPrimaryKeyValue(): string | number {
+    if (typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey))) {
+      return Number(props.primaryKey);
+    }
+    return props.primaryKey;
+  }
+
+  /**
+   * Get foreign key field name
+   */
+  function getForeignKeyField(): string {
+    return m2aStructure.value?.foreignKeyField || 
+           relationInfo.value?.foreignKeyField || 
+           `${props.collection}_id`;
+  }
+
+  /**
+   * Clean metadata fields from an item copy
+   */
+  function cleanItemMetadata(item: any): any {
+    const cleaned = { ...item };
+    delete cleaned.id;
+    delete cleaned.user_created;
+    delete cleaned.user_updated;
+    delete cleaned.date_created;
+    delete cleaned.date_updated;
+    return cleaned;
+  }
+
+  /**
+   * Add copy suffix to item title/name
+   */
+  function addCopySuffix(item: any): void {
+    if (item.title) {
+      item.title += ' (Copy)';
+    } else if (item.name) {
+      item.name += ' (Copy)';
+    } else if (item.headline) {
+      item.headline += ' (Copy)';
+    }
+  }
+
+  /**
+   * Show notification helper
+   */
+  function notify(title: string, text: string, type: 'success' | 'warning' | 'error' | 'info' = 'info'): void {
+    if (notificationsStore && typeof notificationsStore.add === 'function') {
+      notificationsStore.add({ title, text, type });
+    } else {
+      logWarn('Notifications store not available', { title, text, type });
+    }
+  }
+
+  /**
+   * Build common debug data for emit operations
+   */
+  function buildDebugData(functionName: string, extraData: Record<string, any> = {}): Record<string, any> {
+    return {
+      function: functionName,
+      collection: props.collection,
+      field: props.field,
+      primaryKey: props.primaryKey,
+      itemsCount: items.value.length,
+      ...extraData
+    };
+  }
+
+  /**
+   * Update sort values for all items
+   */
+  function updateSortValues(itemsArray: JunctionRecord[]): void {
+    const sortField = relationInfo.value?.meta?.sort_field;
+    if (!sortField) return;
+    
+    itemsArray.forEach((item, idx) => {
+      if (item[sortField] !== idx) {
+        item[sortField] = idx;
+      }
+    });
+  }
+
+  /**
+   * Get junction collection name
+   */
+  function getJunctionCollection(): string {
+    return relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
+  }
+
+  /**
    * Emit changes with proper internal update handling
    */
-  function emitChanges(itemsArray: JunctionRecord[], source: string): void {
-    isInternalUpdate.value = true;
-    const emitValue = prepareItemsForEmit(itemsArray, getSortField());
-    
-    logger.log(`🔄 EMIT - ${source}:`, {
-      itemCount: itemsArray.length,
-      emitValue,
-      hasSort: !!getSortField()
-    });
-    
-    emit('input', emitValue);
-    nextTick(() => {
-      isInternalUpdate.value = false;
+  function emitChanges(itemsArray: JunctionRecord[], source: string, extraDebugData?: Record<string, any>): void {
+    emitHelper({
+      items: itemsArray,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source,
+      sortField: getSortField(),
+      debugData: { itemCount: itemsArray.length, ...extraDebugData }
     });
   }
 
@@ -105,13 +192,13 @@ export function useBlockActions(
     
     const currentItem = items.value[index];
     if (!currentItem) {
-      logger.warn('updateItem: Invalid index', index);
+      logWarn('updateItem: Invalid index', { index });
       return;
     }
     
     const itemId = getItemId(currentItem);
     
-    logger.debug(`updateItem called for ${itemId}`, {
+    logDebug(`updateItem called for ${itemId}`, {
       index,
       hasNewData: !!newData,
       newDataKeys: newData ? Object.keys(newData) : []
@@ -131,19 +218,17 @@ export function useBlockActions(
       const newItemData = updatedItems[index].item;
       const isDirty = !deepEqual(newItemData, originalData);
       blockDirtyStates.value.set(String(itemId), isDirty);
-      logger.debug(`updateItem: Set dirty state for ${itemId} to ${isDirty}`);
+      logDebug(`updateItem: Set dirty state for ${itemId} to ${isDirty}`);
     }
     
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
     // Emit with dirty tracking
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
+    emitHelper({
+      items: items.value,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source: 'updateItem',
+      sortField: getSortField()
     });
   }
 
@@ -154,11 +239,7 @@ export function useBlockActions(
     if (props.disabled) return;
     
     if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
-      notificationsStore.add({
-        title: 'Save Required',
-        text: 'Please save the item first before adding blocks.',
-        type: 'warning'
-      });
+      notify('Save Required', 'Please save the item first before adding blocks.', 'warning');
       return;
     }
     
@@ -174,15 +255,9 @@ export function useBlockActions(
     };
     
     // Add foreign key
-    const foreignKey = m2aStructure.value?.foreignKeyField || 
-                      relationInfo.value?.foreignKeyField || 
-                      `${props.collection}_id`;
-    
+    const foreignKey = getForeignKeyField();
     if (foreignKey && props.primaryKey) {
-      const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-        ? Number(props.primaryKey) 
-        : props.primaryKey;
-      (newItem as any)[foreignKey] = primaryKeyValue;
+      (newItem as any)[foreignKey] = getPrimaryKeyValue();
     }
     
     // Add sort value
@@ -196,38 +271,29 @@ export function useBlockActions(
     // Auto-expand the new item
     expandedItems.value.push(getItemId(newItem));
     
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
     // Emit changes
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    
-    logger.log('🔄 NEW ITEM - addNewItem (no API calls):', {
-      function: 'addNewItem',
-      collection: collection,
-      newItemStructure: {
-        hasId: !!newItem.id,
-        collection: newItem.collection,
-        itemType: typeof newItem.item,
-        foreignKey: (newItem as any)[foreignKey],
-        defaultData: defaultData
-      },
-      totalItemsCount: items.value.length,
-      emitValue
+    emitHelper({
+      items: items.value,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source: 'NEW ITEM - addNewItem (no API calls)',
+      sortField: getSortField(),
+      debugData: {
+        function: 'addNewItem',
+        collection: collection,
+        newItemStructure: {
+          hasId: !!newItem.id,
+          collection: newItem.collection,
+          itemType: typeof newItem.item,
+          foreignKey: (newItem as any)[foreignKey],
+          defaultData: defaultData
+        },
+        totalItemsCount: items.value.length
+      }
     });
     
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
-    });
-    
-    notificationsStore.add({
-      title: 'Block Added',
-      text: 'New block added. Save to persist changes.',
-      type: 'info'
-    });
+    notify('Block Added', 'New block added. Save to persist changes.');
   }
 
   /**
@@ -236,7 +302,7 @@ export function useBlockActions(
   function showDeleteDialog(item: JunctionRecord, index: number): void {
     itemToDelete.value = { item, index };
     deleteDialog.value = true;
-    logger.debug('Delete dialog shown for item:', getItemId(item));
+    logDebug('Delete dialog shown for item', { itemId: getItemId(item) });
   }
 
   /**
@@ -254,7 +320,7 @@ export function useBlockActions(
       
       // Delete junction record
       if (item.id && !isNewItem(item)) {
-        const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
+        const junctionCollection = getJunctionCollection();
         await api.delete(`/items/${junctionCollection}/${item.id}`);
         
         // Optionally delete the actual item
@@ -262,7 +328,7 @@ export function useBlockActions(
           try {
             await api.delete(`/items/${item.collection}/${(item.item as ItemRecord).id}`);
           } catch (error) {
-            logger.warn('Failed to delete content item:', error);
+            logWarn('Failed to delete content item', { error });
           }
         }
       }
@@ -273,64 +339,50 @@ export function useBlockActions(
       
       // Update originalItemOrder to remove deleted item
       originalItemOrder.value = originalItemOrder.value.filter(id => String(id) !== String(item.id));
-      logger.debug('Updated originalItemOrder after deletion:', originalItemOrder.value);
+      logDebug('Updated originalItemOrder after deletion', { order: originalItemOrder.value });
       
       const updatedItems = [...items.value];
       updatedItems.splice(index, 1);
       
       // Update sort values
-      if (relationInfo.value?.meta?.sort_field) {
-        updatedItems.forEach((item, idx) => {
-          if (item[relationInfo.value!.meta!.sort_field!] !== idx) {
-            item[relationInfo.value!.meta!.sort_field!] = idx;
-          }
-        });
-      }
+      updateSortValues(updatedItems);
       
       items.value = updatedItems;
       
       // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems, getSortField());
-      
-      logger.log('🔄 SAVE STATE - confirmDeleteItem:', {
-        function: 'confirmDeleteItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        deletedItem: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item,
-          foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown']
-        },
-        remainingItemsCount: updatedItems.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-        junctionInfo: {
-          junctionCollection: relationInfo.value?.junctionCollection,
-          foreignKeyField: relationInfo.value?.foreignKeyField
+      emitHelper({
+        items: updatedItems,
+        emit,
+        prepareItemsForEmit,
+        isInternalUpdate,
+        source: 'SAVE STATE - confirmDeleteItem',
+        sortField: getSortField(),
+        debugData: {
+          function: 'confirmDeleteItem',
+          collection: props.collection,
+          field: props.field,
+          primaryKey: props.primaryKey,
+          deletedItem: {
+            id: item.id,
+            collection: item.collection,
+            itemType: typeof item.item,
+            foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown']
+          },
+          remainingItemsCount: updatedItems.length,
+          junctionInfo: {
+            junctionCollection: relationInfo.value?.junctionCollection,
+            foreignKeyField: relationInfo.value?.foreignKeyField
+          }
         }
       });
       
-      emit('input', emitValue);
-      
       itemToDelete.value = null;
       
-      notificationsStore.add({
-        title: 'Deleted',
-        text: 'Block deleted successfully',
-        type: 'success'
-      });
+      notify('Deleted', 'Block deleted successfully', 'success');
       
     } catch (error) {
-      logger.error('Error deleting block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to delete block',
-        type: 'error'
-      });
+      logEvent('Error deleting block', { error });
+      notify('Error', 'Failed to delete block', 'error');
     } finally {
       delete loading.value[getItemId(item)];
     }
@@ -344,11 +396,7 @@ export function useBlockActions(
     
     // Check if we can add more blocks
     if (!canAddMoreBlocks.value) {
-      notificationsStore.add({
-        title: 'Maximum Reached',
-        text: `Maximum number of blocks (${mergedOptions.value?.maxBlocks}) reached`,
-        type: 'warning'
-      });
+      notify('Maximum Reached', `Maximum number of blocks (${mergedOptions.value?.maxBlocks}) reached`, 'warning');
       return;
     }
     
@@ -358,28 +406,15 @@ export function useBlockActions(
       const collection = item.collection || (actualItem as any).collection;
       
       if (!collection) {
-        logger.error('Cannot duplicate: no collection found');
+        logEvent('Cannot duplicate: no collection found', {});
         return;
       }
       
       loading.value[dupKey] = true;
       
-      // Create copy
-      const itemCopy: any = { ...(actualItem as ItemRecord) };
-      delete itemCopy.id;
-      delete itemCopy.user_created;
-      delete itemCopy.user_updated;
-      delete itemCopy.date_created;
-      delete itemCopy.date_updated;
-      
-      // Update title
-      if (itemCopy.title) {
-        itemCopy.title += ' (Copy)';
-      } else if (itemCopy.name) {
-        itemCopy.name += ' (Copy)';
-      } else if (itemCopy.headline) {
-        itemCopy.headline += ' (Copy)';
-      }
+      // Create copy and clean metadata
+      const itemCopy = cleanItemMetadata(actualItem as ItemRecord);
+      addCopySuffix(itemCopy);
       
       // Create duplicate
       const newItemResponse = await api.post(`/items/${collection}`, itemCopy);
@@ -392,13 +427,10 @@ export function useBlockActions(
       };
       
       if (relationInfo.value?.foreignKeyField && props.primaryKey) {
-        // Convert primaryKey to number if it's a string number
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
+        const primaryKeyValue = getPrimaryKeyValue();
         junctionData[relationInfo.value.foreignKeyField] = primaryKeyValue;
         
-        logger.debug('Foreign key assignment (duplicate):', {
+        logDebug('Foreign key assignment (duplicate)', {
           foreignKey: relationInfo.value.foreignKeyField,
           originalPrimaryKey: props.primaryKey,
           originalType: typeof props.primaryKey,
@@ -411,7 +443,7 @@ export function useBlockActions(
         junctionData[relationInfo.value.meta.sort_field] = index + 1;
       }
       
-      const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
+      const junctionCollection = getJunctionCollection();
       const junctionResponse = await api.post(`/items/${junctionCollection}`, junctionData);
       const junctionRecord = junctionResponse.data.data;
       
@@ -423,10 +455,7 @@ export function useBlockActions(
       };
       
       if (relationInfo.value?.foreignKeyField) {
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        newItem[relationInfo.value.foreignKeyField] = primaryKeyValue;
+        newItem[relationInfo.value.foreignKeyField] = getPrimaryKeyValue();
       }
       
       // Insert at position
@@ -438,48 +467,35 @@ export function useBlockActions(
       expandedItems.value.push(String(junctionRecord.id));
       
       // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems, getSortField());
-      
-      logger.log('🔄 SAVE STATE - duplicateItem:', {
-        function: 'duplicateItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        originalItem: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item
-        },
-        duplicatedItem: {
-          id: createdItem.id,
-          data: createdItem
-        },
-        duplicatedJunction: {
-          id: junctionRecord.id,
-          data: junctionRecord
-        },
-        itemsCount: updatedItems.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
+      emitHelper({
+        items: updatedItems,
+        emit,
+        prepareItemsForEmit,
+        isInternalUpdate,
+        source: 'SAVE STATE - duplicateItem',
+        sortField: getSortField(),
+        debugData: buildDebugData('duplicateItem', {
+          originalItem: {
+            id: item.id,
+            collection: item.collection,
+            itemType: typeof item.item
+          },
+          duplicatedItem: {
+            id: createdItem.id,
+            data: createdItem
+          },
+          duplicatedJunction: {
+            id: junctionRecord.id,
+            data: junctionRecord
+          }
+        })
       });
       
-      emit('input', emitValue);
-      
-      notificationsStore.add({
-        title: 'Duplicated',
-        text: 'Block duplicated successfully',
-        type: 'success'
-      });
+      notify('Duplicated', 'Block duplicated successfully', 'success');
       
     } catch (error) {
-      logger.error('Error duplicating block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to duplicate block',
-        type: 'error'
-      });
+      logEvent('Error duplicating block', { error });
+      notify('Error', 'Failed to duplicate block', 'error');
     } finally {
       delete loading.value[dupKey];
     }
@@ -497,7 +513,7 @@ export function useBlockActions(
       const collection = item.collection || (actualItem as any).collection;
       
       if (!itemId || !collection) {
-        logger.error('Cannot update status: missing item ID or collection');
+        logEvent('Cannot update status: missing item ID or collection', {});
         return;
       }
       
@@ -529,53 +545,38 @@ export function useBlockActions(
           const newItemData = updatedItems[index].item || updatedItems[index];
           const isDirty = !deepEqual(newItemData, originalData);
           blockDirtyStates.value.set(String(blockId), isDirty);
-          logger.debug(`Status update: Set dirty state for ${blockId} to ${isDirty}`);
+          logDebug(`Status update: Set dirty state for ${blockId} to ${isDirty}`);
         } else {
           blockDirtyStates.value.set(String(blockId), true);
-          logger.debug('Block marked as dirty after status update (no original):', blockId);
+          logDebug('Block marked as dirty after status update (no original)', { blockId });
         }
       }
       
-      // Set internal update flag to prevent watch from processing this as paste
-      isInternalUpdate.value = true;
-      
-      const emitValue = prepareItemsForEmit(items.value, getSortField());
-      
-      logger.log('🔄 SAVE STATE - updateItemStatus:', {
-        function: 'updateItemStatus',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        itemId,
-        targetCollection: collection,
-        newStatus,
-        item: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item
-        },
-        itemsCount: items.value.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-      });
-      
-      emit('input', emitValue);
-      
-      // Reset internal update flag after next tick
-      nextTick(() => {
-        isInternalUpdate.value = false;
+      // Emit changes
+      emitHelper({
+        items: items.value,
+        emit,
+        prepareItemsForEmit,
+        isInternalUpdate,
+        source: 'SAVE STATE - updateItemStatus',
+        sortField: getSortField(),
+        debugData: buildDebugData('updateItemStatus', {
+          itemId,
+          targetCollection: collection,
+          newStatus,
+          item: {
+            id: item.id,
+            collection: item.collection,
+            itemType: typeof item.item
+          }
+        })
       });
       
       // Don't show notification - status not saved yet
       
     } catch (error) {
-      logger.error('Error updating status:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to update status',
-        type: 'error'
-      });
+      logEvent('Error updating status', { error });
+      notify('Error', 'Failed to update status', 'error');
     }
   }
 
@@ -590,11 +591,11 @@ export function useBlockActions(
     
     const originalData = blockOriginalStates.value.get(blockId);
     if (!originalData) {
-      logger.warn('No original data found for block:', blockId);
+      logWarn('No original data found for block', { blockId });
       return;
     }
     
-    logger.debug(`discardChanges called for ${blockId}`, {
+    logDebug(`discardChanges called for ${blockId}`, {
       hasOriginalData: !!originalData,
       currentDirtyState: blockDirtyStates.value.get(blockId)
     });
@@ -609,46 +610,30 @@ export function useBlockActions(
     
     // Clear dirty state for this block BEFORE emitting
     blockDirtyStates.value.set(blockId, false);
-    logger.debug(`Cleared dirty state for block ${blockId}`);
+    logDebug(`Cleared dirty state for block ${blockId}`);
     
     // Verify the item is actually restored
     const restoredData = updatedItems[index].item;
     const isRestored = deepEqual(restoredData, originalData);
-    logger.debug(`Discard verification for ${blockId}: isRestored=${isRestored}`);
-    
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
+    logDebug(`Discard verification for ${blockId}: isRestored=${isRestored}`);
     
     // Emit the change
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    
-    logger.log('🔄 SAVE STATE - discardBlockChanges:', {
-      function: 'discardBlockChanges',
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      blockId,
-      index,
-      itemsCount: items.value.length,
-      emitValue,
-      emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-      isRestored
-    });
-    
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
+    emitHelper({
+      items: items.value,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source: 'SAVE STATE - discardBlockChanges',
+      sortField: getSortField(),
+      debugData: buildDebugData('discardBlockChanges', {
+        blockId,
+        index,
+        isRestored
+      })
     });
     
     // Show notification
-    notificationsStore.add({
-      title: 'Changes Discarded',
-      text: 'Block reverted to last saved state',
-      type: 'success'
-    });
+    notify('Changes Discarded', 'Block reverted to last saved state', 'success');
   }
 
   /**
@@ -658,36 +643,12 @@ export function useBlockActions(
     if (props.disabled) return;
     
     // Update sort values if we have a sort field
-    if (relationInfo.value?.meta?.sort_field) {
-      items.value = items.value.map((item, index) => ({
-        ...item,
-        [relationInfo.value!.meta!.sort_field!]: index
-      }));
-    }
+    updateSortValues(items.value);
     
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    
-    logger.log('🔄 SAVE STATE - onSort:', {
-      function: 'onSort',
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      sortField: relationInfo.value?.meta?.sort_field,
-      itemsCount: items.value.length,
-      emitValue,
-      emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-    });
-    
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
-    });
+    // Emit changes
+    emitChanges(items.value, 'SAVE STATE - onSort', buildDebugData('onSort', {
+      sortField: relationInfo.value?.meta?.sort_field
+    }));
   }
 
   return {
