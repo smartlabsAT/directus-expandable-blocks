@@ -31,14 +31,19 @@
               @click.stop
             />
 
-            <!-- Collection Icon with Dirty Indicator -->
+            <!-- Collection Icon with Dirty/New Indicator -->
             <div class="icon-wrapper">
               <v-icon
                 :name="getCollectionIcon(item) || 'box'"
                 class="collection-icon"
               />
               <div
-                v-if="isBlockDirty(getItemId(item), item.item)"
+                v-if="isNewItem(item)"
+                class="new-indicator"
+                v-tooltip="'New block'"
+              />
+              <div
+                v-else-if="isBlockDirty(getItemId(item), item.item)"
                 class="dirty-indicator"
                 v-tooltip="'Unsaved changes'"
               />

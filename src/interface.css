@@ -114,6 +114,19 @@
   }
 }
 
+.new-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  border: 2px solid var(--background-page);
+  box-shadow: 0 0 0 1px var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+
 .block-info {
   flex: 1;
   display: flex;
