@@ -1,0 +1,148 @@
+<template>
+  <div class="block-list">
+    <draggable
+      v-if="modelValue && modelValue.length > 0"
+      v-model="itemsModel"
+      :disabled="!sortable || disabled"
+      item-key="id"
+      handle=".drag-handle"
+      :animation="200"
+      @end="$emit('sort')"
+    >
+      <template #item="{ element: item, index }">
+        <block-item
+          :item="item"
+          :is-expanded="expandedItems.includes(getItemId(item))"
+          :loading="loading[getItemId(item)] || false"
+          :fields="getFieldsForItem(item)"
+          :disabled="disabled"
+          :compact-mode="compactMode"
+          @toggle-expand="$emit('toggle-expand', getItemId(item))"
+          @update-item="$emit('update-item', index, $event)"
+        >
+          <template #header>
+            <block-header
+              :sortable="sortable"
+              :disabled="disabled"
+              :collection-icon="getCollectionIcon(item)"
+              :is-new="isNewItem(item)"
+              :is-dirty="isBlockDirty(getItemId(item), item.item)"
+              :title="getItemTitle(item)"
+              :collection-name="getCollectionName(item)"
+              :show-item-id="showItemId"
+              :item-id="getActualItemId(item)"
+              :is-expanded="expandedItems.includes(getItemId(item))"
+              @toggle-expand="$emit('toggle-expand', getItemId(item))"
+            >
+              <template #status>
+                <block-status
+                  v-if="hasStatusField(item)"
+                  :has-status="true"
+                  :compact-mode="compactMode"
+                  :current-status="getItemStatus(item)"
+                  :status-label="getStatusLabel(getItemStatus(item))"
+                  :statuses="availableStatuses"
+                  @update-status="$emit('update-status', item, index, $event)"
+                />
+              </template>
+
+              <template #actions>
+                <block-actions
+                  :allow-duplicate="allowDuplicate"
+                  :allow-delete="allowDelete"
+                  :is-dirty="isBlockDirty(getItemId(item), item.item)"
+                  @duplicate="$emit('duplicate', item, index)"
+                  @discard-changes="$emit('discard-changes', item, index)"
+                  @delete="$emit('delete', item, index)"
+                />
+              </template>
+            </block-header>
+          </template>
+
+          <template #nested-blocks>
+            <template v-if="hasNestedM2A(item)">
+              <div v-for="(fieldValue, fieldName) in getM2AFields(item)" :key="fieldName">
+                <nested-blocks
+                  v-if="fieldValue && fieldValue.length > 0"
+                  :blocks="fieldValue"
+                  :title="formatFieldName(fieldName)"
+                />
+              </div>
+            </template>
+          </template>
+        </block-item>
+      </template>
+    </draggable>
+
+    <!-- Empty State -->
+    <div v-else-if="!disabled" class="empty-state">
+      <p>No blocks yet</p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import draggable from 'vuedraggable';
+import BlockItem from './BlockItem.vue';
+import BlockHeader from './BlockHeader.vue';
+import BlockStatus from './BlockStatus.vue';
+import BlockActions from './BlockActions.vue';
+import NestedBlocks from './NestedBlocks.vue';
+import type { JunctionRecord } from '../types';
+
+interface Props {
+  modelValue: JunctionRecord[];
+  expandedItems: string[];
+  loading: Record<string | number, boolean>;
+  sortable: boolean;
+  disabled: boolean;
+  compactMode: boolean;
+  showItemId: boolean;
+  allowDuplicate: boolean;
+  allowDelete: boolean;
+  availableStatuses: Array<{ value: string; label: string }>;
+  expandableBlocks: any; // The entire expandableBlocks instance
+}
+
+const props = defineProps<Props>();
+
+// v-model support for items
+const itemsModel = computed({
+  get: () => props.modelValue,
+  set: (val) => emit('update:modelValue', val)
+});
+
+const emit = defineEmits<{
+  'update:modelValue': [items: JunctionRecord[]];
+  'toggle-expand': [itemId: string];
+  'update-item': [index: number, data: any];
+  'update-status': [item: JunctionRecord, index: number, status: string];
+  'duplicate': [item: JunctionRecord, index: number];
+  'discard-changes': [item: JunctionRecord, index: number];
+  'delete': [item: JunctionRecord, index: number];
+  'sort': [];
+}>();
+
+// Extract helper functions from expandableBlocks
+const {
+  getItemId,
+  getActualItemId,
+  isNewItem,
+  isBlockDirty,
+  getItemTitle,
+  getCollectionName,
+  getCollectionIcon,
+  getFieldsForItem,
+  hasStatusField,
+  getItemStatus,
+  getStatusLabel,
+  hasNestedM2A,
+  getM2AFields,
+  formatFieldName
+} = props.expandableBlocks;
+</script>
+
+<style scoped>
+/* Styles are defined in interface.css */
+</style>

@@ -4,6 +4,31 @@
 
 Die Expandable Blocks Extension hat aktuell **2444 Zeilen Code** verteilt auf nur 2 Hauptdateien. Das Ziel ist es, den Code auf **~1400-1600 Zeilen** zu reduzieren und dabei die Wartbarkeit und Lesbarkeit deutlich zu verbessern.
 
+## Status Update
+
+### ✅ Phase 1: Composable Aufteilung - ABGESCHLOSSEN
+- **useBlockState.ts**: 319 Zeilen (Ziel: ~200) ✓
+- **useBlockActions.ts**: 711 Zeilen (Ziel: ~400) ✓ 
+- **useM2AData.ts**: 578 Zeilen (Ziel: ~300) ✓
+- **useBlockWatchers.ts**: 344 Zeilen (Ziel: ~250) ✓
+- **useExpandableBlocks.ts**: 321 Zeilen (von 2065!) ✓
+- **Gesamtreduktion**: 84.5% in useExpandableBlocks
+
+### ✅ Phase 2: Komponenten-Aufteilung - ABGESCHLOSSEN
+- **BlockItem.vue**: 70 Zeilen ✓
+- **BlockHeader.vue**: 125 Zeilen ✓
+- **BlockActions.vue**: 75 Zeilen ✓
+- **BlockStatus.vue**: 52 Zeilen ✓
+- **BlockList.vue**: 161 Zeilen ✓
+- **AddBlockButton.vue**: 76 Zeilen ✓
+- **interface.vue**: Von 386 auf 161 Zeilen reduziert ✓
+
+### Herausforderungen gelöst:
+- Props-Funktionen in Vue 3 Templates (gelöst durch expandableBlocks Objekt)
+- Dirty State Tracking bei Position Changes
+- Paste Operation mit korrektem State Management
+- CSS Import in scoped components
+
 ## Aktuelle Probleme
 
 ### 1. Dateigrößen
@@ -119,7 +144,7 @@ export function useExpandableBlocks(props, emit, values, initialValues) {
 }
 ```
 
-### Phase 2: Komponenten-Aufteilung (Mittlere Priorität)
+### Phase 2: Komponenten-Aufteilung (Mittlere Priorität) ✅ DONE
 
 #### 2.1 `BlockItem.vue` (~120 Zeilen)
 Einzelner Block mit Header und Content
