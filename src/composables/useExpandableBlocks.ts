@@ -126,6 +126,27 @@ export function useExpandableBlocks(
   });
 
   /**
+   * Deep equality check for objects
+   */
+  function deepEqual(a: any, b: any): boolean {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    if (typeof a !== 'object' || typeof b !== 'object') return false;
+    
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    
+    if (keysA.length !== keysB.length) return false;
+    
+    for (const key of keysA) {
+      if (!keysB.includes(key)) return false;
+      if (!deepEqual(a[key], b[key])) return false;
+    }
+    
+    return true;
+  }
+
+  /**
    * Check if a specific block is dirty (has unsaved changes)
    * Compares current item data with the original state stored when block was loaded
    * @param blockId - The unique identifier of the block
@@ -134,20 +155,39 @@ export function useExpandableBlocks(
    */
   function isBlockDirty(blockId: string, currentItemData: any): boolean {
     const originalData = blockOriginalStates.value.get(blockId);
-    if (!originalData) return true; // New blocks are always dirty
+    if (!originalData) {
+      logger.debug(`isBlockDirty: No original data for ${blockId}, marking as dirty`);
+      return true; // New blocks are always dirty
+    }
     
-    // Check if content has changed
-    const contentChanged = JSON.stringify(currentItemData) !== JSON.stringify(originalData);
+    // Check if content has changed using deep equality
+    const contentChanged = !deepEqual(currentItemData, originalData);
+    
+    if (contentChanged) {
+      logger.debug(`isBlockDirty: Content changed for ${blockId}`, {
+        originalKeys: Object.keys(originalData),
+        currentKeys: currentItemData ? Object.keys(currentItemData) : [],
+        sampleOriginal: JSON.stringify(originalData).substring(0, 100),
+        sampleCurrent: JSON.stringify(currentItemData).substring(0, 100)
+      });
+    }
     
     // Check if position has changed
     const currentIndex = items.value.findIndex(item => getItemId(item) === blockId);
-    
-    // Convert both to strings for comparison since blockId is always a string
     const originalIndex = originalItemOrder.value.findIndex(id => String(id) === blockId);
-    
     const positionChanged = currentIndex !== -1 && originalIndex !== -1 && currentIndex !== originalIndex;
     
-    return contentChanged || positionChanged;
+    if (positionChanged) {
+      logger.debug(`isBlockDirty: Position changed for ${blockId}`, {
+        currentIndex,
+        originalIndex
+      });
+    }
+    
+    const isDirty = contentChanged || positionChanged;
+    logger.debug(`isBlockDirty result for ${blockId}: ${isDirty}`);
+    
+    return isDirty;
   }
 
   /**
@@ -181,7 +221,19 @@ export function useExpandableBlocks(
         return item; // Safety fallback
       }
       
-      const isDirty = isBlockDirty(blockId, item.item);
+      // First check the explicit dirty state map
+      let isDirty = blockDirtyStates.value.get(blockId) || false;
+      
+      // New items are always dirty
+      if (isNewItem(item)) {
+        isDirty = true;
+      }
+      
+      // If not explicitly marked, do a deep check
+      if (!isDirty) {
+        isDirty = isBlockDirty(blockId, item.item);
+      }
+      
       
       if (isDirty) {
         // Wenn dirty, müssen wir das sort Feld aktualisieren
@@ -232,24 +284,18 @@ export function useExpandableBlocks(
       hasOriginalOrder: originalItemOrder.value.length > 0
     });
     
-    // If all blocks are clean, return them in the original order
-    if (dirtyCount === 0 && originalItemOrder.value.length > 0) {
-      // Create a map of current items by ID
-      const itemMap = new Map();
-      itemsArray.forEach(item => {
-        itemMap.set(item.id, item);
+    // If all blocks are clean, just return IDs
+    if (dirtyCount === 0) {
+      // Return IDs in the current order
+      const idsOnly = result.map(item => 
+        typeof item === 'object' && item !== null ? item.id : item
+      );
+      
+      logger.log('🔧 PREPARE EMIT - All clean, returning IDs only:', {
+        ids: idsOnly
       });
       
-      // Return IDs in the original order
-      const orderedResult = originalItemOrder.value.filter(id => itemMap.has(id));
-      
-      logger.log('🔧 PREPARE EMIT - Using original order:', {
-        originalOrder: originalItemOrder.value,
-        availableIds: Array.from(itemMap.keys()),
-        finalResult: orderedResult
-      });
-      
-      return orderedResult;
+      return idsOnly;
     }
     
     logger.log('🔧 PREPARE EMIT - Final result:', {
@@ -516,6 +562,11 @@ export function useExpandableBlocks(
    * Watch for external value changes
    */
   watch(() => props.value, async (newVal, oldVal) => {
+    // Skip if this is an internal update
+    if (isInternalUpdate.value) {
+      return;
+    }
+    
     // Set originalItemOrder when it's empty and data arrives (initial load)
     if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
       logger.debug('Setting originalItemOrder from value watcher:', newVal);
@@ -550,7 +601,24 @@ export function useExpandableBlocks(
           });
           originalItemOrder.value = newOrder;
           
+          // Clear all dirty states after successful save
+          blockDirtyStates.value.clear();
+          logger.debug('Cleared all dirty states after save');
+          
           // Wichtig: Lade die Daten neu, damit sie in der neuen Reihenfolge sind
+          if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+            await loadFullItemData();
+          }
+          return;
+        } else if (JSON.stringify(newOrder) === JSON.stringify(originalItemOrder.value)) {
+          // Order hasn't changed but we got all IDs - this is still a save
+          logger.debug('Save detected - all blocks are clean IDs, order unchanged');
+          
+          // Clear all dirty states after successful save
+          blockDirtyStates.value.clear();
+          logger.debug('Cleared all dirty states after save');
+          
+          // Reload data to get fresh state
           if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
             await loadFullItemData();
           }
@@ -559,9 +627,117 @@ export function useExpandableBlocks(
       }
     }
     
-    if (isInitialLoad.value || isInternalUpdate.value) {
-      isInternalUpdate.value = false;
+    if (isInitialLoad.value) {
       return;
+    }
+    
+    // Check if we have pasted full objects
+    // BUT: Skip if this is just a normal update (not a paste)
+    // We detect a paste by checking if we have NEW objects that weren't in oldVal
+    if (Array.isArray(newVal) && newVal.length > 0) {
+      const hasFullObjects = newVal.some(item => 
+        typeof item === 'object' && 
+        item !== null && 
+        'collection' in item && 
+        'item' in item
+      );
+      
+      if (hasFullObjects) {
+        // For paste detection, we need to check:
+        // 1. If objects have the full structure with 'item' as object (not just ID)
+        // 2. If the content has changed compared to our current items
+        
+        const hasFullItemObjects = newVal.some(item => 
+          typeof item === 'object' && 
+          item !== null && 
+          'collection' in item && 
+          'item' in item &&
+          typeof item.item === 'object' && // item is a full object, not just an ID
+          item.item !== null
+        );
+        
+        if (hasFullItemObjects) {
+          // Compare with current items to see if content changed
+          let contentChanged = false;
+          
+          // Check if we have more items than currently displayed
+          if (newVal.length !== items.value.length) {
+            contentChanged = true;
+            logger.debug('Item count changed:', { new: newVal.length, current: items.value.length });
+          } else {
+            // Check if any item has different content
+            for (const newItem of newVal) {
+              if (typeof newItem === 'object' && newItem !== null) {
+                // Items without ID or with temp IDs are new
+                if (!newItem.id || isNewItem(newItem)) {
+                  contentChanged = true;
+                  logger.debug('New item without ID found');
+                  break;
+                }
+                
+                const currentItem = items.value.find(item => item.id === newItem.id);
+                if (currentItem) {
+                  // Check if the item content is different
+                  if (newItem.item && typeof newItem.item === 'object') {
+                    if (!deepEqual(currentItem.item, newItem.item)) {
+                      contentChanged = true;
+                      logger.debug('Content changed for item:', newItem.id);
+                      break;
+                    }
+                  }
+                } else {
+                  // New item that doesn't exist in current items
+                  contentChanged = true;
+                  logger.debug('New item found:', newItem.id);
+                  break;
+                }
+              }
+            }
+          }
+          
+          if (contentChanged) {
+            logger.log('🎯 WATCH - Detected paste with content changes, processing pasted data');
+            
+            // Process mixed data: IDs need to be loaded, objects can be used directly
+            // We need to separate IDs from objects
+            const idsToLoad: (string | number)[] = [];
+            const fullObjects: JunctionRecord[] = [];
+            
+            newVal.forEach((item: any) => {
+              if (typeof item === 'number' || typeof item === 'string') {
+                // This is just an ID - needs to be loaded from server
+                idsToLoad.push(item);
+              } else if (typeof item === 'object' && item !== null) {
+                // This is a full object (with or without ID)
+                fullObjects.push(item);
+              }
+            });
+            
+            logger.debug('Paste data analysis:', {
+              totalItems: newVal.length,
+              idsToLoad: idsToLoad.length,
+              fullObjects: fullObjects.length,
+              hasNewItems: fullObjects.some(obj => !obj.id)
+            });
+            
+            // If we have IDs to load, we need to fetch them first
+            if (idsToLoad.length > 0) {
+              logger.log('🎯 WATCH - Mixed paste data, need to load IDs from server');
+              // Let loadFullItemData handle the mixed data
+              await loadFullItemData();
+            } else {
+              // All items are objects, process directly
+              logger.log('🎯 WATCH - All pasted items are objects, processing directly');
+              processLoadedRecords(fullObjects);
+            }
+            return;
+          } else {
+            logger.debug('WATCH - Full objects detected but no content changes (normal update)');
+          }
+        } else {
+          logger.debug('WATCH - Objects detected but items are IDs only (not a paste)');
+        }
+      }
     }
     
     // Check if actual items changed (add/remove)
@@ -678,6 +854,7 @@ export function useExpandableBlocks(
     // This is likely a save event
     logger.debug('Save detected - reloading data to reset dirty state');
     
+    
     // Set internal update flag to prevent double emit
     isInternalUpdate.value = true;
     
@@ -720,6 +897,66 @@ export function useExpandableBlocks(
         return;
       }
       
+      // Check if props.value already contains full objects (e.g., from paste)
+      if (Array.isArray(props.value) && props.value.length > 0) {
+        const hasFullObjects = props.value.some(item => 
+          typeof item === 'object' && 
+          item !== null && 
+          'collection' in item && 
+          'item' in item
+        );
+        
+        if (hasFullObjects) {
+          logger.log('🔍 PASTE DETECTED - Full objects in props.value:', {
+            propsValueLength: props.value.length,
+            validObjectsCount: props.value.filter(item =>
+              typeof item === 'object' && 
+              item !== null && 
+              'collection' in item && 
+              'item' in item
+            ).length,
+            isInitialLoad: isInitialLoad.value,
+            isInternalUpdate: isInternalUpdate.value,
+            currentItemsLength: items.value.length,
+            sample: props.value[0]
+          });
+          
+          // For paste operations, we need to ensure isInitialLoad is false
+          // so that processLoadedRecords will update the UI
+          if (isInitialLoad.value) {
+            logger.log('🔍 PASTE - Setting isInitialLoad to false');
+            isInitialLoad.value = false;
+          }
+          
+          // We need to handle mixed arrays (IDs and full objects)
+          // First, collect all IDs that are just numbers/strings
+          const idsToLoad = props.value.filter(item => 
+            typeof item !== 'object' || item === null
+          );
+          
+          // If we have IDs to load, we need to fetch them first
+          if (idsToLoad.length > 0) {
+            logger.log('🔍 PASTE - Mixed data detected, loading IDs from server:', idsToLoad);
+            // Fall through to normal loading process
+          } else {
+            // All items are full objects, we can process them directly
+            logger.log('🔍 PASTE - All items are objects, processing directly');
+            processLoadedRecords(props.value as JunctionRecord[]);
+            return;
+          }
+        }
+      }
+      
+      // Check if we have a mix of IDs and full objects that need to be merged
+      const existingFullObjects = new Map<string | number, JunctionRecord>();
+      if (Array.isArray(props.value)) {
+        props.value.forEach(item => {
+          if (typeof item === 'object' && item !== null && 'collection' in item && 'item' in item) {
+            existingFullObjects.set(item.id, item as JunctionRecord);
+          }
+        });
+      }
+      
       // Use M2A helper if available
       if (m2aStructure.value) {
         if (m2aStructure.value.allowedCollections.length === 0 && allowedCollections.value.length > 0) {
@@ -733,7 +970,19 @@ export function useExpandableBlocks(
           3 // Max depth for nested M2A
         );
         
-        processLoadedRecords(fullRecords);
+        // Merge with existing full objects from paste
+        const pastedIds = new Set<string | number>();
+        if (existingFullObjects.size > 0) {
+          logger.log('🔀 Merging pasted objects with loaded data');
+          fullRecords.forEach((record, index) => {
+            if (existingFullObjects.has(record.id)) {
+              fullRecords[index] = existingFullObjects.get(record.id)!;
+              pastedIds.add(record.id);
+            }
+          });
+        }
+        
+        processLoadedRecords(fullRecords, pastedIds);
         return;
       }
       
@@ -754,7 +1003,22 @@ export function useExpandableBlocks(
         }
       });
       
-      processLoadedRecords(response.data.data || []);
+      let records = response.data.data || [];
+      
+      // Merge with existing full objects from paste
+      const pastedIds = new Set<string | number>();
+      if (existingFullObjects.size > 0) {
+        logger.log('🔀 Merging pasted objects with loaded data (fallback)');
+        records = records.map((record: JunctionRecord) => {
+          if (existingFullObjects.has(record.id)) {
+            pastedIds.add(record.id);
+            return existingFullObjects.get(record.id)!;
+          }
+          return record;
+        });
+      }
+      
+      processLoadedRecords(records, pastedIds);
     } catch (error) {
       logger.error('Error loading item data:', error);
       notificationsStore.add({
@@ -774,7 +1038,16 @@ export function useExpandableBlocks(
    * - Avoids emitting to prevent dirty state
    * @param fullRecords - Array of junction records with full item data
    */
-  function processLoadedRecords(fullRecords: JunctionRecord[]) {
+  function processLoadedRecords(fullRecords: JunctionRecord[], pastedIds?: Set<string | number>) {
+    logger.log('📥 PROCESS LOADED RECORDS - Start:', {
+      recordsCount: fullRecords.length,
+      isInitialLoad: isInitialLoad.value,
+      isInternalUpdate: isInternalUpdate.value,
+      currentItemsCount: items.value.length,
+      recordIds: fullRecords.map(r => r.id),
+      hasFullObjects: fullRecords.some(r => r.collection && r.item),
+      pastedIds: pastedIds ? Array.from(pastedIds) : []
+    });
     
     try {
       // Sort records according to originalItemOrder if available
@@ -796,13 +1069,15 @@ export function useExpandableBlocks(
       
       // Initial load - don't emit
       if (isInitialLoad.value) {
+        logger.log('📥 PROCESS - Initial load path');
         items.value = fullRecords;
         
         // Store original state for dirty tracking
         blockOriginalStates.value.clear();
         blockDirtyStates.value.clear();
         fullRecords.forEach(record => {
-          if (record.id && record.item && typeof record.item === 'object') {
+          // Only store original state for existing items (not new ones)
+          if (record.id && record.item && typeof record.item === 'object' && !isNewItem(record)) {
             blockOriginalStates.value.set(
               record.id.toString(),
               deepClone(record.item)
@@ -817,38 +1092,81 @@ export function useExpandableBlocks(
         }
         
         isInitialLoad.value = false;
+        logger.log('📥 PROCESS - Initial load complete, items.value set to:', items.value.length);
         return;
       }
       
       // Update items for post-save reloads
+      logger.log('📥 PROCESS - Update path (not initial load)');
       items.value = fullRecords;
+      logger.log('📥 PROCESS - items.value updated to:', {
+        count: items.value.length,
+        ids: items.value.map(i => i.id)
+      });
 
-      // Update original states with fresh server data
-      blockOriginalStates.value.clear();
-      blockDirtyStates.value.clear();
-      fullRecords.forEach(record => {
-        if (record.id && record.item && typeof record.item === 'object') {
-          blockOriginalStates.value.set(
-            record.id.toString(),
-            deepClone(record.item)
-          );
+      // Only update original states if they don't exist yet (new blocks)
+      // or if this is a post-save reload (detected by checking if all current blocks are clean)
+      const allBlocksClean = items.value.every(item => {
+        const blockId = item.id?.toString();
+        return blockId && !blockDirtyStates.value.get(blockId);
+      });
+      
+      if (allBlocksClean || blockOriginalStates.value.size === 0) {
+        logger.log('📥 PROCESS - Updating original states (all blocks clean or first load)');
+        blockOriginalStates.value.clear();
+        blockDirtyStates.value.clear();
+        fullRecords.forEach(record => {
+          if (record.id && record.item && typeof record.item === 'object') {
+            // Skip new items - they should always be dirty
+            if (isNewItem(record)) {
+              logger.log('📥 PROCESS - Marking new item as dirty:', record.id);
+              blockDirtyStates.value.set(record.id.toString(), true);
+            } 
+            // Skip pasted items - they should NOT have their original state updated
+            else if (pastedIds && pastedIds.has(record.id)) {
+              logger.log('📥 PROCESS - Skipping original state for pasted item:', record.id);
+              blockDirtyStates.value.set(record.id.toString(), true);
+            } else {
+              blockOriginalStates.value.set(
+                record.id.toString(),
+                deepClone(record.item)
+              );
+            }
+          }
+        });
+      } else {
+        logger.log('📥 PROCESS - Keeping existing original states (blocks have changes)');
+        // For pasted items, ensure they're marked as dirty
+        if (pastedIds) {
+          pastedIds.forEach(id => {
+            blockDirtyStates.value.set(id.toString(), true);
+          });
         }
+      }
+
+      // Check if we're processing pasted data
+      // Only consider it pasted data if we explicitly have pastedIds
+      const hasPastedData = pastedIds && pastedIds.size > 0;
+      
+      logger.log('📥 PROCESS - Paste check:', {
+        hasPastedData,
+        pastedIdsCount: pastedIds ? pastedIds.size : 0,
+        isInternalUpdate: isInternalUpdate.value
       });
 
       // After save-reload all blocks should be clean
-      // Emit only IDs in the original order
+      // But for pasted data, we need to emit the full objects
       if (!isInternalUpdate.value) {
-        let cleanIds;
-        
-        // Use original order if available
-        if (originalItemOrder.value.length > 0) {
-          const recordMap = new Map(fullRecords.map(r => [r.id, r]));
-          cleanIds = originalItemOrder.value.filter(id => recordMap.has(id));
-        } else {
-          cleanIds = fullRecords.map(record => record.id);
-        }
-        
-        emit('input', cleanIds);
+        // Always use prepareItemsForEmit which handles dirty tracking properly
+        const emitValue = prepareItemsForEmit(items.value);
+        logger.log('📥 PROCESS - Emitting with prepareItemsForEmit:', {
+          type: 'smart emit',
+          count: emitValue.length,
+          sample: emitValue[0]
+        });
+        emit('input', emitValue);
+      } else {
+        logger.log('📥 PROCESS - Skipping emit due to isInternalUpdate');
       }
     } catch (error) {
       logger.error('Error processing loaded records:', error);
@@ -857,7 +1175,13 @@ export function useExpandableBlocks(
 
   // UI Helper functions
   function getItemId(item: JunctionRecord): string {
-    return item.id?.toString() || `temp_${items.value.indexOf(item)}`;
+    // For items without ID, use array index as identifier
+    // This avoids creating fake IDs that would confuse the API
+    if (!item.id) {
+      const index = items.value.indexOf(item);
+      return `idx_${index}`;
+    }
+    return item.id.toString();
   }
 
   function getActualItemId(item: JunctionRecord): string | number {
@@ -933,6 +1257,13 @@ export function useExpandableBlocks(
     if (props.disabled) return;
     
     const currentItem = items.value[index];
+    const itemId = getItemId(currentItem);
+    
+    logger.debug(`updateItem called for ${itemId}`, {
+      index,
+      hasNewData: !!newData,
+      newDataKeys: newData ? Object.keys(newData) : []
+    });
     
     // Update local state
     const updatedItems = [...items.value];
@@ -942,12 +1273,29 @@ export function useExpandableBlocks(
     };
     items.value = updatedItems;
     
+    // Check if this update actually makes the item dirty
+    const originalData = blockOriginalStates.value.get(String(itemId));
+    if (originalData) {
+      const newItemData = updatedItems[index].item;
+      const isDirty = !deepEqual(newItemData, originalData);
+      blockDirtyStates.value.set(String(itemId), isDirty);
+      logger.debug(`updateItem: Set dirty state for ${itemId} to ${isDirty}`);
+    }
+    
+    // Set internal update flag to prevent watch from processing this as paste
+    isInternalUpdate.value = true;
+    
     // Emit with dirty tracking
     const emitValue = prepareItemsForEmit(items.value);
     emit('input', emitValue);
+    
+    // Reset internal update flag after next tick
+    nextTick(() => {
+      isInternalUpdate.value = false;
+    });
   }
 
-  async function addNewItem(collection: string) {
+  function addNewItem(collection: string) {
     if (props.disabled) return;
     
     if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
@@ -959,132 +1307,72 @@ export function useExpandableBlocks(
       return;
     }
     
-    const loadingKey = `new_${Date.now()}`;
-    try {
-      loading.value[loadingKey] = true;
-      
-      // Create item in target collection
-      const defaultData = m2aHelper.getDefaultDataForCollection(collection);
-      const newItemResponse = await api.post(`/items/${collection}`, defaultData);
-      const createdItem = newItemResponse.data.data;
-      
-      // Create junction record
-      const junctionData: any = {
-        collection: collection,
-        item: createdItem.id
-      };
-      
-      const foreignKey = m2aStructure.value?.foreignKeyField || 
-                        relationInfo.value?.foreignKeyField || 
-                        `${props.collection}_id`;
-      
-      if (foreignKey && props.primaryKey) {
-        // Convert primaryKey to number if it's a string number
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        junctionData[foreignKey] = primaryKeyValue;
-        
-        logger.debug('Foreign key assignment:', {
-          foreignKey,
-          originalPrimaryKey: props.primaryKey,
-          originalType: typeof props.primaryKey,
-          convertedValue: primaryKeyValue,
-          convertedType: typeof primaryKeyValue
-        });
-      }
-      
-      if (relationInfo.value?.meta?.sort_field) {
-        junctionData[relationInfo.value.meta.sort_field] = items.value.length;
-      }
-      
-      const junctionCollection = m2aStructure.value?.junctionCollection ||
-                                relationInfo.value?.junctionCollection || 
-                                `${props.collection}_${props.field}`;
-      
-      const junctionResponse = await api.post(`/items/${junctionCollection}`, junctionData);
-      const junctionRecord = junctionResponse.data.data;
-      
-      // Create complete item structure
+    // Get default data for the collection
+    const defaultData = m2aHelper.getDefaultDataForCollection(collection);
+    
+    // Create new item structure WITHOUT ID (important!)
+    // The ID will be assigned by the API when saving
+    const newItem: JunctionRecord = {
+      // No ID! This marks it as a new item
+      collection: collection,
+      item: defaultData // Just the default data, no ID
+    };
+    
+    // Add foreign key
+    const foreignKey = m2aStructure.value?.foreignKeyField || 
+                      relationInfo.value?.foreignKeyField || 
+                      `${props.collection}_id`;
+    
+    if (foreignKey && props.primaryKey) {
       const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
         ? Number(props.primaryKey) 
         : props.primaryKey;
-        
-      const newItem: JunctionRecord = {
-        id: junctionRecord.id,
-        collection: collection,
-        item: createdItem,
-        [foreignKey]: primaryKeyValue
-      };
-      
-      if (relationInfo.value?.meta?.sort_field) {
-        newItem[relationInfo.value.meta.sort_field] = junctionRecord[relationInfo.value.meta.sort_field];
-      }
-      
-      // Add to items
-      items.value = [...items.value, newItem];
-      
-      // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(items.value);
-      
-      logger.log('🔄 SAVE STATE - addNewItem:', {
-        function: 'addNewItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        newCollection: collection,
-        createdItem: {
-          id: createdItem.id,
-          data: createdItem
-        },
-        junctionRecord: {
-          id: junctionRecord.id,
-          data: junctionRecord
-        },
-        junctionData: junctionData,
-        newItemStructure: {
-          id: newItem.id,
-          collection: newItem.collection,
-          itemType: typeof newItem.item,
-          foreignKey: newItem[foreignKey],
-          allKeys: Object.keys(newItem)
-        },
-        apiCalls: {
-          itemCreation: `POST /items/${collection}`,
-          junctionCreation: `POST /items/${junctionCollection}`,
-          defaultData: defaultData
-        },
-        totalItemsCount: items.value.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-        relationInfo: {
-          junctionCollection,
-          foreignKey,
-          m2aStructure: m2aStructure.value,
-          relationInfoValue: relationInfo.value
-        }
-      });
-      
-      emit('input', emitValue);
-      
-      notificationsStore.add({
-        title: 'Block Added',
-        text: 'New block created successfully',
-        type: 'success'
-      });
-      
-    } catch (error) {
-      logger.error('Error creating new block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to create new block',
-        type: 'error'
-      });
-    } finally {
-      delete loading.value[loadingKey];
+      (newItem as any)[foreignKey] = primaryKeyValue;
     }
+    
+    // Add sort value
+    if (relationInfo.value?.meta?.sort_field) {
+      (newItem as any)[relationInfo.value.meta.sort_field] = items.value.length;
+    }
+    
+    // Add to items array
+    items.value = [...items.value, newItem];
+    
+    // Auto-expand the new item
+    expandedItems.value.push(getItemId(newItem));
+    
+    // Set internal update flag to prevent watch from processing this as paste
+    isInternalUpdate.value = true;
+    
+    // Emit changes
+    const emitValue = prepareItemsForEmit(items.value);
+    
+    logger.log('🔄 NEW ITEM - addNewItem (no API calls):', {
+      function: 'addNewItem',
+      collection: collection,
+      newItemStructure: {
+        hasId: !!newItem.id,
+        collection: newItem.collection,
+        itemType: typeof newItem.item,
+        foreignKey: (newItem as any)[foreignKey],
+        defaultData: defaultData
+      },
+      totalItemsCount: items.value.length,
+      emitValue
+    });
+    
+    emit('input', emitValue);
+    
+    // Reset internal update flag after next tick
+    nextTick(() => {
+      isInternalUpdate.value = false;
+    });
+    
+    notificationsStore.add({
+      title: 'Block Added',
+      text: 'New block added. Save to persist changes.',
+      type: 'info'
+    });
   }
 
   function showDeleteDialog(item: JunctionRecord, index: number) {
@@ -1120,6 +1408,10 @@ export function useExpandableBlocks(
       // Remove from state
       expandedItems.value = expandedItems.value.filter(id => id !== itemId);
       blockOriginalStates.value.delete(itemId);
+      
+      // Update originalItemOrder to remove deleted item
+      originalItemOrder.value = originalItemOrder.value.filter(id => String(id) !== String(item.id));
+      logger.debug('Updated originalItemOrder after deletion:', originalItemOrder.value);
       
       const updatedItems = [...items.value];
       updatedItems.splice(index, 1);
@@ -1340,6 +1632,10 @@ export function useExpandableBlocks(
       return;
     }
     
+    logger.debug(`discardChanges called for ${blockId}`, {
+      hasOriginalData: !!originalData,
+      currentDirtyState: blockDirtyStates.value.get(blockId)
+    });
     
     // Update local state with original data
     const updatedItems = [...items.value];
@@ -1348,6 +1644,18 @@ export function useExpandableBlocks(
       item: deepClone(originalData)
     };
     items.value = updatedItems;
+    
+    // Clear dirty state for this block BEFORE emitting
+    blockDirtyStates.value.set(blockId, false);
+    logger.debug(`Cleared dirty state for block ${blockId}`);
+    
+    // Verify the item is actually restored
+    const restoredData = updatedItems[index].item;
+    const isRestored = deepEqual(restoredData, originalData);
+    logger.debug(`Discard verification for ${blockId}: isRestored=${isRestored}`);
+    
+    // Set internal update flag to prevent watch from processing this as paste
+    isInternalUpdate.value = true;
     
     // Emit the change
     const emitValue = prepareItemsForEmit(items.value);
@@ -1362,14 +1670,16 @@ export function useExpandableBlocks(
       itemsCount: items.value.length,
       emitValue,
       emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
+      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
+      isRestored
     });
     
     emit('input', emitValue);
     
-    // Clear dirty state for this block
-    blockDirtyStates.value.delete(blockId);
-    logger.debug('Cleared dirty state for block after discard:', blockId);
+    // Reset internal update flag after next tick
+    nextTick(() => {
+      isInternalUpdate.value = false;
+    });
     
     // Show notification
     notificationsStore.add({
@@ -1382,7 +1692,7 @@ export function useExpandableBlocks(
   function onSort() {
     if (props.disabled) return;
     
-    // Update sort values
+    // Update sort values if we have a sort field
     if (relationInfo.value?.meta?.sort_field) {
       items.value = items.value.map((item, index) => ({
         ...item,
@@ -1390,7 +1700,9 @@ export function useExpandableBlocks(
       }));
     }
     
+    // Set internal update flag to prevent watch from processing this as paste
     isInternalUpdate.value = true;
+    
     const emitValue = prepareItemsForEmit(items.value);
     
     logger.log('🔄 SAVE STATE - onSort:', {
@@ -1406,6 +1718,11 @@ export function useExpandableBlocks(
     });
     
     emit('input', emitValue);
+    
+    // Reset internal update flag after next tick
+    nextTick(() => {
+      isInternalUpdate.value = false;
+    });
   }
 
   // Status functions
@@ -1462,12 +1779,23 @@ export function useExpandableBlocks(
       }
       items.value = updatedItems;
       
-      // Mark block as dirty
+      // Check if this update actually makes the item dirty
       const blockId = getItemId(item);
       if (blockId) {
-        blockDirtyStates.value.set(blockId, true);
-        logger.debug('Block marked as dirty after status update:', blockId);
+        const originalData = blockOriginalStates.value.get(String(blockId));
+        if (originalData) {
+          const newItemData = updatedItems[index].item || updatedItems[index];
+          const isDirty = !deepEqual(newItemData, originalData);
+          blockDirtyStates.value.set(String(blockId), isDirty);
+          logger.debug(`Status update: Set dirty state for ${blockId} to ${isDirty}`);
+        } else {
+          blockDirtyStates.value.set(String(blockId), true);
+          logger.debug('Block marked as dirty after status update (no original):', blockId);
+        }
       }
+      
+      // Set internal update flag to prevent watch from processing this as paste
+      isInternalUpdate.value = true;
       
       const emitValue = prepareItemsForEmit(items.value);
       
@@ -1491,6 +1819,11 @@ export function useExpandableBlocks(
       });
       
       emit('input', emitValue);
+      
+      // Reset internal update flag after next tick
+      nextTick(() => {
+        isInternalUpdate.value = false;
+      });
       
       // Don't show notification - status not saved yet
       
