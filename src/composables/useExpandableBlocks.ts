@@ -1036,9 +1036,29 @@ export function useExpandableBlocks(
             }
           });
           loadedRecords = response.data.data || [];
+          
+          // Check for missing IDs
+          const foundIds = loadedRecords.map(r => r.id);
+          const missingIds = idsToLoad.filter(id => !foundIds.includes(id));
+          
+          if (missingIds.length > 0) {
+            logger.warn('📋 Missing IDs during paste:', {
+              requested: idsToLoad,
+              found: foundIds,
+              missing: missingIds
+            });
+            
+            notificationsStore.add({
+              title: 'Warning: Blocks not found',
+              text: `The following block IDs do not exist: ${missingIds.join(', ')}`,
+              type: 'warning'
+            });
+          }
+          
           logger.log('📋 Loaded records for IDs:', {
             requested: idsToLoad,
-            loaded: loadedRecords.map(r => r.id)
+            loaded: foundIds,
+            missing: missingIds
           });
         } catch (error) {
           logger.error('Failed to load IDs for paste:', error);
