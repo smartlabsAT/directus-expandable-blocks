@@ -1,9 +1,8 @@
-import { type Ref } from 'vue';
 import { deepClone } from '../utils/helpers';
 import { emitChanges as emitHelper } from '../utils/emit-helpers';
 import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
-import type { JunctionRecord, ExpandableBlocksOptions, UseExpandableBlocksProps, ItemRecord } from '../types';
-import type { M2AHelper } from '../utils/m2a-helper';
+import type { JunctionRecord, ItemRecord } from '../types';
+import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**
  * Composable for managing all block actions in the expandable blocks extension
@@ -14,39 +13,13 @@ import type { M2AHelper } from '../utils/m2a-helper';
  * - UI actions (expand/collapse, dialogs)
  * - Sort handling
  */
-export function useBlockActions(
-  // State from useBlockState
-  items: Ref<JunctionRecord[]>,
-  expandedItems: Ref<string[]>,
-  loading: Ref<Record<string | number, boolean>>,
-  blockOriginalStates: Ref<Map<string, any>>,
-  blockDirtyStates: Ref<Map<string, boolean>>,
-  originalItemOrder: Ref<(string | number)[]>,
-  isInternalUpdate: Ref<boolean>,
-  
-  // Functions from useBlockState
-  getItemId: (item: JunctionRecord) => string,
-  isNewItem: (item: JunctionRecord) => boolean,
-  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string) => any[],
-  updateOriginalState: (blockId: string, state: any) => void,
-  markBlockDirty: (blockId: string, isDirty: boolean) => void,
-  removeBlockState: (blockId: string) => void,
-  
-  // Other dependencies
-  relationInfo: Ref<any>,
-  allowedCollections: Ref<any[]>,
-  deleteDialog: Ref<boolean>,
-  itemToDelete: Ref<{ item: JunctionRecord; index: number } | null>,
-  mergedOptions: Ref<ExpandableBlocksOptions>,
-  emit: (event: string, value: any) => void,
-  props: UseExpandableBlocksProps,
-  api: any,
-  notificationsStore: any,
-  m2aHelper: M2AHelper,
-  m2aStructure: Ref<any>,
-  deepEqual: (a: any, b: any) => boolean,
-  canAddMoreBlocks: Ref<boolean>
-) {
+export function useBlockActions(ctx: ExpandableBlocksContext) {
+  // Destructure what we need from context
+  const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInternalUpdate } = ctx.state;
+  const { getItemId, isNewItem, prepareItemsForEmit, updateOriginalState, markBlockDirty, removeBlockState } = ctx.stateFns;
+  const { emit, api, props, stores: { notificationsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
+  const { deleteDialog, itemToDelete, mergedOptions, canAddMoreBlocks } = ctx.ui;
+  const { relationInfo, allowedCollections, m2aStructure } = ctx.data;
 
   /**
    * Get sort field from relation info

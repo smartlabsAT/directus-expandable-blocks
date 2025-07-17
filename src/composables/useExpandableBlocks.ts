@@ -19,6 +19,7 @@ import type {
   DirectusCollectionsStore,
   DirectusNotificationsStore
 } from '../types';
+import type { ExpandableBlocksContext } from '../types/composable-context';
 
 export interface UseExpandableBlocksProps {
   value: JunctionRecord[] | null;
@@ -85,7 +86,7 @@ export function useExpandableBlocks(
     return items.value.length < maxBlocks;
   });
 
-  // Initialize composables
+  // Initialize block state
   const blockState = useBlockState();
   const {
     items,
@@ -110,89 +111,65 @@ export function useExpandableBlocks(
     isNewItem
   } = blockState;
 
-  const blockActions = useBlockActions(
-    items,
-    expandedItems,
-    loading,
-    blockOriginalStates,
-    blockDirtyStates,
-    originalItemOrder,
-    isInternalUpdate,
-    getItemId,
-    isNewItem,
-    prepareItemsForEmit,
-    updateOriginalState,
-    markBlockDirty,
-    removeBlockState,
-    relationInfo,
-    allowedCollections,
-    deleteDialog,
-    itemToDelete,
-    mergedOptions,
-    emit,
-    props,
-    api,
-    notificationsStore,
-    m2aHelper,
-    m2aStructure,
-    deepEqual,
-    canAddMoreBlocks
-  );
+  // Create context object
+  const ctx: ExpandableBlocksContext = {
+    state: {
+      items,
+      expandedItems,
+      loading,
+      blockOriginalStates,
+      blockDirtyStates,
+      originalItemOrder,
+      isInternalUpdate,
+      isInitialLoad,
+      isFullyInitialized
+    },
+    stateFns: {
+      getItemId,
+      isNewItem,
+      prepareItemsForEmit,
+      updateOriginalState,
+      markBlockDirty,
+      removeBlockState,
+      isBlockDirty,
+      resetBlockState
+    },
+    deps: {
+      api,
+      emit,
+      props,
+      stores: {
+        notificationsStore,
+        fieldsStore,
+        relationsStore,
+        collectionsStore
+      },
+      helpers: {
+        m2aHelper,
+        deepEqual
+      }
+    },
+    ui: {
+      deleteDialog,
+      itemToDelete,
+      mergedOptions: computed(() => mergedOptions.value),
+      canAddMoreBlocks,
+      availableStatuses
+    },
+    data: {
+      relationInfo,
+      allowedCollections,
+      m2aStructure,
+      values,
+      initialValues
+    }
+  };
 
-  const m2aData = useM2AData(
-    items,
-    expandedItems,
-    loading,
-    blockOriginalStates,
-    blockDirtyStates,
-    originalItemOrder,
-    isInternalUpdate,
-    isInitialLoad,
-    isFullyInitialized,
-    getItemId,
-    isNewItem,
-    updateOriginalState,
-    markBlockDirty,
-    updateOriginalItemOrder,
-    clearStateTracking,
-    props,
-    api,
-    m2aHelper,
-    mergedOptions,
-    relationInfo,
-    allowedCollections,
-    m2aStructure,
-    deepEqual
-  );
-
-  const watchers = useBlockWatchers(
-    items,
-    expandedItems,
-    loading,
-    blockOriginalStates,
-    blockDirtyStates,
-    originalItemOrder,
-    isInitialLoad,
-    isInternalUpdate,
-    isFullyInitialized,
-    updateOriginalItemOrder,
-    clearStateTracking,
-    deepEqual,
-    m2aData.loadFullItemData,
-    m2aData.processPasteData,
-    props,
-    emit,
-    values,
-    initialValues
-  );
-
-  const uiHelpers = useUIHelpers(
-    fieldsStore,
-    collectionsStore,
-    mergedOptions,
-    m2aStructure,
-    availableStatuses
-  );
+  // Initialize composables with context
+  const blockActions = useBlockActions(ctx);
+  const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
+  const watchers = useBlockWatchers(ctx, updateOriginalItemOrder, clearStateTracking, m2aData.loadFullItemData, m2aData.processPasteData);
+  const uiHelpers = useUIHelpers(ctx);
 
   /**
    * Load all options from field configuration

@@ -1,8 +1,7 @@
-import { type Ref, computed } from 'vue';
+import { computed } from 'vue';
 import { logger } from '../utils/logger';
-import { useStores } from '@directus/extensions-sdk';
-import type { JunctionRecord, ExpandableBlocksOptions, UseExpandableBlocksProps, ItemRecord, M2AStructure } from '../types';
-import type { M2AHelper } from '../utils/m2a-helper';
+import type { JunctionRecord, ItemRecord, M2AStructure } from '../types';
+import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**
  * Composable for managing data loading and M2A handling in the expandable blocks extension
@@ -14,39 +13,16 @@ import type { M2AHelper } from '../utils/m2a-helper';
  * - Processing loaded and pasted data
  */
 export function useM2AData(
-  // State from useBlockState
-  items: Ref<JunctionRecord[]>,
-  expandedItems: Ref<string[]>,
-  loading: Ref<Record<string | number, boolean>>,
-  blockOriginalStates: Ref<Map<string, any>>,
-  blockDirtyStates: Ref<Map<string, boolean>>,
-  originalItemOrder: Ref<(string | number)[]>,
-  isInternalUpdate: Ref<boolean>,
-  isInitialLoad: Ref<boolean>,
-  isFullyInitialized: Ref<boolean>,
-  
-  // Functions from useBlockState
-  getItemId: (item: JunctionRecord) => string,
-  isNewItem: (item: JunctionRecord) => boolean,
-  updateOriginalState: (blockId: string, state: any) => void,
-  markBlockDirty: (blockId: string, isDirty: boolean) => void,
+  ctx: ExpandableBlocksContext,
   updateOriginalItemOrder: (order: (string | number)[]) => void,
-  clearStateTracking: () => void,
-  
-  // Props and external dependencies
-  props: UseExpandableBlocksProps,
-  api: any,
-  m2aHelper: M2AHelper,
-  mergedOptions: Ref<ExpandableBlocksOptions>,
-  relationInfo: Ref<any>,
-  allowedCollections: Ref<any[]>,
-  m2aStructure: Ref<M2AStructure | null>,
-  deepEqual: (a: any, b: any) => boolean
+  clearStateTracking: () => void
 ) {
-  // Get stores
-  const { useRelationsStore, useFieldsStore } = useStores();
-  const relationsStore = useRelationsStore();
-  const fieldsStore = useFieldsStore();
+  // Destructure what we need from context
+  const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInternalUpdate, isInitialLoad, isFullyInitialized } = ctx.state;
+  const { getItemId, isNewItem, updateOriginalState, markBlockDirty } = ctx.stateFns;
+  const { api, props, stores: { relationsStore, fieldsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
+  const { mergedOptions } = ctx.ui;
+  const { relationInfo, allowedCollections, m2aStructure } = ctx.data;
 
   // Computed property for allowed collections map
   const allowedCollectionsMap = computed(() => {

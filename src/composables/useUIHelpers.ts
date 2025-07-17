@@ -1,8 +1,7 @@
-import type { Ref } from 'vue';
 import { logger } from '../utils/logger';
 import { extractItemTitle, getActualItemId as getItemActualId } from '../utils/helpers';
-import type { JunctionRecord, ItemRecord, ExpandableBlocksOptions } from '../types';
-import type { M2AFieldInfo } from '../utils/m2a-helper';
+import type { JunctionRecord, ItemRecord } from '../types';
+import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**
  * Composable for UI helper functions in the expandable blocks extension
@@ -14,13 +13,11 @@ import type { M2AFieldInfo } from '../utils/m2a-helper';
  * - Nested M2A detection
  * - Field name formatting
  */
-export function useUIHelpers(
-  fieldsStore: any,
-  collectionsStore: any,
-  mergedOptions: Ref<ExpandableBlocksOptions>,
-  m2aStructure: Ref<M2AFieldInfo | null>,
-  availableStatuses: Array<{ value: string; label: string }>
-) {
+export function useUIHelpers(ctx: ExpandableBlocksContext) {
+  // Destructure what we need from context
+  const { stores: { fieldsStore, collectionsStore } } = ctx.deps;
+  const { mergedOptions, availableStatuses } = ctx.ui;
+  const { m2aStructure } = ctx.data;
   
   // Item ID helpers
   function getActualItemId(item: JunctionRecord): string | number {

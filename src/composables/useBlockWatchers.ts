@@ -1,7 +1,7 @@
-import { watch, nextTick, type Ref } from 'vue';
+import { watch, nextTick } from 'vue';
 import { logger } from '../utils/logger';
 import { deepClone } from '../utils/helpers';
-import type { JunctionRecord, UseExpandableBlocksProps, DirectusFormValues } from '../types';
+import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**
  * Composable for managing all reactive watchers in the expandable blocks extension
@@ -14,32 +14,16 @@ import type { JunctionRecord, UseExpandableBlocksProps, DirectusFormValues } fro
  * - Detect paste events
  */
 export function useBlockWatchers(
-  // State from useBlockState
-  items: Ref<JunctionRecord[]>,
-  expandedItems: Ref<string[]>,
-  loading: Ref<Record<string | number, boolean>>,
-  blockOriginalStates: Ref<Map<string, any>>,
-  blockDirtyStates: Ref<Map<string, boolean>>,
-  originalItemOrder: Ref<(string | number)[]>,
-  isInitialLoad: Ref<boolean>,
-  isInternalUpdate: Ref<boolean>,
-  isFullyInitialized: Ref<boolean>,
-  
-  // Functions
+  ctx: ExpandableBlocksContext,
   updateOriginalItemOrder: (order: (string | number)[]) => void,
   clearStateTracking: () => void,
-  deepEqual: (a: any, b: any) => boolean,
-  
-  // Data loading functions
   loadFullItemData: (isAfterSave?: boolean) => Promise<void>,
-  processPasteData: (pastedData: any[]) => Promise<void>,
-  
-  // Props and external
-  props: UseExpandableBlocksProps,
-  emit: (event: string, value: any) => void,
-  values: Ref<DirectusFormValues>,
-  initialValues: Ref<DirectusFormValues>
+  processPasteData: (pastedData: any[]) => Promise<void>
 ) {
+  // Destructure what we need from context
+  const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInitialLoad, isInternalUpdate, isFullyInitialized } = ctx.state;
+  const { emit, props, helpers: { deepEqual } } = ctx.deps;
+  const { values, initialValues } = ctx.data;
   
   /**
    * Watch for external value changes
