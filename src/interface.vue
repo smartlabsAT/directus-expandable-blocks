@@ -300,10 +300,17 @@
 import { ref, inject, onMounted, type Ref } from 'vue';
 import draggable from 'vuedraggable';
 import NestedBlocks from './components/NestedBlocks.vue';
-import { useExpandableBlocks, type UseExpandableBlocksProps } from './composables/useExpandableBlocks';
-import type { DirectusFormValues } from './types';
+import { useExpandableBlocks } from './composables/useExpandableBlocks';
+import type { DirectusFormValues, ExpandableBlocksOptions, JunctionRecord } from './types';
 
-interface Props extends UseExpandableBlocksProps {}
+interface Props {
+  value: JunctionRecord[] | null;
+  collection: string;
+  field: string;
+  primaryKey?: string | number;
+  disabled?: boolean;
+  options?: ExpandableBlocksOptions;
+}
 
 const props = withDefaults(defineProps<Props>(), {
   value: () => [],

@@ -6,10 +6,10 @@ import {
   buildM2AFieldsString, 
   extractItemTitle, 
   getActualItemId as getItemActualId,
-  isNewItem as checkIsNewItem,
   parseAllowedCollections,
   deepClone
 } from '../utils/helpers';
+import { useBlockState } from './useBlockState';
 import type { 
   ExpandableBlocksOptions, 
   JunctionRecord, 
@@ -50,30 +50,40 @@ export function useExpandableBlocks(
   // Initialize M2A Helper
   const m2aHelper = new M2AHelper(api, stores);
 
-  // State
-  const items = ref<JunctionRecord[]>([]);
-  const expandedItems = ref<string[]>([]);
-  const loading = ref<Record<string | number, boolean>>({});
+  // Initialize state composable
+  const blockState = useBlockState();
+  const {
+    items,
+    expandedItems,
+    loading,
+    blockOriginalStates,
+    blockDirtyStates,
+    originalItemOrder,
+    isInitialLoad,
+    isInternalUpdate,
+    isFullyInitialized,
+    isBlockDirty,
+    prepareItemsForEmit,
+    resetBlockState,
+    markBlockDirty,
+    clearStateTracking,
+    updateOriginalState,
+    updateOriginalItemOrder,
+    removeBlockState,
+    deepEqual,
+    getItemId,
+    isNewItem
+  } = blockState;
+
+  // Additional state not in useBlockState
   const relationInfo = ref<RelationInfo | null>(null);
   const m2aStructure = ref<M2AFieldInfo | null>(null);
   const allowedCollections = ref<CollectionInfo[]>([]);
   const deleteDialog = ref(false);
   const itemToDelete = ref<{ item: JunctionRecord; index: number } | null>(null);
-  const isInitialLoad = ref(true);
-  const isInternalUpdate = ref(false);
-  const isFullyInitialized = ref(false);
-
+  
   // Store merged options
   const mergedOptions = ref<ExpandableBlocksOptions>({});
-
-  // Store original state for each block to track changes
-  const blockOriginalStates = ref<Map<string, any>>(new Map());
-  
-  // Store dirty state for each block
-  const blockDirtyStates = ref<Map<string, boolean>>(new Map());
-
-  // Store the original order of items as they came from props.value
-  const originalItemOrder = ref<(string | number)[]>([]);
 
   // Status configuration
   const availableStatuses = [
@@ -125,206 +135,9 @@ export function useExpandableBlocks(
     return items.value.length < maxBlocks;
   });
 
-  /**
-   * Deep equality check for objects
-   */
-  function deepEqual(a: any, b: any): boolean {
-    if (a === b) return true;
-    if (a == null || b == null) return false;
-    if (typeof a !== 'object' || typeof b !== 'object') return false;
-    
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    
-    if (keysA.length !== keysB.length) return false;
-    
-    for (const key of keysA) {
-      if (!keysB.includes(key)) return false;
-      if (!deepEqual(a[key], b[key])) return false;
-    }
-    
-    return true;
-  }
-
-  /**
-   * Check if a specific block is dirty (has unsaved changes)
-   * Compares current item data with the original state stored when block was loaded
-   * @param blockId - The unique identifier of the block
-   * @param currentItemData - The current state of the item data
-   * @returns true if the block has unsaved changes, false otherwise
-   */
-  function isBlockDirty(blockId: string, currentItemData: any): boolean {
-    const originalData = blockOriginalStates.value.get(blockId);
-    if (!originalData) {
-      logger.debug(`isBlockDirty: No original data for ${blockId}, marking as dirty`);
-      return true; // New blocks are always dirty
-    }
-    
-    // Check if content has changed using deep equality
-    const contentChanged = !deepEqual(currentItemData, originalData);
-    
-    if (contentChanged) {
-      logger.debug(`isBlockDirty: Content changed for ${blockId}`, {
-        originalKeys: Object.keys(originalData),
-        currentKeys: currentItemData ? Object.keys(currentItemData) : [],
-        sampleOriginal: JSON.stringify(originalData).substring(0, 100),
-        sampleCurrent: JSON.stringify(currentItemData).substring(0, 100)
-      });
-    }
-    
-    // Check if position has changed
-    const currentIndex = items.value.findIndex(item => getItemId(item) === blockId);
-    const originalIndex = originalItemOrder.value.findIndex(id => String(id) === blockId);
-    const positionChanged = currentIndex !== -1 && originalIndex !== -1 && currentIndex !== originalIndex;
-    
-    if (positionChanged) {
-      logger.debug(`isBlockDirty: Position changed for ${blockId}`, {
-        currentIndex,
-        originalIndex
-      });
-    }
-    
-    const isDirty = contentChanged || positionChanged;
-    logger.debug(`isBlockDirty result for ${blockId}: ${isDirty}`);
-    
-    return isDirty;
-  }
-
-  /**
-   * Prepare items for emit (mix of IDs for clean blocks and full objects for dirty blocks)
-   * This is the core solution for the dirty state tracking issue:
-   * - Clean blocks: emit only their ID (matches Directus's expected format)
-   * - Dirty blocks: emit full object (allows Directus to save the changes)
-   * @param itemsArray - Array of junction records to process
-   * @returns Array with IDs for clean blocks and full objects for dirty blocks
-   */
-  function prepareItemsForEmit(itemsArray: JunctionRecord[]): any[] {
-    logger.log('🔧 PREPARE EMIT - Starting preparation:', {
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      inputItemsCount: itemsArray.length,
-      originalOrderLength: originalItemOrder.value.length,
-      originalOrder: originalItemOrder.value,
-      inputItems: itemsArray.map(item => ({
-        id: item.id,
-        collection: item.collection,
-        itemType: typeof item.item,
-        hasItem: !!item.item
-      }))
-    });
-    
-    const result = itemsArray.map((item, index) => {
-      const blockId = item.id?.toString();
-      
-      // Handle items without ID (new blocks)
-      if (!blockId) {
-        logger.log('🔧 PREPARE EMIT - Item without ID (new block):', {
-          index,
-          collection: item.collection,
-          hasItem: !!item.item
-        });
-        // Always return full object for new items without ID
-        return item;
-      }
-      
-      // First check the explicit dirty state map
-      let isDirty = blockDirtyStates.value.get(blockId) || false;
-      
-      // Also check using index-based key for blocks without real ID
-      if (!isDirty && !item.id) {
-        isDirty = blockDirtyStates.value.get(`idx_${index}`) || false;
-      }
-      
-      // New items are always dirty
-      if (isNewItem(item)) {
-        isDirty = true;
-      }
-      
-      // If not explicitly marked, do a deep check
-      if (!isDirty) {
-        isDirty = isBlockDirty(blockId, item.item);
-      }
-      
-      
-      if (isDirty) {
-        // Wenn dirty, müssen wir das sort Feld aktualisieren
-        const itemToEmit = { ...item };
-        
-        // Wenn es ein sort_field gibt, aktualisiere es mit dem aktuellen Index
-        if (relationInfo.value?.meta?.sort_field) {
-          itemToEmit[relationInfo.value.meta.sort_field] = index;
-        }
-        
-        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
-          blockId,
-          isDirty: true,
-          returnType: 'full_object_with_sort',
-          sortField: relationInfo.value?.meta?.sort_field,
-          sortValue: index,
-          itemStructure: {
-            id: item.id,
-            collection: item.collection,
-            itemType: typeof item.item,
-            hasItem: !!item.item,
-            foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
-            allKeys: Object.keys(itemToEmit)
-          }
-        });
-        
-        return itemToEmit;
-      } else {
-        // Clean blocks: nur ID
-        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
-          blockId,
-          isDirty: false,
-          returnType: 'id_only',
-          returnValue: item.id
-        });
-        
-        return item.id;
-      }
-    });
-    
-    const dirtyCount = result.filter(item => typeof item === 'object').length;
-    
-    logger.log('🔧 PREPARE EMIT - Analysis:', {
-      totalItems: result.length,
-      dirtyCount,
-      cleanCount: result.length - dirtyCount,
-      allClean: dirtyCount === 0,
-      hasOriginalOrder: originalItemOrder.value.length > 0
-    });
-    
-    // If all blocks are clean, just return IDs
-    if (dirtyCount === 0) {
-      // Return IDs in the current order
-      const idsOnly = result.map(item => 
-        typeof item === 'object' && item !== null ? item.id : item
-      );
-      
-      logger.log('🔧 PREPARE EMIT - All clean, returning IDs only:', {
-        ids: idsOnly
-      });
-      
-      return idsOnly;
-    }
-    
-    logger.log('🔧 PREPARE EMIT - Final result:', {
-      resultType: 'standard_processing',
-      sortField: relationInfo.value?.meta?.sort_field,
-      result: result.map((item, i) => ({
-        index: i,
-        type: typeof item,
-        value: typeof item === 'object' ? {
-          id: item.id,
-          collection: item.collection,
-          sortValue: item[relationInfo.value?.meta?.sort_field || 'sort']
-        } : item
-      }))
-    });
-    
-    return result;
+  // Helper to get the sort field from relationInfo
+  function getSortField(): string | undefined {
+    return relationInfo.value?.meta?.sort_field;
   }
 
   /**
@@ -1161,7 +974,7 @@ export function useExpandableBlocks(
       
       // Step 8: Emit the changes
       isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(items.value);
+      const emitValue = prepareItemsForEmit(items.value, getSortField());
       emit('input', emitValue);
       
       await nextTick();
@@ -1306,7 +1119,7 @@ export function useExpandableBlocks(
       // But for pasted data, we need to emit the full objects
       if (!isInternalUpdate.value) {
         // Always use prepareItemsForEmit which handles dirty tracking properly
-        const emitValue = prepareItemsForEmit(items.value);
+        const emitValue = prepareItemsForEmit(items.value, getSortField());
         logger.log('📥 PROCESS - Emitting with prepareItemsForEmit:', {
           type: 'smart emit',
           count: emitValue.length,
@@ -1322,22 +1135,8 @@ export function useExpandableBlocks(
   }
 
   // UI Helper functions
-  function getItemId(item: JunctionRecord): string {
-    // For items without ID, use array index as identifier
-    // This avoids creating fake IDs that would confuse the API
-    if (!item.id) {
-      const index = items.value.indexOf(item);
-      return `idx_${index}`;
-    }
-    return item.id.toString();
-  }
-
   function getActualItemId(item: JunctionRecord): string | number {
     return getItemActualId(item);
-  }
-
-  function isNewItem(item: JunctionRecord): boolean {
-    return checkIsNewItem(item);
   }
 
   function getItemTitle(item: JunctionRecord): string {
@@ -1434,7 +1233,7 @@ export function useExpandableBlocks(
     isInternalUpdate.value = true;
     
     // Emit with dirty tracking
-    const emitValue = prepareItemsForEmit(items.value);
+    const emitValue = prepareItemsForEmit(items.value, getSortField());
     emit('input', emitValue);
     
     // Reset internal update flag after next tick
@@ -1493,7 +1292,7 @@ export function useExpandableBlocks(
     isInternalUpdate.value = true;
     
     // Emit changes
-    const emitValue = prepareItemsForEmit(items.value);
+    const emitValue = prepareItemsForEmit(items.value, getSortField());
     
     logger.log('🔄 NEW ITEM - addNewItem (no API calls):', {
       function: 'addNewItem',
@@ -1577,7 +1376,7 @@ export function useExpandableBlocks(
       
       // Emit changes
       isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems);
+      const emitValue = prepareItemsForEmit(updatedItems, getSortField());
       
       logger.log('🔄 SAVE STATE - confirmDeleteItem:', {
         function: 'confirmDeleteItem',
@@ -1722,7 +1521,7 @@ export function useExpandableBlocks(
       
       // Emit changes
       isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems);
+      const emitValue = prepareItemsForEmit(updatedItems, getSortField());
       
       logger.log('🔄 SAVE STATE - duplicateItem:', {
         function: 'duplicateItem',
@@ -1806,7 +1605,7 @@ export function useExpandableBlocks(
     isInternalUpdate.value = true;
     
     // Emit the change
-    const emitValue = prepareItemsForEmit(items.value);
+    const emitValue = prepareItemsForEmit(items.value, getSortField());
     
     logger.log('🔄 SAVE STATE - discardBlockChanges:', {
       function: 'discardBlockChanges',
@@ -1851,7 +1650,7 @@ export function useExpandableBlocks(
     // Set internal update flag to prevent watch from processing this as paste
     isInternalUpdate.value = true;
     
-    const emitValue = prepareItemsForEmit(items.value);
+    const emitValue = prepareItemsForEmit(items.value, getSortField());
     
     logger.log('🔄 SAVE STATE - onSort:', {
       function: 'onSort',
@@ -1945,7 +1744,7 @@ export function useExpandableBlocks(
       // Set internal update flag to prevent watch from processing this as paste
       isInternalUpdate.value = true;
       
-      const emitValue = prepareItemsForEmit(items.value);
+      const emitValue = prepareItemsForEmit(items.value, getSortField());
       
       logger.log('🔄 SAVE STATE - updateItemStatus:', {
         function: 'updateItemStatus',
