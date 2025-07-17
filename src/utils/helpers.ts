@@ -23,6 +23,11 @@ export function buildM2AFieldsString(allowedCollections: CollectionInfo[]): stri
  * Extract title from item data
  */
 export function extractItemTitle(item: ItemRecord | JunctionRecord): string {
+  // First check if item is an object before using 'in' operator
+  if (!item || typeof item !== 'object') {
+    return 'Untitled Block';
+  }
+  
   const itemData = 'item' in item && typeof item.item === 'object' 
     ? item.item 
     : item;
