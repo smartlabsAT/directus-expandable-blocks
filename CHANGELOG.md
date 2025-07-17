@@ -5,19 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.9] - 2025-07-17
-
-### Fixed
-- **Paste Raw Value**: Fixed UI not updating immediately when using Directus' "paste raw value" functionality
-- **Paste Detection**: Improved detection of paste events to handle all three data types (IDs only, objects with ID, objects without ID)
-- **Mixed Data Handling**: Correctly process mixed data arrays containing both IDs and full objects
-- **Dirty State on Paste**: Properly mark pasted blocks as dirty/new to ensure correct save behavior
-- **Original State Preservation**: Preserve original states for existing blocks during paste operations
-
-### Added
-- **processPasteData Function**: New dedicated handler for paste operations with support for all data types
-- **Enhanced Logging**: Added detailed paste event logging with 📋 emoji for better debugging
-
 ## [1.0.8] - 2025-07-17
 
 ### Fixed
@@ -28,10 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deleted Blocks Position**: Removed deleted blocks from originalItemOrder to prevent false position change detections
 - **TypeError Prevention**: Added type check before using 'in' operator in extractItemTitle helper
 - **Internal Update Handling**: Added isInternalUpdate flag to all functions that emit changes to prevent watch conflicts
+- **Paste Raw Value**: Fixed UI not updating immediately when using Directus' "paste raw value" functionality
+  - Improved detection of paste events to handle all three data types (IDs only, objects with ID, objects without ID)
+  - Correctly process mixed data arrays containing both IDs and full objects
+  - Properly mark pasted blocks as dirty/new to ensure correct save behavior
+  - Preserve original states for existing blocks during paste operations
 
 ### Added
 - **Visual NEW Indicator**: New unsaved blocks now display a green pulsing dot instead of the blue dirty indicator
 - **Disabled State for Discard**: "Discard Changes" option now appears disabled when no changes are present
+- **processPasteData Function**: New dedicated handler for paste operations with support for all data types
+- **Enhanced Logging**: Added detailed paste event logging with 📋 emoji for better debugging
 
 ### Changed
 - **Add Block Button Style**: Updated button design to match Directus M2A interface style
