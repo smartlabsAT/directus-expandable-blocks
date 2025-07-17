@@ -71,7 +71,7 @@ defineEmits<{
 }>();
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .danger {
   --v-list-item-color: var(--danger);
   --v-list-item-color-hover: var(--danger);

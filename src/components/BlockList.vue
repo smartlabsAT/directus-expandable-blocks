@@ -144,6 +144,6 @@ const {
 </script>
 
 <style lang="scss" scoped>
-// Component-specific styles can go here
-// Global styles are in interface.scss
+/* Component-specific styles can go here */
+/* Global styles are in interface.scss */
 </style>
