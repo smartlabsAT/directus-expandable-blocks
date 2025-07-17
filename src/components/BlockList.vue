@@ -125,22 +125,20 @@ const emit = defineEmits<{
 }>();
 
 // Extract helper functions from expandableBlocks
-const {
-  getItemId,
-  getActualItemId,
-  isNewItem,
-  isBlockDirty,
-  getItemTitle,
-  getCollectionName,
-  getCollectionIcon,
-  getFieldsForItem,
-  hasStatusField,
-  getItemStatus,
-  getStatusLabel,
-  hasNestedM2A,
-  getM2AFields,
-  formatFieldName
-} = props.expandableBlocks;
+const getItemId = (item: JunctionRecord) => props.expandableBlocks.getItemId(item);
+const getActualItemId = (item: JunctionRecord) => props.expandableBlocks.getActualItemId(item);
+const isNewItem = (item: JunctionRecord) => props.expandableBlocks.isNewItem(item);
+const isBlockDirty = (itemId: string, itemData: any) => props.expandableBlocks.isBlockDirty(itemId, itemData);
+const getItemTitle = (item: JunctionRecord) => props.expandableBlocks.getItemTitle(item);
+const getCollectionName = (item: JunctionRecord) => props.expandableBlocks.getCollectionName(item);
+const getCollectionIcon = (item: JunctionRecord) => props.expandableBlocks.getCollectionIcon(item);
+const getFieldsForItem = (item: JunctionRecord) => props.expandableBlocks.getFieldsForItem(item);
+const hasStatusField = (item: JunctionRecord) => props.expandableBlocks.hasStatusField(item);
+const getItemStatus = (item: JunctionRecord) => props.expandableBlocks.getItemStatus(item);
+const getStatusLabel = (status: string) => props.expandableBlocks.getStatusLabel(status);
+const hasNestedM2A = (item: JunctionRecord) => props.expandableBlocks.hasNestedM2A(item);
+const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFields(item);
+const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
 </script>
 
 <style lang="scss" scoped>

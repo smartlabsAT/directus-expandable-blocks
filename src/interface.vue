@@ -116,7 +116,6 @@ const {
 
 // Initialize on mount
 onMounted(() => {
-  console.log('[ExpandableBlocks] Extension loaded - Version 1.0.7 - Phase 2 with wrapper functions');
   initialize();
 });
 </script>
