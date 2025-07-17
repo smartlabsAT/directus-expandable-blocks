@@ -143,6 +143,7 @@ const {
 } = props.expandableBlocks;
 </script>
 
-<style scoped>
-/* Styles are defined in interface.css */
+<style lang="scss" scoped>
+// Component-specific styles can go here
+// Global styles are in interface.scss
 </style>

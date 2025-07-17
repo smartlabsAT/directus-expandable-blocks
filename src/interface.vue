@@ -121,6 +121,6 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-@import './interface.css';
+<style lang="scss" scoped>
+@import './interface.scss';
 </style>
