@@ -10,6 +10,8 @@ import {
   deepClone
 } from '../utils/helpers';
 import { useBlockState } from './useBlockState';
+import { useBlockActions } from './useBlockActions';
+import { useM2AData } from './useM2AData';
 import type { 
   ExpandableBlocksOptions, 
   JunctionRecord, 
@@ -135,10 +137,85 @@ export function useExpandableBlocks(
     return items.value.length < maxBlocks;
   });
 
-  // Helper to get the sort field from relationInfo
-  function getSortField(): string | undefined {
-    return relationInfo.value?.meta?.sort_field;
-  }
+  // Initialize actions composable
+  const blockActions = useBlockActions(
+    items,
+    expandedItems,
+    loading,
+    blockOriginalStates,
+    blockDirtyStates,
+    originalItemOrder,
+    isInternalUpdate,
+    isInitialLoad,
+    getItemId,
+    isNewItem,
+    prepareItemsForEmit,
+    updateOriginalState,
+    markBlockDirty,
+    removeBlockState,
+    relationInfo,
+    allowedCollections,
+    deleteDialog,
+    itemToDelete,
+    mergedOptions,
+    emit,
+    props,
+    api,
+    notificationsStore,
+    m2aHelper,
+    m2aStructure,
+    deepEqual,
+    canAddMoreBlocks
+  );
+  const {
+    toggleExpand,
+    showDeleteDialog,
+    addNewItem,
+    updateItem,
+    confirmDeleteItem,
+    duplicateItem,
+    discardChanges,
+    updateItemStatus,
+    onSort,
+    getSortField
+  } = blockActions;
+
+  // Initialize M2A data composable
+  const m2aData = useM2AData(
+    items,
+    expandedItems,
+    loading,
+    blockOriginalStates,
+    blockDirtyStates,
+    originalItemOrder,
+    isInternalUpdate,
+    isInitialLoad,
+    isFullyInitialized,
+    getItemId,
+    isNewItem,
+    updateOriginalState,
+    markBlockDirty,
+    updateOriginalItemOrder,
+    clearStateTracking,
+    props,
+    api,
+    m2aHelper,
+    mergedOptions,
+    relationInfo,
+    allowedCollections,
+    m2aStructure,
+    deepEqual
+  );
+  const {
+    allowedCollectionsMap,
+    loadFullItemData,
+    processLoadedRecords,
+    processPasteData,
+    analyzeM2AStructure,
+    loadAllowedCollections,
+    loadRelationInfo,
+    initialize: initializeM2AData
+  } = m2aData;
 
   /**
    * Load all options from field configuration
@@ -197,24 +274,8 @@ export function useExpandableBlocks(
         }
       }
       
-      // Analyze M2A structure
-      try {
-        m2aStructure.value = await m2aHelper.analyzeM2AStructure(
-          props.collection,
-          props.field
-        );
-      } catch (error) {
-        logger.warn('Failed to analyze M2A structure:', error);
-      }
-      
-      // Load allowed collections
-      await loadAllowedCollections();
-      
-      // Load relation info
-      await loadRelationInfo();
-      
-      // Load data
-      await loadFullItemData();
+      // Initialize M2A data (analyzes structure, loads collections, relations, and data)
+      await initializeM2AData();
       
       // Implement startExpanded option
       if (mergedOptions.value?.startExpanded && items.value.length > 0) {
@@ -235,153 +296,33 @@ export function useExpandableBlocks(
         type: 'error'
       });
     }
-    
   }
 
-  /**
-   * Load allowed collections from various sources
-   */
-  async function loadAllowedCollections() {
-    // Use merged options which already contains field store options
-    const fieldOptions = mergedOptions.value || {};
-    
-    // First, always try to get the M2A configured collections
-    const relations = relationsStore.getRelationsForField(props.collection, props.field);
-    let m2aConfiguredCollections: string[] = [];
-    if (relations && relations.length > 0) {
-      // For M2A, we need to look at all relations to find the configured collections
-      for (const relation of relations) {
-        // Store the first relation as relationInfo
-        if (!relationInfo.value) {
-          relationInfo.value = relation;
-        }
-        
-        // Try to get collections from different places
-        if (relation.meta?.one_allowed_collections) {
-          const collections = parseAllowedCollections(relation.meta.one_allowed_collections);
-          if (collections.length > 0) {
-            m2aConfiguredCollections = collections;
-            break;
-          }
-        }
-      }
-      
-      // If still no collections found, try to get them from the field configuration
-      if (m2aConfiguredCollections.length === 0) {
-        const field = fieldsStore.getField(props.collection, props.field) as any;
-        
-        // Check if field has special configuration for M2A
-        if (field?.special && (field.special as string[]).includes('m2a')) {
-          // Get the junction collection
-          const junctionRelation = relations.find(r => r.meta?.junction_field);
-          if (junctionRelation) {
-            const junctionCollection = junctionRelation.collection;
-            
-            // Get all fields from junction to find related collections
-            const junctionFields = fieldsStore.getFieldsForCollection(junctionCollection);
-            
-            // Find the one_collection field
-            const oneCollectionField = junctionFields.find(f => 
-              f.field === 'collection' || 
-              f.field === 'item' || 
-              (f.type === 'string' && f.meta?.interface === 'select-dropdown')
-            );
-            
-            // Extract collections from field configuration
-            if (oneCollectionField?.meta?.options?.choices) {
-              m2aConfiguredCollections = oneCollectionField.meta.options.choices
-                .map((choice: any) => typeof choice === 'string' ? choice : choice.value)
-                .filter(Boolean);
-            }
-          }
-        }
-      }
-    }
-    
-    // Now check the interface options
-    if (fieldOptions?.allowedCollections !== undefined && Array.isArray(fieldOptions.allowedCollections)) {
-      if (fieldOptions.allowedCollections.length > 0) {
-        // Specific collections selected - use only these
-        setAllowedCollections(fieldOptions.allowedCollections);
-      } else {
-        // Empty array means "no restrictions" - use all M2A collections
-        if (m2aConfiguredCollections.length > 0) {
-          setAllowedCollections(m2aConfiguredCollections);
-        }
-      }
-    } else {
-      // allowedCollections not set at all - use M2A collections
-      if (m2aConfiguredCollections.length > 0) {
-        setAllowedCollections(m2aConfiguredCollections);
-      }
-    }
-  }
+  // Computed property for allowed collections as a map (moved to useM2AData)
+  // const allowedCollectionsMap = computed(() => {
+  //   const map: Record<string, any> = {};
+  //   allowedCollections.value.forEach(col => {
+  //     if (typeof col === 'string') {
+  //       map[col] = { collection: col };
+  //     } else if (col && col.collection) {
+  //       map[col.collection] = col;
+  //     }
+  //   });
+  //   return map;
+  // });
 
-  /**
-   * Set allowed collections with proper formatting
-   */
-  function setAllowedCollections(collections: string[]) {
-    allowedCollections.value = collections.map((col: string) => {
-      const collection = collectionsStore.getCollection(col);
-      return {
-        collection: col,
-        name: collection?.name || col,
-        meta: collection?.meta
-      };
-    });
-  }
+  // The following functions have been moved to useM2AData composable:
+  // loadAllowedCollections, loadRelationInfo, loadFullItemData, processLoadedRecords, processPasteData
 
-  /**
-   * Load relation info for junction handling
-   */
-  async function loadRelationInfo() {
-    if (!relationInfo.value) {
-      const relations = relationsStore.getRelationsForField(props.collection, props.field);
-      if (relations && relations.length > 0) {
-        relationInfo.value = relations[0];
-      }
-    }
-    
-    if (relationInfo.value) {
-      // Determine junction collection
-      let junctionCollection = 
-        relationInfo.value.meta?.junction_field ? relationInfo.value.collection :
-        relationInfo.value.related_collection && relationInfo.value.related_collection !== props.collection ? 
-          relationInfo.value.related_collection : 
-          `${props.collection}_${props.field}`;
-      
-      const foreignKeyField = `${props.collection}_id`;
-      
-      relationInfo.value.junctionCollection = junctionCollection;
-      relationInfo.value.foreignKeyField = foreignKeyField;
-      
-      logger.debug('Junction info:', {
-        junctionCollection,
-        foreignKeyField
-      });
-    }
-  }
+  /* DEPRECATED - All these functions have been moved to useM2AData composable:
+  * - loadAllowedCollections()
+  * - setAllowedCollections()
+  * - loadRelationInfo()
+  * - loadFullItemData()
+  * - processPasteData()
+  * - processLoadedRecords()
+  */
 
-  /**
-   * Check for delayed options loading
-   */
-  function checkDelayedOptions() {
-    if (fieldsStore && props.collection && props.field) {
-      try {
-        const fields = fieldsStore.getFieldsForCollection(props.collection);
-        const fieldConfig = fields.find((f: any) => f.field === props.field);
-        
-        if (fieldConfig?.meta?.options?.allowedCollections && 
-            fieldConfig.meta.options.allowedCollections.length > 0 &&
-            allowedCollections.value.length === 0) {
-          logger.debug('Found allowed collections in delayed check');
-          setAllowedCollections(fieldConfig.meta.options.allowedCollections);
-        }
-      } catch (error) {
-        logger.debug('Delayed options check failed:', error);
-      }
-    }
-  }
 
   /**
    * Watch for external value changes
@@ -398,9 +339,9 @@ export function useExpandableBlocks(
       originalItemOrder.value = newVal.map(item => 
         typeof item === 'object' && item !== null ? item.id : item
       );
-      checkDelayedOptions();
+      // checkDelayedOptions(); // No longer needed with useM2AData
       if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
-        await loadFullItemData();
+        await loadFullItemData();  // Note: This function is now imported from useM2AData
       }
       isFullyInitialized.value = true;
       return;
@@ -427,9 +368,9 @@ export function useExpandableBlocks(
           blockDirtyStates.value.clear();
           logger.debug('Cleared all dirty states after save');
           
-          // Reload data in new order
+          // Reload data in new order after save
           if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
-            await loadFullItemData();
+            await loadFullItemData(true);  // Pass true to indicate this is after a save
           }
           return;
         } else if (JSON.stringify(newOrder) === JSON.stringify(originalItemOrder.value)) {
@@ -440,9 +381,9 @@ export function useExpandableBlocks(
           blockDirtyStates.value.clear();
           logger.debug('Cleared all dirty states after save');
           
-          // Reload data to get fresh state
+          // Reload data to get fresh state after save
           if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
-            await loadFullItemData();
+            await loadFullItemData(true);  // Pass true to indicate this is after a save
           }
           return;
         }
@@ -499,7 +440,7 @@ export function useExpandableBlocks(
         });
         
         // Process paste data - completely replace current data
-        await processPasteData(newVal);
+        await processPasteData(newVal);  // Note: This function is now imported from useM2AData
         return;
       }
     }
@@ -511,7 +452,7 @@ export function useExpandableBlocks(
     }).filter(id => id != null).sort();
     
     if (JSON.stringify(oldIds) !== JSON.stringify(newIds)) {
-      loadFullItemData();
+      loadFullItemData();  // Note: This function is now imported from useM2AData
     }
   }, { deep: true });
 
@@ -627,7 +568,7 @@ export function useExpandableBlocks(
     
     logger.debug('Updated originalItemOrder after save:', originalItemOrder.value);
     // WICHTIG: Warte bis loadFullItemData fertig ist!
-    await loadFullItemData();
+    await loadFullItemData(true);  // Pass true to indicate this is after a save
     
     // Nach dem Laden sind alle blockOriginalStates aktualisiert
     // und processLoadedRecords hat bereits korrekt emittiert
@@ -651,488 +592,16 @@ export function useExpandableBlocks(
     }
   }, { immediate: false });
 
-  /**
-   * Load full item data from the API
+  /* DEPRECATED - All these functions have been moved to useM2AData composable:
+   * - loadAllowedCollections()
+   * - setAllowedCollections()
+   * - loadRelationInfo()
+   * - loadFullItemData()
+   * - processPasteData()
+   * - processLoadedRecords()
+   * 
+   * The code has been removed to avoid duplication and parsing errors.
    */
-  async function loadFullItemData() {
-    try {
-      if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
-        items.value = [];
-        return;
-      }
-      
-      // Check if props.value already contains full objects (e.g., from paste)
-      if (Array.isArray(props.value) && props.value.length > 0) {
-        const hasFullObjects = props.value.some(item => 
-          typeof item === 'object' && 
-          item !== null && 
-          'collection' in item && 
-          'item' in item
-        );
-        
-        if (hasFullObjects) {
-          logger.log('🔍 PASTE DETECTED - Full objects in props.value:', {
-            propsValueLength: props.value.length,
-            validObjectsCount: props.value.filter(item =>
-              typeof item === 'object' && 
-              item !== null && 
-              'collection' in item && 
-              'item' in item
-            ).length,
-            isInitialLoad: isInitialLoad.value,
-            isInternalUpdate: isInternalUpdate.value,
-            currentItemsLength: items.value.length,
-            sample: props.value[0]
-          });
-          
-          // For paste operations, we need to ensure isInitialLoad is false
-          // so that processLoadedRecords will update the UI
-          if (isInitialLoad.value) {
-            logger.log('🔍 PASTE - Setting isInitialLoad to false');
-            isInitialLoad.value = false;
-          }
-          
-          // We need to handle mixed arrays (IDs and full objects)
-          // First, collect all IDs that are just numbers/strings
-          const idsToLoad = props.value.filter(item => 
-            typeof item !== 'object' || item === null
-          );
-          
-          // If we have IDs to load, we need to fetch them first
-          if (idsToLoad.length > 0) {
-            logger.log('🔍 PASTE - Mixed data detected, loading IDs from server:', idsToLoad);
-            // Fall through to normal loading process
-          } else {
-            // All items are full objects, we can process them directly
-            logger.log('🔍 PASTE - All items are objects, processing directly');
-            processLoadedRecords(props.value as JunctionRecord[]);
-            return;
-          }
-        }
-      }
-      
-      // Check if we have a mix of IDs and full objects that need to be merged
-      const existingFullObjects = new Map<string | number, JunctionRecord>();
-      if (Array.isArray(props.value)) {
-        props.value.forEach(item => {
-          if (typeof item === 'object' && item !== null && 'collection' in item && 'item' in item) {
-            existingFullObjects.set(item.id, item as JunctionRecord);
-          }
-        });
-      }
-      
-      // Use M2A helper if available
-      if (m2aStructure.value) {
-        if (m2aStructure.value.allowedCollections.length === 0 && allowedCollections.value.length > 0) {
-          m2aStructure.value.allowedCollections = allowedCollections.value.map(c => c.collection);
-        }
-        
-        const fullRecords = await m2aHelper.loadM2AData(
-          props.primaryKey,
-          m2aStructure.value,
-          0,
-          3 // Max depth for nested M2A
-        );
-        
-        // Merge with existing full objects from paste
-        const pastedIds = new Set<string | number>();
-        if (existingFullObjects.size > 0) {
-          logger.log('🔀 Merging pasted objects with loaded data');
-          fullRecords.forEach((record, index) => {
-            if (existingFullObjects.has(record.id)) {
-              fullRecords[index] = existingFullObjects.get(record.id)!;
-              pastedIds.add(record.id);
-            }
-          });
-        }
-        
-        processLoadedRecords(fullRecords, pastedIds);
-        return;
-      }
-      
-      // Fallback loading logic
-      const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-      const foreignKeyField = relationInfo.value?.foreignKeyField || `${props.collection}_id`;
-      
-      const response = await api.get(`/items/${junctionCollection}`, {
-        params: {
-          filter: {
-            [foreignKeyField]: {
-              _eq: props.primaryKey
-            }
-          },
-          fields: buildM2AFieldsString(allowedCollections.value),
-          limit: -1,
-          sort: relationInfo.value?.meta?.sort_field || 'id'
-        }
-      });
-      
-      let records = response.data.data || [];
-      
-      // Merge with existing full objects from paste
-      const pastedIds = new Set<string | number>();
-      if (existingFullObjects.size > 0) {
-        logger.log('🔀 Merging pasted objects with loaded data (fallback)');
-        records = records.map((record: JunctionRecord) => {
-          if (existingFullObjects.has(record.id)) {
-            pastedIds.add(record.id);
-            return existingFullObjects.get(record.id)!;
-          }
-          return record;
-        });
-      }
-      
-      processLoadedRecords(records, pastedIds);
-    } catch (error) {
-      logger.error('Error loading item data:', error);
-      notificationsStore.add({
-        title: 'Loading Error',
-        text: 'Failed to load blocks. Please refresh the page.',
-        type: 'error'
-      });
-    }
-  }
-
-  /**
-   * Process pasted data from "paste raw value" operation
-   * Handles all three data types: IDs only, objects with ID, objects without ID
-   * @param pastedData - The pasted array containing mixed data types
-   */
-  async function processPasteData(pastedData: any[]) {
-    logger.log('📋 PROCESS PASTE DATA - Start:', {
-      totalItems: pastedData.length,
-      currentItemsCount: items.value.length
-    });
-    
-    try {
-      // Step 1: Analyze and categorize the pasted data
-      const idsToLoad: (string | number)[] = [];
-      const objectsWithId: JunctionRecord[] = [];
-      const objectsWithoutId: JunctionRecord[] = [];
-      
-      pastedData.forEach((item, index) => {
-        if (typeof item === 'number' || typeof item === 'string') {
-          // Just an ID - needs to be loaded
-          idsToLoad.push(item);
-        } else if (typeof item === 'object' && item !== null && 'collection' in item) {
-          if (item.id) {
-            // Object with ID
-            objectsWithId.push(item);
-          } else {
-            // Object without ID (new block)
-            objectsWithoutId.push(item);
-          }
-        }
-      });
-      
-      logger.log('📋 PASTE DATA ANALYSIS:', {
-        idsToLoad: idsToLoad.length,
-        objectsWithId: objectsWithId.length,
-        objectsWithoutId: objectsWithoutId.length
-      });
-      
-      // Step 2: Load data for IDs if needed
-      let loadedRecords: JunctionRecord[] = [];
-      if (idsToLoad.length > 0) {
-        try {
-          const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-          const foreignKeyField = relationInfo.value?.foreignKeyField || `${props.collection}_id`;
-          
-          const response = await api.get(`/items/${junctionCollection}`, {
-            params: {
-              filter: {
-                id: { _in: idsToLoad },
-                [foreignKeyField]: { _eq: props.primaryKey }
-              },
-              fields: buildM2AFieldsString(allowedCollections.value),
-              limit: -1
-            }
-          });
-          loadedRecords = response.data.data || [];
-          
-          // Check for missing IDs
-          const foundIds = loadedRecords.map(r => r.id);
-          const missingIds = idsToLoad.filter(id => !foundIds.includes(id));
-          
-          if (missingIds.length > 0) {
-            logger.warn('📋 Missing IDs during paste:', {
-              requested: idsToLoad,
-              found: foundIds,
-              missing: missingIds
-            });
-            
-            notificationsStore.add({
-              title: 'Warning: Blocks not found',
-              text: `The following block IDs do not exist: ${missingIds.join(', ')}`,
-              type: 'warning'
-            });
-          }
-          
-          logger.log('📋 Loaded records for IDs:', {
-            requested: idsToLoad,
-            loaded: foundIds,
-            missing: missingIds
-          });
-        } catch (error) {
-          logger.error('Failed to load IDs for paste:', error);
-        }
-      }
-      
-      // Step 3: Build complete items array in correct order
-      const completeItems: JunctionRecord[] = [];
-      const pastedItemIds = new Set<string | number>();
-      const foreignKeyField = relationInfo.value?.foreignKeyField || `${props.collection}_id`;
-      
-      pastedData.forEach((item, index) => {
-        if (typeof item === 'number' || typeof item === 'string') {
-          // Find the loaded record for this ID
-          const loaded = loadedRecords.find(r => r.id === item);
-          if (loaded) {
-            completeItems.push(loaded);
-            pastedItemIds.add(loaded.id);
-          }
-        } else if (typeof item === 'object' && item !== null) {
-          // Ensure the object has the correct structure
-          const processedItem = { ...item };
-          
-          // Add foreign key if missing
-          if (foreignKeyField && props.primaryKey && !processedItem[foreignKeyField]) {
-            const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-              ? Number(props.primaryKey) 
-              : props.primaryKey;
-            processedItem[foreignKeyField] = primaryKeyValue;
-          }
-          
-          // Add sort value if missing
-          if (relationInfo.value?.meta?.sort_field && !processedItem[relationInfo.value.meta.sort_field]) {
-            processedItem[relationInfo.value.meta.sort_field] = index;
-          }
-          
-          completeItems.push(processedItem);
-          if (processedItem.id) {
-            pastedItemIds.add(processedItem.id);
-          }
-        }
-      });
-      
-      // Step 4: Preserve original states for existing blocks
-      const existingOriginalStates = new Map(blockOriginalStates.value);
-      const currentItemsMap = new Map(items.value.map(item => [item.id?.toString(), item]));
-      
-      // Step 5: Update items.value with the pasted data
-      items.value = completeItems;
-      
-      // Step 6: Update states
-      blockOriginalStates.value.clear();
-      blockDirtyStates.value.clear();
-      
-      completeItems.forEach((item, index) => {
-        const itemId = item.id?.toString();
-        
-        if (!item.id) {
-          // New block without ID - always dirty
-          blockDirtyStates.value.set(`idx_${index}`, true);
-          logger.log('📋 New block without ID marked as dirty at index:', index);
-        } else if (itemId) {
-          // Check if this block existed before
-          const existingOriginal = existingOriginalStates.get(itemId);
-          const currentItem = currentItemsMap.get(itemId);
-          
-          if (existingOriginal) {
-            // Block existed before - preserve original state
-            blockOriginalStates.value.set(itemId, existingOriginal);
-            
-            // Check if it's dirty by comparing with original
-            if (item.item && typeof item.item === 'object') {
-              const isDirty = !deepEqual(item.item, existingOriginal);
-              if (isDirty) {
-                blockDirtyStates.value.set(itemId, true);
-                logger.log('📋 Existing block marked as dirty:', itemId);
-              }
-            }
-          } else {
-            // New block with ID
-            if (item.item && typeof item.item === 'object') {
-              blockOriginalStates.value.set(itemId, deepClone(item.item));
-              blockDirtyStates.value.set(itemId, true);
-              logger.log('📋 New block with ID marked as dirty:', itemId);
-            }
-          }
-        }
-      });
-      
-      // Step 7: Update original item order
-      originalItemOrder.value = completeItems
-        .filter(item => item.id)
-        .map(item => item.id);
-      
-      logger.log('📋 PASTE PROCESSING COMPLETE:', {
-        totalItems: items.value.length,
-        dirtyBlocks: Array.from(blockDirtyStates.value.entries()).filter(([_, dirty]) => dirty).length,
-        newOrder: originalItemOrder.value
-      });
-      
-      // Step 8: Emit the changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(items.value, getSortField());
-      emit('input', emitValue);
-      
-      await nextTick();
-      isInternalUpdate.value = false;
-      
-    } catch (error) {
-      logger.error('Error processing paste data:', error);
-      notificationsStore.add({
-        title: 'Paste Error',
-        text: 'Failed to process pasted data',
-        type: 'error'
-      });
-    }
-  }
-  
-  /**
-   * Process loaded records and update state
-   * Handles both initial load and subsequent updates
-   * On initial load:
-   * - Stores original state for dirty tracking
-   * - Sets initialValues to array of IDs only (Directus format)
-   * - Avoids emitting to prevent dirty state
-   * @param fullRecords - Array of junction records with full item data
-   */
-  function processLoadedRecords(fullRecords: JunctionRecord[], pastedIds?: Set<string | number>) {
-    logger.log('📥 PROCESS LOADED RECORDS - Start:', {
-      recordsCount: fullRecords.length,
-      isInitialLoad: isInitialLoad.value,
-      isInternalUpdate: isInternalUpdate.value,
-      currentItemsCount: items.value.length,
-      recordIds: fullRecords.map(r => r.id),
-      hasFullObjects: fullRecords.some(r => r.collection && r.item),
-      pastedIds: pastedIds ? Array.from(pastedIds) : []
-    });
-    
-    try {
-      // Sort records according to originalItemOrder if available
-      if (originalItemOrder.value.length > 0) {
-        const recordMap = new Map(fullRecords.map(r => [r.id, r]));
-        const sortedRecords = originalItemOrder.value
-          .map(id => recordMap.get(id))
-          .filter(record => record !== undefined) as JunctionRecord[];
-        
-        if (sortedRecords.length > 0) {
-          logger.debug('Sorted records according to originalItemOrder:', {
-            originalOrder: originalItemOrder.value,
-            beforeSort: fullRecords.map(r => r.id),
-            afterSort: sortedRecords.map(r => r.id)
-          });
-          fullRecords = sortedRecords;
-        }
-      }
-      
-      // Initial load - don't emit
-      if (isInitialLoad.value) {
-        logger.log('📥 PROCESS - Initial load path');
-        items.value = fullRecords;
-        
-        // Store original state for dirty tracking
-        blockOriginalStates.value.clear();
-        blockDirtyStates.value.clear();
-        fullRecords.forEach(record => {
-          // Only store original state for existing items (not new ones)
-          if (record.id && record.item && typeof record.item === 'object' && !isNewItem(record)) {
-            blockOriginalStates.value.set(
-              record.id.toString(),
-              deepClone(record.item)
-            );
-          }
-        });
-        
-        // Store only IDs in initialValues
-        if (initialValues.value && props.field) {
-          const idsOnly = fullRecords.map(record => record.id);
-          initialValues.value[props.field] = idsOnly;
-        }
-        
-        isInitialLoad.value = false;
-        logger.log('📥 PROCESS - Initial load complete, items.value set to:', items.value.length);
-        return;
-      }
-      
-      // Update items for post-save reloads
-      logger.log('📥 PROCESS - Update path (not initial load)');
-      items.value = fullRecords;
-      logger.log('📥 PROCESS - items.value updated to:', {
-        count: items.value.length,
-        ids: items.value.map(i => i.id)
-      });
-
-      // Only update original states if they don't exist yet (new blocks)
-      // or if this is a post-save reload (detected by checking if all current blocks are clean)
-      const allBlocksClean = items.value.every(item => {
-        const blockId = item.id?.toString();
-        return blockId && !blockDirtyStates.value.get(blockId);
-      });
-      
-      if (allBlocksClean || blockOriginalStates.value.size === 0) {
-        logger.log('📥 PROCESS - Updating original states (all blocks clean or first load)');
-        blockOriginalStates.value.clear();
-        blockDirtyStates.value.clear();
-        fullRecords.forEach(record => {
-          if (record.id && record.item && typeof record.item === 'object') {
-            // Skip new items - they should always be dirty
-            if (isNewItem(record)) {
-              logger.log('📥 PROCESS - Marking new item as dirty:', record.id);
-              blockDirtyStates.value.set(record.id.toString(), true);
-            } 
-            // Skip pasted items - they should NOT have their original state updated
-            else if (pastedIds && pastedIds.has(record.id)) {
-              logger.log('📥 PROCESS - Skipping original state for pasted item:', record.id);
-              blockDirtyStates.value.set(record.id.toString(), true);
-            } else {
-              blockOriginalStates.value.set(
-                record.id.toString(),
-                deepClone(record.item)
-              );
-            }
-          }
-        });
-      } else {
-        logger.log('📥 PROCESS - Keeping existing original states (blocks have changes)');
-        // For pasted items, ensure they're marked as dirty
-        if (pastedIds) {
-          pastedIds.forEach(id => {
-            blockDirtyStates.value.set(id.toString(), true);
-          });
-        }
-      }
-
-      // Check if we're processing pasted data
-      // Only consider it pasted data if we explicitly have pastedIds
-      const hasPastedData = pastedIds && pastedIds.size > 0;
-      
-      logger.log('📥 PROCESS - Paste check:', {
-        hasPastedData,
-        pastedIdsCount: pastedIds ? pastedIds.size : 0,
-        isInternalUpdate: isInternalUpdate.value
-      });
-
-      // After save-reload all blocks should be clean
-      // But for pasted data, we need to emit the full objects
-      if (!isInternalUpdate.value) {
-        // Always use prepareItemsForEmit which handles dirty tracking properly
-        const emitValue = prepareItemsForEmit(items.value, getSortField());
-        logger.log('📥 PROCESS - Emitting with prepareItemsForEmit:', {
-          type: 'smart emit',
-          count: emitValue.length,
-          sample: emitValue[0]
-        });
-        emit('input', emitValue);
-      } else {
-        logger.log('📥 PROCESS - Skipping emit due to isInternalUpdate');
-      }
-    } catch (error) {
-      logger.error('Error processing loaded records:', error);
-    }
-  }
 
   // UI Helper functions
   function getActualItemId(item: JunctionRecord): string | number {
@@ -1180,497 +649,6 @@ export function useExpandableBlocks(
       });
   }
 
-  function toggleExpand(itemId: string) {
-    if (props.disabled) return;
-    
-    const index = expandedItems.value.indexOf(itemId);
-    
-    if (mergedOptions.value?.accordionMode) {
-      if (index > -1) {
-        expandedItems.value = [];
-      } else {
-        expandedItems.value = [itemId];
-      }
-    } else {
-      if (index > -1) {
-        expandedItems.value.splice(index, 1);
-      } else {
-        expandedItems.value.push(itemId);
-      }
-    }
-  }
-
-  function updateItem(index: number, newData: any) {
-    if (props.disabled) return;
-    
-    const currentItem = items.value[index];
-    const itemId = getItemId(currentItem);
-    
-    logger.debug(`updateItem called for ${itemId}`, {
-      index,
-      hasNewData: !!newData,
-      newDataKeys: newData ? Object.keys(newData) : []
-    });
-    
-    // Update local state
-    const updatedItems = [...items.value];
-    updatedItems[index] = {
-      ...currentItem,
-      item: { ...(currentItem.item as ItemRecord), ...newData }
-    };
-    items.value = updatedItems;
-    
-    // Check if this update actually makes the item dirty
-    const originalData = blockOriginalStates.value.get(String(itemId));
-    if (originalData) {
-      const newItemData = updatedItems[index].item;
-      const isDirty = !deepEqual(newItemData, originalData);
-      blockDirtyStates.value.set(String(itemId), isDirty);
-      logger.debug(`updateItem: Set dirty state for ${itemId} to ${isDirty}`);
-    }
-    
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
-    // Emit with dirty tracking
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
-    });
-  }
-
-  function addNewItem(collection: string) {
-    if (props.disabled) return;
-    
-    if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
-      notificationsStore.add({
-        title: 'Save Required',
-        text: 'Please save the item first before adding blocks.',
-        type: 'warning'
-      });
-      return;
-    }
-    
-    // Get default data for the collection
-    const defaultData = m2aHelper.getDefaultDataForCollection(collection);
-    
-    // Create new item structure WITHOUT ID (important!)
-    // The ID will be assigned by the API when saving
-    const newItem: JunctionRecord = {
-      // No ID! This marks it as a new item
-      collection: collection,
-      item: defaultData // Just the default data, no ID
-    };
-    
-    // Add foreign key
-    const foreignKey = m2aStructure.value?.foreignKeyField || 
-                      relationInfo.value?.foreignKeyField || 
-                      `${props.collection}_id`;
-    
-    if (foreignKey && props.primaryKey) {
-      const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-        ? Number(props.primaryKey) 
-        : props.primaryKey;
-      (newItem as any)[foreignKey] = primaryKeyValue;
-    }
-    
-    // Add sort value
-    if (relationInfo.value?.meta?.sort_field) {
-      (newItem as any)[relationInfo.value.meta.sort_field] = items.value.length;
-    }
-    
-    // Add to items array
-    items.value = [...items.value, newItem];
-    
-    // Auto-expand the new item
-    expandedItems.value.push(getItemId(newItem));
-    
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
-    // Emit changes
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    
-    logger.log('🔄 NEW ITEM - addNewItem (no API calls):', {
-      function: 'addNewItem',
-      collection: collection,
-      newItemStructure: {
-        hasId: !!newItem.id,
-        collection: newItem.collection,
-        itemType: typeof newItem.item,
-        foreignKey: (newItem as any)[foreignKey],
-        defaultData: defaultData
-      },
-      totalItemsCount: items.value.length,
-      emitValue
-    });
-    
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
-    });
-    
-    notificationsStore.add({
-      title: 'Block Added',
-      text: 'New block added. Save to persist changes.',
-      type: 'info'
-    });
-  }
-
-  function showDeleteDialog(item: JunctionRecord, index: number) {
-    itemToDelete.value = { item, index };
-    deleteDialog.value = true;
-  }
-
-  async function confirmDeleteItem() {
-    if (!itemToDelete.value) return;
-    
-    const { item, index } = itemToDelete.value;
-    deleteDialog.value = false;
-    
-    try {
-      const itemId = getItemId(item);
-      loading.value[itemId] = true;
-      
-      // Delete junction record
-      if (item.id && !isNewItem(item)) {
-        const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-        await api.delete(`/items/${junctionCollection}/${item.id}`);
-        
-        // Optionally delete the actual item
-        if (item.item && typeof item.item === 'object' && item.collection) {
-          try {
-            await api.delete(`/items/${item.collection}/${(item.item as ItemRecord).id}`);
-          } catch (error) {
-            logger.warn('Failed to delete content item:', error);
-          }
-        }
-      }
-      
-      // Remove from state
-      expandedItems.value = expandedItems.value.filter(id => id !== itemId);
-      blockOriginalStates.value.delete(itemId);
-      
-      // Update originalItemOrder to remove deleted item
-      originalItemOrder.value = originalItemOrder.value.filter(id => String(id) !== String(item.id));
-      logger.debug('Updated originalItemOrder after deletion:', originalItemOrder.value);
-      
-      const updatedItems = [...items.value];
-      updatedItems.splice(index, 1);
-      
-      // Update sort values
-      if (relationInfo.value?.meta?.sort_field) {
-        updatedItems.forEach((item, idx) => {
-          if (item[relationInfo.value!.meta!.sort_field!] !== idx) {
-            item[relationInfo.value!.meta!.sort_field!] = idx;
-          }
-        });
-      }
-      
-      items.value = updatedItems;
-      
-      // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems, getSortField());
-      
-      logger.log('🔄 SAVE STATE - confirmDeleteItem:', {
-        function: 'confirmDeleteItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        deletedItem: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item,
-          foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown']
-        },
-        remainingItemsCount: updatedItems.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-        junctionInfo: {
-          junctionCollection: relationInfo.value?.junctionCollection,
-          foreignKeyField: relationInfo.value?.foreignKeyField
-        }
-      });
-      
-      emit('input', emitValue);
-      
-      itemToDelete.value = null;
-      
-      notificationsStore.add({
-        title: 'Deleted',
-        text: 'Block deleted successfully',
-        type: 'success'
-      });
-      
-    } catch (error) {
-      logger.error('Error deleting block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to delete block',
-        type: 'error'
-      });
-    } finally {
-      delete loading.value[getItemId(item)];
-    }
-  }
-
-  async function duplicateItem(item: JunctionRecord, index: number) {
-    if (props.disabled) return;
-    
-    // Check if we can add more blocks
-    if (!canAddMoreBlocks.value) {
-      notificationsStore.add({
-        title: 'Maximum Reached',
-        text: `Maximum number of blocks (${mergedOptions.value?.maxBlocks}) reached`,
-        type: 'warning'
-      });
-      return;
-    }
-    
-    const dupKey = `dup_${Date.now()}`;
-    try {
-      const actualItem = item.item || item;
-      const collection = item.collection || (actualItem as any).collection;
-      
-      if (!collection) {
-        logger.error('Cannot duplicate: no collection found');
-        return;
-      }
-      
-      loading.value[dupKey] = true;
-      
-      // Create copy
-      const itemCopy: any = { ...(actualItem as ItemRecord) };
-      delete itemCopy.id;
-      delete itemCopy.user_created;
-      delete itemCopy.user_updated;
-      delete itemCopy.date_created;
-      delete itemCopy.date_updated;
-      
-      // Update title
-      if (itemCopy.title) {
-        itemCopy.title += ' (Copy)';
-      } else if (itemCopy.name) {
-        itemCopy.name += ' (Copy)';
-      } else if (itemCopy.headline) {
-        itemCopy.headline += ' (Copy)';
-      }
-      
-      // Create duplicate
-      const newItemResponse = await api.post(`/items/${collection}`, itemCopy);
-      const createdItem = newItemResponse.data.data;
-      
-      // Create junction
-      const junctionData: any = {
-        collection: collection,
-        item: createdItem.id
-      };
-      
-      if (relationInfo.value?.foreignKeyField && props.primaryKey) {
-        // Convert primaryKey to number if it's a string number
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        junctionData[relationInfo.value.foreignKeyField] = primaryKeyValue;
-        
-        logger.debug('Foreign key assignment (duplicate):', {
-          foreignKey: relationInfo.value.foreignKeyField,
-          originalPrimaryKey: props.primaryKey,
-          originalType: typeof props.primaryKey,
-          convertedValue: primaryKeyValue,
-          convertedType: typeof primaryKeyValue
-        });
-      }
-      
-      if (relationInfo.value?.meta?.sort_field) {
-        junctionData[relationInfo.value.meta.sort_field] = index + 1;
-      }
-      
-      const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-      const junctionResponse = await api.post(`/items/${junctionCollection}`, junctionData);
-      const junctionRecord = junctionResponse.data.data;
-      
-      // Create complete item
-      const newItem: JunctionRecord = {
-        id: junctionRecord.id,
-        collection: collection,
-        item: createdItem
-      };
-      
-      if (relationInfo.value?.foreignKeyField) {
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        newItem[relationInfo.value.foreignKeyField] = primaryKeyValue;
-      }
-      
-      // Insert at position
-      const updatedItems = [...items.value];
-      updatedItems.splice(index + 1, 0, newItem);
-      items.value = updatedItems;
-      
-      // Auto-expand
-      expandedItems.value.push(String(junctionRecord.id));
-      
-      // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems, getSortField());
-      
-      logger.log('🔄 SAVE STATE - duplicateItem:', {
-        function: 'duplicateItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        originalItem: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item
-        },
-        duplicatedItem: {
-          id: createdItem.id,
-          data: createdItem
-        },
-        duplicatedJunction: {
-          id: junctionRecord.id,
-          data: junctionRecord
-        },
-        itemsCount: updatedItems.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-      });
-      
-      emit('input', emitValue);
-      
-      notificationsStore.add({
-        title: 'Duplicated',
-        text: 'Block duplicated successfully',
-        type: 'success'
-      });
-      
-    } catch (error) {
-      logger.error('Error duplicating block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to duplicate block',
-        type: 'error'
-      });
-    } finally {
-      delete loading.value[dupKey];
-    }
-  }
-
-  function discardChanges(item: JunctionRecord, index: number) {
-    if (props.disabled) return;
-    
-    const blockId = item.id?.toString();
-    if (!blockId) return;
-    
-    const originalData = blockOriginalStates.value.get(blockId);
-    if (!originalData) {
-      logger.warn('No original data found for block:', blockId);
-      return;
-    }
-    
-    logger.debug(`discardChanges called for ${blockId}`, {
-      hasOriginalData: !!originalData,
-      currentDirtyState: blockDirtyStates.value.get(blockId)
-    });
-    
-    // Update local state with original data
-    const updatedItems = [...items.value];
-    updatedItems[index] = {
-      ...item,
-      item: deepClone(originalData)
-    };
-    items.value = updatedItems;
-    
-    // Clear dirty state for this block BEFORE emitting
-    blockDirtyStates.value.set(blockId, false);
-    logger.debug(`Cleared dirty state for block ${blockId}`);
-    
-    // Verify the item is actually restored
-    const restoredData = updatedItems[index].item;
-    const isRestored = deepEqual(restoredData, originalData);
-    logger.debug(`Discard verification for ${blockId}: isRestored=${isRestored}`);
-    
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
-    // Emit the change
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    
-    logger.log('🔄 SAVE STATE - discardBlockChanges:', {
-      function: 'discardBlockChanges',
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      blockId,
-      index,
-      itemsCount: items.value.length,
-      emitValue,
-      emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-      isRestored
-    });
-    
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
-    });
-    
-    // Show notification
-    notificationsStore.add({
-      title: 'Changes Discarded',
-      text: 'Block reverted to last saved state',
-      type: 'success'
-    });
-  }
-
-  function onSort() {
-    if (props.disabled) return;
-    
-    // Update sort values if we have a sort field
-    if (relationInfo.value?.meta?.sort_field) {
-      items.value = items.value.map((item, index) => ({
-        ...item,
-        [relationInfo.value!.meta!.sort_field!]: index
-      }));
-    }
-    
-    // Set internal update flag to prevent watch from processing this as paste
-    isInternalUpdate.value = true;
-    
-    const emitValue = prepareItemsForEmit(items.value, getSortField());
-    
-    logger.log('🔄 SAVE STATE - onSort:', {
-      function: 'onSort',
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      sortField: relationInfo.value?.meta?.sort_field,
-      itemsCount: items.value.length,
-      emitValue,
-      emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-    });
-    
-    emit('input', emitValue);
-    
-    // Reset internal update flag after next tick
-    nextTick(() => {
-      isInternalUpdate.value = false;
-    });
-  }
 
   // Status functions
   function hasStatusField(item: JunctionRecord): boolean {
@@ -1693,96 +671,6 @@ export function useExpandableBlocks(
     return statusConfig?.label || status;
   }
 
-  async function updateItemStatus(item: JunctionRecord, index: number, newStatus: string) {
-    if (props.disabled) return;
-    
-    try {
-      const actualItem = item.item || item;
-      const itemId = (actualItem as ItemRecord).id;
-      const collection = item.collection || (actualItem as any).collection;
-      
-      if (!itemId || !collection) {
-        logger.error('Cannot update status: missing item ID or collection');
-        return;
-      }
-      
-      // No API call - just update local state
-      
-      // Update local state only
-      const updatedItems = [...items.value];
-      if (item.item) {
-        updatedItems[index] = {
-          ...item,
-          item: {
-            ...(item.item as ItemRecord),
-            status: newStatus as 'published' | 'draft' | 'archived'
-          }
-        };
-      } else {
-        updatedItems[index] = {
-          ...item,
-          status: newStatus as 'published' | 'draft' | 'archived'
-        };
-      }
-      items.value = updatedItems;
-      
-      // Check if this update actually makes the item dirty
-      const blockId = getItemId(item);
-      if (blockId) {
-        const originalData = blockOriginalStates.value.get(String(blockId));
-        if (originalData) {
-          const newItemData = updatedItems[index].item || updatedItems[index];
-          const isDirty = !deepEqual(newItemData, originalData);
-          blockDirtyStates.value.set(String(blockId), isDirty);
-          logger.debug(`Status update: Set dirty state for ${blockId} to ${isDirty}`);
-        } else {
-          blockDirtyStates.value.set(String(blockId), true);
-          logger.debug('Block marked as dirty after status update (no original):', blockId);
-        }
-      }
-      
-      // Set internal update flag to prevent watch from processing this as paste
-      isInternalUpdate.value = true;
-      
-      const emitValue = prepareItemsForEmit(items.value, getSortField());
-      
-      logger.log('🔄 SAVE STATE - updateItemStatus:', {
-        function: 'updateItemStatus',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        itemId,
-        targetCollection: collection,
-        newStatus,
-        item: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item
-        },
-        itemsCount: items.value.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-      });
-      
-      emit('input', emitValue);
-      
-      // Reset internal update flag after next tick
-      nextTick(() => {
-        isInternalUpdate.value = false;
-      });
-      
-      // Don't show notification - status not saved yet
-      
-    } catch (error) {
-      logger.error('Error updating status:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to update status',
-        type: 'error'
-      });
-    }
-  }
 
   // Nested M2A functions
   function hasNestedM2A(item: JunctionRecord): boolean {
@@ -1835,6 +723,7 @@ export function useExpandableBlocks(
     saveButtonWouldBeActive,
     shouldShowItemId,
     canAddMoreBlocks,
+    allowedCollectionsMap,  // From useM2AData
     
     // Methods
     initialize,
@@ -1860,6 +749,11 @@ export function useExpandableBlocks(
     hasNestedM2A,
     getM2AFields,
     formatFieldName,
-    isBlockDirty
+    isBlockDirty,
+    
+    // From useM2AData composable
+    loadFullItemData,
+    processLoadedRecords,
+    processPasteData
   };
 }

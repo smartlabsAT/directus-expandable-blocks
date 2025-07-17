@@ -145,15 +145,10 @@ export function useBlockState(relationInfo?: Ref<any>) {
           isDirty = blockDirtyStates.value.get(`idx_${index}`) || false;
         }
         
-        // If still not marked as dirty, check actual data changes
-        if (!isDirty && item.item) {
-          // Only check content changes, not position for individual blocks
-          const originalData = blockOriginalStates.value.get(blockId);
-          if (originalData) {
-            isDirty = !deepEqual(item.item, originalData);
-          } else {
-            isDirty = isBlockDirty(blockId, item.item);
-          }
+        // If still not marked as dirty, check actual data and position changes
+        if (!isDirty) {
+          // Use the full isBlockDirty check which includes position changes
+          isDirty = isBlockDirty(blockId, item.item);
         }
         
         debugInfo.items.push({
