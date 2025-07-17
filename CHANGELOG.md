@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2025-07-17
+
+### Fixed
+- **Deep Equality Checking**: Implemented deepEqual function for proper object comparison in dirty state detection
+- **isDirty State Persistence**: Fixed bug where isDirty state persisted after reverting changes
+- **Paste Detection**: Fixed incorrect paste detection when adding new blocks
+- **Sorting State After Save**: Blocks no longer incorrectly remain dirty after saving when only positions changed
+- **Deleted Blocks Position**: Removed deleted blocks from originalItemOrder to prevent false position change detections
+- **TypeError Prevention**: Added type check before using 'in' operator in extractItemTitle helper
+- **Internal Update Handling**: Added isInternalUpdate flag to all functions that emit changes to prevent watch conflicts
+
+### Added
+- **Visual NEW Indicator**: New unsaved blocks now display a green pulsing dot instead of the blue dirty indicator
+- **Disabled State for Discard**: "Discard Changes" option now appears disabled when no changes are present
+
+### Changed
+- **Add Block Button Style**: Updated button design to match Directus M2A interface style
+- **Status Dropdown Behavior**: Fixed immediate API save on status changes (Issue #6) - changes now wait for global save
+
 ## [1.0.7] - 2025-07-16
 
 ### Fixed
@@ -153,6 +172,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart content improvement tools
 - Context-aware AI suggestions
 
+[1.0.8]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.8
+[1.0.7]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.7
+[1.0.6]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.6
 [1.0.5]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.5
 [1.0.4]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.4
 [1.0.3]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.3
