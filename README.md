@@ -311,7 +311,7 @@ npm run link
 
 ### 📚 Architecture Documentation
 
-For detailed information about the data flow, state management, and debugging techniques, see our comprehensive [Architecture Documentation](./ARCHITECTURE.md). This includes:
+For detailed information about the data flow, state management, and debugging techniques, see our comprehensive [Architecture Documentation](./docs/ARCHITECTURE.md). This includes:
 
 - Complete data flow lifecycle with visual diagrams
 - Detailed state management explanations
@@ -322,7 +322,7 @@ For detailed information about the data flow, state management, and debugging te
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on:
+We welcome contributions! Please see our [Contributing Guide](./docs/CONTRIBUTING.md) for details on:
 
 - Development setup
 - Testing procedures  
@@ -340,11 +340,11 @@ Report issues on [GitHub](https://github.com/smartlabsAT/directus-expandable-blo
 
 ## 🔄 Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
+See [CHANGELOG.md](./docs/CHANGELOG.md) for detailed version history.
 
 ## 🗺️ Roadmap
 
-Check out our [Development Roadmap](./ROADMAP.md) to see what's coming next:
+Check out our [Development Roadmap](./docs/ROADMAP.md) to see what's coming next:
 
 - 🤖 AI-Powered Content Generation (v1.1.0)
 - 🎨 Enhanced UI/UX Features
@@ -368,9 +368,9 @@ For comprehensive documentation, visit our **[GitHub Wiki](https://github.com/sm
 
 ### 📄 Quick Links
 
-- 🤝 **[Contributing](./CONTRIBUTING.md)** - How to contribute
-- 🗺️ **[Roadmap](./ROADMAP.md)** - Future plans
-- 🔄 **[Changelog](./CHANGELOG.md)** - Version history
+- 🤝 **[Contributing](./docs/CONTRIBUTING.md)** - How to contribute
+- 🗺️ **[Roadmap](./docs/ROADMAP.md)** - Future plans
+- 🔄 **[Changelog](./docs/CHANGELOG.md)** - Version history
 
 ### 🐛 Issue Templates
 
