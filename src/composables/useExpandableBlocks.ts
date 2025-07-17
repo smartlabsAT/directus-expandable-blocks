@@ -216,13 +216,25 @@ export function useExpandableBlocks(
     
     const result = itemsArray.map((item, index) => {
       const blockId = item.id?.toString();
+      
+      // Handle items without ID (new blocks)
       if (!blockId) {
-        logger.warn('🔧 PREPARE EMIT - Item without ID:', item);
-        return item; // Safety fallback
+        logger.log('🔧 PREPARE EMIT - Item without ID (new block):', {
+          index,
+          collection: item.collection,
+          hasItem: !!item.item
+        });
+        // Always return full object for new items without ID
+        return item;
       }
       
       // First check the explicit dirty state map
       let isDirty = blockDirtyStates.value.get(blockId) || false;
+      
+      // Also check using index-based key for blocks without real ID
+      if (!isDirty && !item.id) {
+        isDirty = blockDirtyStates.value.get(`idx_${index}`) || false;
+      }
       
       // New items are always dirty
       if (isNewItem(item)) {
@@ -581,10 +593,8 @@ export function useExpandableBlocks(
       return;
     }
     
-    // NEU: Nach einem Save kommt die neue Reihenfolge von Directus
-    // WICHTIG: Wir aktualisieren originalItemOrder nur, wenn ALLE Blöcke als IDs kommen (= clean state nach Save)
+    // Check if ALL items are just IDs (indicates a save event)
     if (Array.isArray(newVal) && newVal.length > 0 && originalItemOrder.value.length > 0) {
-      // Prüfe ob alle Einträge nur IDs sind (keine Objekte)
       const allAreIds = newVal.every(item => typeof item !== 'object' || item === null);
       
       if (allAreIds) {
@@ -592,8 +602,7 @@ export function useExpandableBlocks(
           typeof item === 'object' && item !== null ? (item as any).id : item
         );
         
-        // Wenn alle Blöcke nur als IDs kommen UND die Reihenfolge anders ist,
-        // dann war das ein erfolgreicher Save
+        // If all blocks are IDs only, this is a save event
         if (JSON.stringify(newOrder) !== JSON.stringify(originalItemOrder.value)) {
           logger.debug('Save detected - all blocks are clean IDs, updating originalItemOrder:', {
             previousOriginal: originalItemOrder.value,
@@ -605,7 +614,7 @@ export function useExpandableBlocks(
           blockDirtyStates.value.clear();
           logger.debug('Cleared all dirty states after save');
           
-          // Wichtig: Lade die Daten neu, damit sie in der neuen Reihenfolge sind
+          // Reload data in new order
           if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
             await loadFullItemData();
           }
@@ -631,116 +640,58 @@ export function useExpandableBlocks(
       return;
     }
     
-    // Check if we have pasted full objects
-    // BUT: Skip if this is just a normal update (not a paste)
-    // We detect a paste by checking if we have NEW objects that weren't in oldVal
+    // PASTE DETECTION: Check if this is a paste event
+    // Paste can contain: 1) Just IDs, 2) Objects with ID, 3) Objects without ID (new blocks)
     if (Array.isArray(newVal) && newVal.length > 0) {
-      const hasFullObjects = newVal.some(item => 
-        typeof item === 'object' && 
-        item !== null && 
-        'collection' in item && 
-        'item' in item
-      );
+      // Analyze the data structure
+      let hasJustIds = false;
+      let hasObjectsWithId = false;
+      let hasObjectsWithoutId = false;
+      let hasMixedData = false;
       
-      if (hasFullObjects) {
-        // For paste detection, we need to check:
-        // 1. If objects have the full structure with 'item' as object (not just ID)
-        // 2. If the content has changed compared to our current items
-        
-        const hasFullItemObjects = newVal.some(item => 
+      newVal.forEach(item => {
+        if (typeof item === 'number' || typeof item === 'string') {
+          hasJustIds = true;
+        } else if (typeof item === 'object' && item !== null) {
+          if ('collection' in item && 'item' in item) {
+            if (item.id) {
+              hasObjectsWithId = true;
+            } else {
+              hasObjectsWithoutId = true;
+            }
+          }
+        }
+      });
+      
+      hasMixedData = (hasJustIds && (hasObjectsWithId || hasObjectsWithoutId)) || 
+                     (hasObjectsWithId && hasObjectsWithoutId);
+      
+      // Detect paste: Mixed data OR objects without ID OR significant structure change
+      const isPasteEvent = hasMixedData || hasObjectsWithoutId || 
+        (hasObjectsWithId && newVal.some(item => 
           typeof item === 'object' && 
           item !== null && 
-          'collection' in item && 
-          'item' in item &&
-          typeof item.item === 'object' && // item is a full object, not just an ID
-          item.item !== null
-        );
+          'item' in item && 
+          typeof item.item === 'object'
+        ));
+      
+      if (isPasteEvent) {
+        logger.log('📋 PASTE EVENT DETECTED:', {
+          hasJustIds,
+          hasObjectsWithId,
+          hasObjectsWithoutId,
+          hasMixedData,
+          totalItems: newVal.length,
+          currentItemsCount: items.value.length
+        });
         
-        if (hasFullItemObjects) {
-          // Compare with current items to see if content changed
-          let contentChanged = false;
-          
-          // Check if we have more items than currently displayed
-          if (newVal.length !== items.value.length) {
-            contentChanged = true;
-            logger.debug('Item count changed:', { new: newVal.length, current: items.value.length });
-          } else {
-            // Check if any item has different content
-            for (const newItem of newVal) {
-              if (typeof newItem === 'object' && newItem !== null) {
-                // Items without ID or with temp IDs are new
-                if (!newItem.id || isNewItem(newItem)) {
-                  contentChanged = true;
-                  logger.debug('New item without ID found');
-                  break;
-                }
-                
-                const currentItem = items.value.find(item => item.id === newItem.id);
-                if (currentItem) {
-                  // Check if the item content is different
-                  if (newItem.item && typeof newItem.item === 'object') {
-                    if (!deepEqual(currentItem.item, newItem.item)) {
-                      contentChanged = true;
-                      logger.debug('Content changed for item:', newItem.id);
-                      break;
-                    }
-                  }
-                } else {
-                  // New item that doesn't exist in current items
-                  contentChanged = true;
-                  logger.debug('New item found:', newItem.id);
-                  break;
-                }
-              }
-            }
-          }
-          
-          if (contentChanged) {
-            logger.log('🎯 WATCH - Detected paste with content changes, processing pasted data');
-            
-            // Process mixed data: IDs need to be loaded, objects can be used directly
-            // We need to separate IDs from objects
-            const idsToLoad: (string | number)[] = [];
-            const fullObjects: JunctionRecord[] = [];
-            
-            newVal.forEach((item: any) => {
-              if (typeof item === 'number' || typeof item === 'string') {
-                // This is just an ID - needs to be loaded from server
-                idsToLoad.push(item);
-              } else if (typeof item === 'object' && item !== null) {
-                // This is a full object (with or without ID)
-                fullObjects.push(item);
-              }
-            });
-            
-            logger.debug('Paste data analysis:', {
-              totalItems: newVal.length,
-              idsToLoad: idsToLoad.length,
-              fullObjects: fullObjects.length,
-              hasNewItems: fullObjects.some(obj => !obj.id)
-            });
-            
-            // If we have IDs to load, we need to fetch them first
-            if (idsToLoad.length > 0) {
-              logger.log('🎯 WATCH - Mixed paste data, need to load IDs from server');
-              // Let loadFullItemData handle the mixed data
-              await loadFullItemData();
-            } else {
-              // All items are objects, process directly
-              logger.log('🎯 WATCH - All pasted items are objects, processing directly');
-              processLoadedRecords(fullObjects);
-            }
-            return;
-          } else {
-            logger.debug('WATCH - Full objects detected but no content changes (normal update)');
-          }
-        } else {
-          logger.debug('WATCH - Objects detected but items are IDs only (not a paste)');
-        }
+        // Process paste data - completely replace current data
+        await processPasteData(newVal);
+        return;
       }
     }
     
-    // Check if actual items changed (add/remove)
+    // Not a paste event - check if actual items changed (add/remove)
     const oldIds = items.value.map(item => item.id).sort();
     const newIds = (newVal || []).map((item: any) => {
       return typeof item === 'object' ? item.id : item;
@@ -1029,6 +980,183 @@ export function useExpandableBlocks(
     }
   }
 
+  /**
+   * Process pasted data from "paste raw value" operation
+   * Handles all three data types: IDs only, objects with ID, objects without ID
+   * @param pastedData - The pasted array containing mixed data types
+   */
+  async function processPasteData(pastedData: any[]) {
+    logger.log('📋 PROCESS PASTE DATA - Start:', {
+      totalItems: pastedData.length,
+      currentItemsCount: items.value.length
+    });
+    
+    try {
+      // Step 1: Analyze and categorize the pasted data
+      const idsToLoad: (string | number)[] = [];
+      const objectsWithId: JunctionRecord[] = [];
+      const objectsWithoutId: JunctionRecord[] = [];
+      
+      pastedData.forEach((item, index) => {
+        if (typeof item === 'number' || typeof item === 'string') {
+          // Just an ID - needs to be loaded
+          idsToLoad.push(item);
+        } else if (typeof item === 'object' && item !== null && 'collection' in item) {
+          if (item.id) {
+            // Object with ID
+            objectsWithId.push(item);
+          } else {
+            // Object without ID (new block)
+            objectsWithoutId.push(item);
+          }
+        }
+      });
+      
+      logger.log('📋 PASTE DATA ANALYSIS:', {
+        idsToLoad: idsToLoad.length,
+        objectsWithId: objectsWithId.length,
+        objectsWithoutId: objectsWithoutId.length
+      });
+      
+      // Step 2: Load data for IDs if needed
+      let loadedRecords: JunctionRecord[] = [];
+      if (idsToLoad.length > 0) {
+        try {
+          const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
+          const foreignKeyField = relationInfo.value?.foreignKeyField || `${props.collection}_id`;
+          
+          const response = await api.get(`/items/${junctionCollection}`, {
+            params: {
+              filter: {
+                id: { _in: idsToLoad },
+                [foreignKeyField]: { _eq: props.primaryKey }
+              },
+              fields: buildM2AFieldsString(allowedCollections.value),
+              limit: -1
+            }
+          });
+          loadedRecords = response.data.data || [];
+          logger.log('📋 Loaded records for IDs:', {
+            requested: idsToLoad,
+            loaded: loadedRecords.map(r => r.id)
+          });
+        } catch (error) {
+          logger.error('Failed to load IDs for paste:', error);
+        }
+      }
+      
+      // Step 3: Build complete items array in correct order
+      const completeItems: JunctionRecord[] = [];
+      const pastedItemIds = new Set<string | number>();
+      const foreignKeyField = relationInfo.value?.foreignKeyField || `${props.collection}_id`;
+      
+      pastedData.forEach((item, index) => {
+        if (typeof item === 'number' || typeof item === 'string') {
+          // Find the loaded record for this ID
+          const loaded = loadedRecords.find(r => r.id === item);
+          if (loaded) {
+            completeItems.push(loaded);
+            pastedItemIds.add(loaded.id);
+          }
+        } else if (typeof item === 'object' && item !== null) {
+          // Ensure the object has the correct structure
+          const processedItem = { ...item };
+          
+          // Add foreign key if missing
+          if (foreignKeyField && props.primaryKey && !processedItem[foreignKeyField]) {
+            const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
+              ? Number(props.primaryKey) 
+              : props.primaryKey;
+            processedItem[foreignKeyField] = primaryKeyValue;
+          }
+          
+          // Add sort value if missing
+          if (relationInfo.value?.meta?.sort_field && !processedItem[relationInfo.value.meta.sort_field]) {
+            processedItem[relationInfo.value.meta.sort_field] = index;
+          }
+          
+          completeItems.push(processedItem);
+          if (processedItem.id) {
+            pastedItemIds.add(processedItem.id);
+          }
+        }
+      });
+      
+      // Step 4: Preserve original states for existing blocks
+      const existingOriginalStates = new Map(blockOriginalStates.value);
+      const currentItemsMap = new Map(items.value.map(item => [item.id?.toString(), item]));
+      
+      // Step 5: Update items.value with the pasted data
+      items.value = completeItems;
+      
+      // Step 6: Update states
+      blockOriginalStates.value.clear();
+      blockDirtyStates.value.clear();
+      
+      completeItems.forEach((item, index) => {
+        const itemId = item.id?.toString();
+        
+        if (!item.id) {
+          // New block without ID - always dirty
+          blockDirtyStates.value.set(`idx_${index}`, true);
+          logger.log('📋 New block without ID marked as dirty at index:', index);
+        } else if (itemId) {
+          // Check if this block existed before
+          const existingOriginal = existingOriginalStates.get(itemId);
+          const currentItem = currentItemsMap.get(itemId);
+          
+          if (existingOriginal) {
+            // Block existed before - preserve original state
+            blockOriginalStates.value.set(itemId, existingOriginal);
+            
+            // Check if it's dirty by comparing with original
+            if (item.item && typeof item.item === 'object') {
+              const isDirty = !deepEqual(item.item, existingOriginal);
+              if (isDirty) {
+                blockDirtyStates.value.set(itemId, true);
+                logger.log('📋 Existing block marked as dirty:', itemId);
+              }
+            }
+          } else {
+            // New block with ID
+            if (item.item && typeof item.item === 'object') {
+              blockOriginalStates.value.set(itemId, deepClone(item.item));
+              blockDirtyStates.value.set(itemId, true);
+              logger.log('📋 New block with ID marked as dirty:', itemId);
+            }
+          }
+        }
+      });
+      
+      // Step 7: Update original item order
+      originalItemOrder.value = completeItems
+        .filter(item => item.id)
+        .map(item => item.id);
+      
+      logger.log('📋 PASTE PROCESSING COMPLETE:', {
+        totalItems: items.value.length,
+        dirtyBlocks: Array.from(blockDirtyStates.value.entries()).filter(([_, dirty]) => dirty).length,
+        newOrder: originalItemOrder.value
+      });
+      
+      // Step 8: Emit the changes
+      isInternalUpdate.value = true;
+      const emitValue = prepareItemsForEmit(items.value);
+      emit('input', emitValue);
+      
+      await nextTick();
+      isInternalUpdate.value = false;
+      
+    } catch (error) {
+      logger.error('Error processing paste data:', error);
+      notificationsStore.add({
+        title: 'Paste Error',
+        text: 'Failed to process pasted data',
+        type: 'error'
+      });
+    }
+  }
+  
   /**
    * Process loaded records and update state
    * Handles both initial load and subsequent updates
