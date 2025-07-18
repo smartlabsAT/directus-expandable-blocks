@@ -70,11 +70,3 @@ defineEmits<{
   'delete': [];
 }>();
 </script>
-
-<style lang="scss" scoped>
-.danger {
-  --v-list-item-color: var(--danger);
-  --v-list-item-color-hover: var(--danger);
-  --v-list-item-icon-color: var(--danger);
-}
-</style>

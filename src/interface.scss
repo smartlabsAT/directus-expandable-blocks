@@ -386,6 +386,13 @@ $expanded-border-width: 5px;
   --v-list-item-background-color-hover: var(--danger-10);
 }
 
+/* Danger styles from BlockActions component */
+.block-actions .danger {
+  --v-list-item-color: var(--danger);
+  --v-list-item-color-hover: var(--danger);
+  --v-list-item-icon-color: var(--danger);
+}
+
 /* Divider in menus */
 .v-divider {
   margin: 4px 0;
