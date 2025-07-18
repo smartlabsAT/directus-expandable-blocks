@@ -139,6 +139,34 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
     getM2AFields,
     
     // Formatting
-    formatFieldName
+    formatFieldName,
+    
+    // Collection helpers for Item Selector
+    getCollectionIconByName,
+    getCollectionDisplayName
   };
+}
+
+/**
+ * Get collection icon by name
+ */
+function getCollectionIconByName(
+  collectionName: string | null, 
+  collections: CollectionInfo[]
+): string {
+  if (!collectionName) return 'box';
+  const collection = collections.find(c => c.collection === collectionName);
+  return collection?.icon || 'box';
+}
+
+/**
+ * Get collection display name
+ */
+function getCollectionDisplayName(
+  collectionName: string | null,
+  collections: CollectionInfo[]
+): string {
+  if (!collectionName) return 'Items';
+  const collection = collections.find(c => c.collection === collectionName);
+  return collection?.name || collectionName;
 }

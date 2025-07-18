@@ -26,6 +26,19 @@
       :collections="allowedCollections"
       :can-add="canAddMoreBlocks"
       @add-item="addNewItem"
+      @add-existing="itemSelector.open"
+    />
+
+    <!-- Item Selector Drawer -->
+    <item-selector-drawer
+      :open="itemSelector.isOpen.value"
+      :collection="itemSelector.selectedCollection.value"
+      :collections="allowedCollections"
+      :items="itemSelector.availableItems.value"
+      :loading="itemSelector.loading.value"
+      @close="itemSelector.close"
+      @confirm="handleItemSelection"
+      @search="itemSelector.handleSearch"
     />
 
     <!-- Delete Dialog -->
@@ -45,10 +58,13 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs, inject, ref, onMounted } from 'vue';
+import { toRefs, inject, ref, onMounted, computed } from 'vue';
 import { useExpandableBlocks } from './composables/useExpandableBlocks';
+import { useItemSelector } from './composables/useItemSelector';
+import { useApi } from '@directus/extensions-sdk';
 import BlockList from './components/BlockList.vue';
 import AddBlockButton from './components/AddBlockButton.vue';
+import ItemSelectorDrawer from './components/ItemSelectorDrawer.vue';
 import type { UseExpandableBlocksProps } from './composables/useExpandableBlocks';
 
 interface Props extends UseExpandableBlocksProps {}
@@ -100,6 +116,7 @@ const {
   toggleExpand,
   updateItem,
   addNewItem,
+  addExistingItems,
   showDeleteDialog,
   confirmDeleteItem,
   duplicateItem,
@@ -113,6 +130,21 @@ const {
   getM2AFields,
   formatFieldName
 } = expandableBlocks;
+
+// Initialize API
+const api = useApi();
+
+// Initialize item selector composable
+const itemSelector = useItemSelector(api, allowedCollections);
+
+// Handle item selection from drawer
+function handleItemSelection(selectedItems: any[]) {
+  if (selectedItems.length > 0 && itemSelector.selectedCollection.value) {
+    // Use the addExistingItems function from the composable
+    addExistingItems(itemSelector.selectedCollection.value, selectedItems);
+  }
+  itemSelector.close();
+}
 
 // Initialize on mount
 onMounted(() => {
