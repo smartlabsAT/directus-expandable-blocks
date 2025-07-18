@@ -65,6 +65,3 @@ defineEmits<{
 }>();
 </script>
 
-<style lang="scss" scoped>
-/* Styles are defined in interface.scss */
-</style>

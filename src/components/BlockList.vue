@@ -141,7 +141,3 @@ const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFiel
 const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
 </script>
 
-<style lang="scss" scoped>
-/* Component-specific styles can go here */
-/* Global styles are in interface.scss */
-</style>
