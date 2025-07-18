@@ -72,16 +72,6 @@ This means you get all the benefits of a sophisticated block editor while mainta
 - **Template System**: Pre-configured content templates
 - **Status Management**: Built-in content status workflows
 
-### 🚀 Coming Soon: AI-Powered Features
-We're actively developing AI integration features that will include:
-- **AI Content Generation**: Generate content using OpenAI GPT, Claude, or custom APIs
-- **Smart Content Improvement**: Grammar, style, clarity, and SEO optimization
-- **Multi-Language Translation**: Instant translation to multiple languages
-- **Context-Aware Suggestions**: AI that understands your page structure
-- **Field-Specific Targeting**: Generate content for specific fields only
-
-> 💡 **Early Access**: AI features are currently in development on the `feature/ai-assistant` branch. Follow our [GitHub repository](https://github.com/smartlabsAT/directus-expandable-blocks) for updates!
-
 ### Configuration Options
 - Enable/disable sorting
 - Show/hide item IDs
@@ -346,7 +336,6 @@ See [CHANGELOG.md](./docs/CHANGELOG.md) for detailed version history.
 
 Check out our [Development Roadmap](./docs/ROADMAP.md) to see what's coming next:
 
-- 🤖 AI-Powered Content Generation (v1.1.0)
 - 🎨 Enhanced UI/UX Features
 - 🔧 Developer Tools & CLI
 - 🚀 Performance Optimizations
@@ -376,7 +365,6 @@ For comprehensive documentation, visit our **[GitHub Wiki](https://github.com/sm
 
 - [Report a Bug](.github/ISSUE_TEMPLATE/bug_report.md)
 - [Request a Feature](.github/ISSUE_TEMPLATE/feature_request.md)
-- [AI Assistant Feedback](.github/ISSUE_TEMPLATE/ai_feedback.md)
 
 ---
 

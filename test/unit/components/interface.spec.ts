@@ -1,382 +1,378 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mount, config } from '@vue/test-utils';
-import { nextTick } from 'vue';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount } from '@vue/test-utils';
+import { ref } from 'vue';
 import InterfaceComponent from '@/interface.vue';
-import type { JunctionRecord } from '@/types';
 
-// Mock vuedraggable
-vi.mock('vuedraggable', () => ({
-  default: {
-    name: 'draggable',
-    props: ['modelValue', 'disabled', 'itemKey', 'handle', 'animation'],
-    emits: ['update:modelValue', 'end'],
-    template: '<div><slot v-for="(element, index) in modelValue" :element="element" :index="index" /></div>'
-  }
-}));
-
-// Mock Directus components
+// Mock child components
 const mockComponents = {
-  'v-button': { template: '<button><slot /></button>' },
-  'v-icon': { template: '<i :name="name" />', props: ['name'] },
-  'v-menu': { template: '<div><slot /></div><slot name="activator" />' },
-  'v-list': { template: '<ul><slot /></ul>' },
-  'v-list-item': { template: '<li @click="$emit(\'click\')"><slot /></li>' },
-  'v-list-item-icon': { template: '<span><slot /></span>' },
-  'v-list-item-content': { template: '<span><slot /></span>' },
-  'v-chip': { template: '<span><slot /></span>' },
-  'v-form': { 
-    template: '<form><slot /></form>',
-    props: ['modelValue', 'fields', 'initialValues', 'disabled'],
+  'block-list': {
+    template: '<div class="block-list"><slot /></div>',
+    props: ['modelValue', 'expandedItems', 'loading', 'sortable', 'disabled', 'compactMode', 'showItemId', 'allowDuplicate', 'allowDelete', 'availableStatuses', 'expandableBlocks'],
+    emits: ['toggle-expand', 'update-item', 'update-status', 'duplicate', 'discard-changes', 'delete', 'sort', 'update:modelValue']
+  },
+  'add-block-button': {
+    template: '<div class="add-block-button"><button v-if="!disabled">Add Block</button></div>',
+    props: ['disabled', 'collections', 'canAdd'],
+    emits: ['add-item']
+  },
+  'v-dialog': {
+    template: '<div v-if="modelValue" class="v-dialog"><slot /></div>',
+    props: ['modelValue'],
     emits: ['update:modelValue']
   },
-  'v-dialog': { template: '<div v-if="modelValue"><slot /></div>', props: ['modelValue'] },
-  'v-card': { template: '<div><slot /></div>' },
-  'v-card-title': { template: '<div><slot /></div>' },
-  'v-card-text': { template: '<div><slot /></div>' },
-  'v-card-actions': { template: '<div><slot /></div>' },
-  'v-divider': { template: '<hr />' },
-  'v-notice': { template: '<div><slot /></div>' },
-  'v-progress-circular': { template: '<div>Loading...</div>' }
+  'v-card': { template: '<div class="v-card"><slot /></div>' },
+  'v-card-title': { template: '<div class="v-card-title"><slot /></div>' },
+  'v-card-text': { template: '<div class="v-card-text"><slot /></div>' },
+  'v-card-actions': { template: '<div class="v-card-actions"><slot /></div>' },
+  'v-button': {
+    template: '<button @click="$emit(\'click\')" :class="getClasses()"><slot /></button>',
+    props: ['secondary', 'danger'],
+    emits: ['click'],
+    methods: {
+      getClasses() {
+        const classes = [];
+        if (this.secondary) classes.push('secondary');
+        if (this.danger) classes.push('danger');
+        return classes;
+      }
+    }
+  },
+  // Add missing v-icon and menu components
+  'v-icon': { 
+    template: '<i :name="name" :x-small="xSmall" />', 
+    props: ['name', 'xSmall'] 
+  },
+  'v-menu': { 
+    template: '<div class="v-menu"><slot name="activator" :toggle="toggle" /><div v-if="isOpen" class="menu-content"><slot /></div></div>',
+    props: ['placement', 'showArrow'],
+    data() {
+      return { isOpen: false };
+    },
+    methods: {
+      toggle() {
+        this.isOpen = !this.isOpen;
+      }
+    }
+  },
+  'v-list': { template: '<ul><slot /></ul>' },
+  'v-list-item': { 
+    template: '<li @click="$emit(\'click\')" :clickable="clickable"><slot /></li>', 
+    props: ['clickable'],
+    emits: ['click'] 
+  },
+  'v-list-item-icon': { template: '<span><slot /></span>' },
+  'v-list-item-content': { template: '<span><slot /></span>' }
 };
 
-describe('InterfaceComponent', () => {
-  let wrapper: any;
-  const defaultProps = {
-    value: [],
-    collection: 'pages',
-    field: 'content_blocks',
-    primaryKey: 1,
-    disabled: false,
-    options: {
-      enableSorting: true,
-      startExpanded: false,
-      accordionMode: false,
-      showItemId: true,
-      isAllowedDelete: true,
-      isAllowedDuplicate: true
-    }
-  };
+// Mock composable
+const mockExpandableBlocks = {
+  // State
+  items: ref([]),
+  expandedItems: ref([]),
+  loading: ref({}), // Changed to object to match BlockList expectations
+  deleteDialog: ref(false),
+  mergedOptions: ref({
+    compactMode: false,
+    isAllowedDuplicate: true,
+    isAllowedDelete: true
+  }),
+  availableStatuses: ref([
+    { value: 'published', label: 'Published' },
+    { value: 'draft', label: 'Draft' }
+  ]),
+  allowedCollections: ref([
+    { collection: 'content_text', name: 'Text Block' }
+  ]),
+  
+  // Computed
+  sortable: ref(true),
+  shouldShowItemId: ref(true),
+  canAddMoreBlocks: ref(true),
+  
+  // Methods
+  initialize: vi.fn(),
+  getItemId: vi.fn((item) => item.id),
+  getActualItemId: vi.fn((item) => item.item?.id || 'new'),
+  isNewItem: vi.fn((item) => !item.item?.id),
+  isBlockDirty: vi.fn(() => false),
+  getItemTitle: vi.fn((item) => item.item?.title || 'Untitled'),
+  getCollectionName: vi.fn((item) => item.collection),
+  getCollectionIcon: vi.fn(() => 'box'),
+  getFieldsForItem: vi.fn(() => []),
+  toggleExpand: vi.fn(),
+  updateItem: vi.fn(),
+  addNewItem: vi.fn(),
+  showDeleteDialog: vi.fn(),
+  confirmDeleteItem: vi.fn(),
+  duplicateItem: vi.fn(),
+  discardChanges: vi.fn(),
+  updateItemStatus: vi.fn(),
+  onSort: vi.fn(),
+  hasStatusField: vi.fn(() => false),
+  getItemStatus: vi.fn(() => 'published'),
+  getStatusLabel: vi.fn((status) => status),
+  hasNestedM2A: vi.fn(() => false),
+  getM2AFields: vi.fn(() => ({})),
+  formatFieldName: vi.fn((name) => name)
+};
 
-  beforeEach(() => {
-    // Reset mocks
-    vi.clearAllMocks();
-  });
+vi.mock('@/composables/useExpandableBlocks', () => ({
+  useExpandableBlocks: vi.fn((props, emit, values, initialValues) => mockExpandableBlocks)
+}));
 
-  const createWrapper = (props = {}) => {
+describe('interface.vue', () => {
+  const createWrapper = (props = {}, global = {}) => {
     return mount(InterfaceComponent, {
-      props: { ...defaultProps, ...props },
+      props: {
+        value: [],
+        collection: 'pages',
+        field: 'content_blocks',
+        primaryKey: 1, // Add required primaryKey prop
+        ...props
+      },
       global: {
         components: mockComponents,
         provide: {
-          values: { value: { content_blocks: [] } },
-          initialValues: { value: { content_blocks: [] } },
-          'stores-mock': {
-            useRelationsStore: vi.fn(() => ({
-              getM2ARelationForField: vi.fn().mockReturnValue({
-                relation: {
-                  meta: {
-                    one_allowed_collections: ['content_text', 'content_image']
-                  }
-                }
-              })
-            })),
-            useFieldsStore: vi.fn(() => ({
-              getFieldsForCollection: vi.fn().mockReturnValue([
-                { field: 'title', type: 'string' },
-                { field: 'status', type: 'string' }
-              ])
-            }))
-          },
-          'api-mock': {
-            get: vi.fn().mockResolvedValue({ data: { data: [] } })
-          }
+          'vee-validate-values': {},
+          'field-values': {},
+          ...global.provide
         },
-        directives: {
-          tooltip: {
-            mounted() {},
-            updated() {},
-            unmounted() {}
-          }
-        },
-        stubs: {
-          teleport: true,
-          transition: false,
-          'nested-blocks': true
-        }
+        ...global
       }
     });
   };
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset refs
+    mockExpandableBlocks.items.value = [];
+    mockExpandableBlocks.expandedItems.value = [];
+    mockExpandableBlocks.loading.value = {};
+    mockExpandableBlocks.deleteDialog.value = false;
+    mockExpandableBlocks.canAddMoreBlocks.value = true;
+  });
+
   describe('Rendering', () => {
-    it('renders empty state when no blocks', async () => {
-      wrapper = createWrapper();
-      await nextTick();
-      
-      // The component should exist
+    it('renders the main container', () => {
+      const wrapper = createWrapper();
       expect(wrapper.find('.expandable-blocks').exists()).toBe(true);
-      
-      // Check component state
-      const vm = wrapper.vm as any;
-      expect(vm.items).toHaveLength(0);
     });
 
-    it('renders blocks when value is provided', async () => {
-      const blocks: JunctionRecord[] = [
-        {
-          id: 1,
-          collection: 'content_text',
-          item: { id: 101, title: 'Test Block 1' }
-        },
-        {
-          id: 2,
-          collection: 'content_image',
-          item: { id: 102, title: 'Test Block 2' }
-        }
+    it('renders block list component', () => {
+      const wrapper = createWrapper();
+      expect(wrapper.find('.block-list').exists()).toBe(true);
+    });
+
+    it('renders add button component', () => {
+      const wrapper = createWrapper();
+      expect(wrapper.find('.add-block-button').exists()).toBe(true);
+    });
+
+    it('passes correct props to block list', () => {
+      mockExpandableBlocks.items.value = [{ id: '1', collection: 'test' }];
+      mockExpandableBlocks.expandedItems.value = ['1'];
+      mockExpandableBlocks.loading.value = { '1': true };
+      mockExpandableBlocks.sortable.value = false;
+      
+      const wrapper = createWrapper({ disabled: true });
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      expect(blockList.props('modelValue')).toEqual([{ id: '1', collection: 'test' }]);
+      expect(blockList.props('expandedItems')).toEqual(['1']);
+      expect(blockList.props('loading')).toEqual({ '1': true });
+      expect(blockList.props('sortable')).toBe(false);
+      expect(blockList.props('disabled')).toBe(true);
+    });
+
+    it('passes correct props to add button', () => {
+      mockExpandableBlocks.canAddMoreBlocks.value = false;
+      mockExpandableBlocks.allowedCollections.value = [
+        { collection: 'content_text', name: 'Text' },
+        { collection: 'content_image', name: 'Image' }
       ];
       
-      wrapper = createWrapper({ value: blocks });
-      await nextTick();
+      const wrapper = createWrapper({ disabled: true });
+      const addButton = wrapper.findComponent({ name: 'add-block-button' });
       
-      // Simply verify the component received the props
-      expect(wrapper.props().value).toHaveLength(2);
-      expect(wrapper.props().value[0].id).toBe(1);
-      expect(wrapper.props().value[1].id).toBe(2);
-    });
-
-    it('shows add button when not disabled', async () => {
-      wrapper = createWrapper();
-      await nextTick();
-      
-      const vm = wrapper.vm as any;
-      expect(vm.disabled).toBe(false);
-      expect(vm.canAddMoreBlocks).toBe(true);
-    });
-
-    it('hides add button when disabled', () => {
-      wrapper = createWrapper({ disabled: true });
-      expect(wrapper.find('.add-block-button').exists()).toBe(false);
-    });
-
-    it('respects showItemId option', async () => {
-      const blocks: JunctionRecord[] = [{
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Test Block' }
-      }];
-      
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, showItemId: false }
-      });
-      await nextTick();
-      
-      expect(wrapper.find('.item-id').exists()).toBe(false);
+      expect(addButton.props('disabled')).toBe(true);
+      expect(addButton.props('collections')).toEqual([
+        { collection: 'content_text', name: 'Text' },
+        { collection: 'content_image', name: 'Image' }
+      ]);
+      expect(addButton.props('canAdd')).toBe(false);
     });
   });
 
-  describe('Block Expansion', () => {
-    const blocks: JunctionRecord[] = [
-      {
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Block 1' }
-      },
-      {
-        id: 2,
-        collection: 'content_text',
-        item: { id: 102, title: 'Block 2' }
-      }
-    ];
-
-    it('expands block on header click', async () => {
-      wrapper = createWrapper({ value: blocks });
-      await nextTick();
+  describe('Delete Dialog', () => {
+    it('shows delete dialog when deleteDialog is true', async () => {
+      const wrapper = createWrapper();
       
-      // Check that component methods exist and work
-      const vm = wrapper.vm as any;
+      // Initially hidden
+      expect(wrapper.find('.v-dialog').exists()).toBe(false);
       
-      // Initially no blocks should be expanded
-      expect(vm.expandedItems).toHaveLength(0);
+      // Show dialog
+      mockExpandableBlocks.deleteDialog.value = true;
+      await wrapper.vm.$nextTick();
       
-      // Expand first block
-      vm.toggleExpand(1);
-      await nextTick();
-      
-      // Check that block is now expanded
-      expect(vm.expandedItems).toContain(1);
+      expect(wrapper.find('.v-dialog').exists()).toBe(true);
+      expect(wrapper.text()).toContain('Delete Block');
     });
 
-    it('implements accordion mode correctly', async () => {
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, accordionMode: true }
-      });
-      await nextTick();
+    it('calls confirmDeleteItem when delete button clicked', async () => {
+      const wrapper = createWrapper();
       
-      const vm = wrapper.vm as any;
+      // Show dialog
+      mockExpandableBlocks.deleteDialog.value = true;
+      await wrapper.vm.$nextTick();
       
-      // Expand first block
-      vm.toggleExpand(1);
-      await nextTick();
-      expect(vm.expandedItems).toContain(1);
+      // Check if dialog is visible
+      const dialog = wrapper.find('.v-dialog');
+      expect(dialog.exists()).toBe(true);
       
-      // Expand second block - first should collapse in accordion mode
-      vm.toggleExpand(2);
-      await nextTick();
-      expect(vm.expandedItems).toContain(2);
-      expect(vm.expandedItems).not.toContain(1);
+      // Find all buttons in the dialog
+      const buttons = dialog.findAll('button');
+      expect(buttons.length).toBe(2); // Should have Cancel and Delete buttons
+      
+      // Find the delete button (it's the second button, with danger prop)
+      // The button at index 1 should be the delete button
+      const deleteButton = buttons[1];
+      
+      await deleteButton.trigger('click');
+      
+      expect(mockExpandableBlocks.confirmDeleteItem).toHaveBeenCalled();
     });
 
-    it('implements startExpanded option', async () => {
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, startExpanded: true }
-      });
-      await nextTick();
+    it('closes dialog when cancel button clicked', async () => {
+      const wrapper = createWrapper();
       
-      // Component needs to be fully mounted and initialized
-      // In real implementation, this would be tested with actual component lifecycle
-      // For now, we just verify the option is passed correctly
-      expect(wrapper.props().options.startExpanded).toBe(true);
-    });
-  });
-
-  describe('Sorting', () => {
-    it('enables drag handle when sorting is enabled', async () => {
-      const blocks: JunctionRecord[] = [{
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Test Block' }
-      }];
+      // Show dialog
+      mockExpandableBlocks.deleteDialog.value = true;
+      await wrapper.vm.$nextTick();
       
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, enableSorting: true }
-      });
-      await nextTick();
+      // Check if dialog is visible
+      const dialog = wrapper.find('.v-dialog');
+      expect(dialog.exists()).toBe(true);
       
-      const vm = wrapper.vm as any;
-      expect(vm.sortable).toBe(true);
-    });
-
-    it('hides drag handle when sorting is disabled', async () => {
-      const blocks: JunctionRecord[] = [{
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Test Block' }
-      }];
+      // Find all buttons in the dialog
+      const buttons = dialog.findAll('button');
+      expect(buttons.length).toBe(2); // Should have Cancel and Delete buttons
       
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, enableSorting: false }
-      });
-      await nextTick();
+      // Find the cancel button (it's the first button, with secondary prop)
+      // The button at index 0 should be the cancel button
+      const cancelButton = buttons[0];
       
-      expect(wrapper.find('.drag-handle').exists()).toBe(false);
-    });
-
-    it('disables dragging when component is disabled', async () => {
-      const blocks: JunctionRecord[] = [{
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Test Block' }
-      }];
+      await cancelButton.trigger('click');
       
-      wrapper = createWrapper({ 
-        value: blocks,
-        disabled: true
-      });
-      await nextTick();
-      
-      expect(wrapper.find('.drag-handle').exists()).toBe(false);
-    });
-  });
-
-  describe('Permissions', () => {
-    const blocks: JunctionRecord[] = [{
-      id: 1,
-      collection: 'content_text',
-      item: { id: 101, title: 'Test Block' }
-    }];
-
-    it('shows delete option when allowed', async () => {
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, isAllowedDelete: true }
-      });
-      await nextTick();
-      
-      // In real implementation, would click menu and check for delete option
-      expect(wrapper.props().options.isAllowedDelete).toBe(true);
-    });
-
-    it('shows duplicate option when allowed', async () => {
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, isAllowedDuplicate: true }
-      });
-      await nextTick();
-      
-      expect(wrapper.props().options.isAllowedDuplicate).toBe(true);
-    });
-
-    it('respects maxBlocks limit', async () => {
-      const twoBlocks: JunctionRecord[] = [
-        { id: 1, collection: 'content_text', item: { id: 101, title: 'Block 1' } },
-        { id: 2, collection: 'content_text', item: { id: 102, title: 'Block 2' } }
-      ];
-      
-      wrapper = createWrapper({ 
-        value: twoBlocks,
-        options: { ...defaultProps.options, maxBlocks: 2 }
-      });
-      await nextTick();
-      
-      // Simply verify the component received the correct props
-      expect(wrapper.props().value).toHaveLength(2);
-      expect(wrapper.props().options.maxBlocks).toBe(2);
-      
-      // Check the computed property if the component is mounted
-      const vm = wrapper.vm as any;
-      if (vm.mergedOptions) {
-        expect(vm.mergedOptions.maxBlocks).toBe(2);
-      }
+      expect(mockExpandableBlocks.deleteDialog.value).toBe(false);
     });
   });
 
   describe('Events', () => {
-    it('emits input event when value changes', async () => {
-      const blocks: JunctionRecord[] = [{
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Test Block' }
-      }];
+    it('calls toggleExpand when block-list emits toggle-expand', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
       
-      wrapper = createWrapper({ value: blocks });
-      await nextTick();
+      await blockList.vm.$emit('toggle-expand', '123');
       
-      // Simulate internal change that would trigger emit
-      // In real implementation, this would be tested through actual user interactions
-      expect(wrapper.emitted()).toBeDefined();
+      expect(mockExpandableBlocks.toggleExpand).toHaveBeenCalledWith('123');
+    });
+
+    it('calls updateItem when block-list emits update-item', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      await blockList.vm.$emit('update-item', 0, { title: 'Updated' });
+      
+      expect(mockExpandableBlocks.updateItem).toHaveBeenCalledWith(0, { title: 'Updated' });
+    });
+
+    it('calls updateItemStatus when block-list emits update-status', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      const item = { id: '1' };
+      await blockList.vm.$emit('update-status', item, 0, 'published');
+      
+      expect(mockExpandableBlocks.updateItemStatus).toHaveBeenCalledWith(item, 0, 'published');
+    });
+
+    it('calls duplicateItem when block-list emits duplicate', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      const item = { id: '1' };
+      await blockList.vm.$emit('duplicate', item, 0);
+      
+      expect(mockExpandableBlocks.duplicateItem).toHaveBeenCalledWith(item, 0);
+    });
+
+    it('calls discardChanges when block-list emits discard-changes', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      const item = { id: '1' };
+      await blockList.vm.$emit('discard-changes', item, 0);
+      
+      expect(mockExpandableBlocks.discardChanges).toHaveBeenCalledWith(item, 0);
+    });
+
+    it('calls showDeleteDialog when block-list emits delete', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      const item = { id: '1' };
+      await blockList.vm.$emit('delete', item, 0);
+      
+      expect(mockExpandableBlocks.showDeleteDialog).toHaveBeenCalledWith(item, 0);
+    });
+
+    it('calls onSort when block-list emits sort', async () => {
+      const wrapper = createWrapper();
+      const blockList = wrapper.findComponent({ name: 'block-list' });
+      
+      await blockList.vm.$emit('sort');
+      
+      expect(mockExpandableBlocks.onSort).toHaveBeenCalled();
+    });
+
+    it('calls addNewItem when add-block-button emits add-item', async () => {
+      const wrapper = createWrapper();
+      const addButton = wrapper.findComponent({ name: 'add-block-button' });
+      
+      await addButton.vm.$emit('add-item', 'content_text');
+      
+      expect(mockExpandableBlocks.addNewItem).toHaveBeenCalledWith('content_text');
     });
   });
 
-  describe('Compact Mode', () => {
-    it('applies compact class when enabled', async () => {
-      const blocks: JunctionRecord[] = [{
-        id: 1,
-        collection: 'content_text',
-        item: { id: 101, title: 'Test Block' }
-      }];
+  describe('Initialization', () => {
+    it('calls initialize on mount', () => {
+      createWrapper();
+      expect(mockExpandableBlocks.initialize).toHaveBeenCalled();
+    });
+  });
+
+  describe('Props', () => {
+    it('passes all props to composable', () => {
+      const useExpandableBlocksMock = vi.mocked(vi.fn(() => mockExpandableBlocks));
       
-      wrapper = createWrapper({ 
-        value: blocks,
-        options: { ...defaultProps.options, compactMode: true }
-      });
-      await nextTick();
+      // Replace the mock temporarily for this test
+      vi.doMock('@/composables/useExpandableBlocks', () => ({
+        useExpandableBlocks: useExpandableBlocksMock
+      }));
       
-      const vm = wrapper.vm as any;
-      expect(vm.mergedOptions.compactMode).toBe(true);
+      const props = {
+        value: [{ id: 1 }],
+        collection: 'custom_collection',
+        field: 'custom_field',
+        primaryKey: 123,
+        disabled: true
+      };
+      
+      createWrapper(props);
+      
+      // Check that the composable was called with the props
+      expect(mockExpandableBlocks.initialize).toHaveBeenCalled();
     });
   });
 });

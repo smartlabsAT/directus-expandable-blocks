@@ -251,7 +251,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
           hasId: !!newItem.id,
           collection: newItem.collection,
           itemType: typeof newItem.item,
-          foreignKey: (newItem as any)[foreignKey],
+          foreignKey: (newItem as any)[getForeignKeyField()],
           defaultData: defaultData
         },
         totalItemsCount: items.value.length

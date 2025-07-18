@@ -7,9 +7,8 @@ import {
   parseAllowedCollections,
   deepClone
 } from '@/utils/helpers';
-import type { CollectionInfo, JunctionRecord, ItemRecord } from '@/types';
 
-describe('helpers.ts', () => {
+describe('helpers', () => {
   describe('buildM2AFieldsString', () => {
     it('returns default fields when no collections provided', () => {
       const result = buildM2AFieldsString([]);
@@ -17,7 +16,7 @@ describe('helpers.ts', () => {
     });
 
     it('builds correct field string for multiple collections', () => {
-      const collections: CollectionInfo[] = [
+      const collections = [
         { collection: 'content_text', name: 'Text' },
         { collection: 'content_image', name: 'Image' }
       ];
@@ -26,47 +25,56 @@ describe('helpers.ts', () => {
     });
 
     it('handles single collection correctly', () => {
-      const collections: CollectionInfo[] = [
+      const collections = [
         { collection: 'content_hero', name: 'Hero' }
       ];
       const result = buildM2AFieldsString(collections);
       expect(result).toBe('*,item:content_hero.*');
     });
+
+    it('handles empty collection names', () => {
+      const collections = [
+        { collection: '', name: 'Empty' },
+        { collection: 'content_text', name: 'Text' }
+      ];
+      const result = buildM2AFieldsString(collections);
+      expect(result).toBe('*,item:.*,item:content_text.*');
+    });
   });
 
   describe('extractItemTitle', () => {
     it('extracts title from item with title field', () => {
-      const item: ItemRecord = { id: 1, title: 'Test Title' };
+      const item = { id: 1, title: 'Test Title' };
       expect(extractItemTitle(item)).toBe('Test Title');
     });
 
     it('falls back to name field', () => {
-      const item: ItemRecord = { id: 1, name: 'Test Name' };
+      const item = { id: 1, name: 'Test Name' };
       expect(extractItemTitle(item)).toBe('Test Name');
     });
 
     it('falls back to headline field', () => {
-      const item: ItemRecord = { id: 1, headline: 'Test Headline' };
+      const item = { id: 1, headline: 'Test Headline' };
       expect(extractItemTitle(item)).toBe('Test Headline');
     });
 
     it('falls back to label field', () => {
-      const item: ItemRecord = { id: 1, label: 'Test Label' };
+      const item = { id: 1, label: 'Test Label' };
       expect(extractItemTitle(item)).toBe('Test Label');
     });
 
     it('falls back to heading field', () => {
-      const item: ItemRecord = { id: 1, heading: 'Test Heading' };
+      const item = { id: 1, heading: 'Test Heading' };
       expect(extractItemTitle(item)).toBe('Test Heading');
     });
 
     it('returns "Untitled Block" when no title fields exist', () => {
-      const item: ItemRecord = { id: 1, content: 'Some content' };
+      const item = { id: 1, content: 'Some content' };
       expect(extractItemTitle(item)).toBe('Untitled Block');
     });
 
     it('extracts title from junction record with nested item', () => {
-      const junction: JunctionRecord = {
+      const junction = {
         id: 1,
         collection: 'content_text',
         item: { id: 2, title: 'Nested Title' }
@@ -75,18 +83,38 @@ describe('helpers.ts', () => {
     });
 
     it('handles junction record with ID reference', () => {
-      const junction: JunctionRecord = {
+      const junction = {
         id: 1,
         collection: 'content_text',
         item: 123
       };
       expect(extractItemTitle(junction)).toBe('Untitled Block');
     });
+
+    it('handles null item', () => {
+      expect(extractItemTitle(null)).toBe('Untitled Block');
+    });
+
+    it('handles undefined item', () => {
+      expect(extractItemTitle(undefined)).toBe('Untitled Block');
+    });
+
+    it('prioritizes title over other fields', () => {
+      const item = {
+        id: 1,
+        title: 'Title',
+        name: 'Name',
+        headline: 'Headline',
+        label: 'Label',
+        heading: 'Heading'
+      };
+      expect(extractItemTitle(item)).toBe('Title');
+    });
   });
 
   describe('getActualItemId', () => {
     it('gets ID from nested item object', () => {
-      const junction: JunctionRecord = {
+      const junction = {
         id: 1,
         collection: 'content_text',
         item: { id: 42, title: 'Test' }
@@ -95,18 +123,36 @@ describe('helpers.ts', () => {
     });
 
     it('returns junction ID when item is not an object', () => {
-      const junction: JunctionRecord = {
+      const junction = {
         id: 1,
         collection: 'content_text',
         item: 123
       };
       expect(getActualItemId(junction)).toBe(1);
     });
+
+    it('returns junction ID when item is null', () => {
+      const junction = {
+        id: 1,
+        collection: 'content_text',
+        item: null
+      };
+      expect(getActualItemId(junction)).toBe(1);
+    });
+
+    it('returns undefined when item has no ID', () => {
+      const junction = {
+        id: 1,
+        collection: 'content_text',
+        item: { title: 'No ID' }
+      };
+      expect(getActualItemId(junction)).toBe(undefined);
+    });
   });
 
   describe('isNewItem', () => {
     it('identifies new items with string IDs starting with "new_"', () => {
-      const item: JunctionRecord = {
+      const item = {
         id: 'new_123456',
         collection: 'content_text',
         item: { id: 'new_item_123', title: 'New Block' }
@@ -115,7 +161,7 @@ describe('helpers.ts', () => {
     });
 
     it('identifies new items with temp_ prefix', () => {
-      const item: JunctionRecord = {
+      const item = {
         id: 'temp_123456',
         collection: 'content_text',
         item: { id: 1, title: 'Test' }
@@ -124,7 +170,7 @@ describe('helpers.ts', () => {
     });
 
     it('identifies new items with dup_ prefix', () => {
-      const item: JunctionRecord = {
+      const item = {
         id: 'dup_123456',
         collection: 'content_text',
         item: { id: 1, title: 'Test' }
@@ -133,7 +179,7 @@ describe('helpers.ts', () => {
     });
 
     it('identifies existing items with numeric IDs', () => {
-      const item: JunctionRecord = {
+      const item = {
         id: 123,
         collection: 'content_text',
         item: { id: 456, title: 'Existing Block' }
@@ -142,12 +188,29 @@ describe('helpers.ts', () => {
     });
 
     it('identifies existing items with string numeric IDs', () => {
-      const item: JunctionRecord = {
+      const item = {
         id: '123',
         collection: 'content_text',
         item: { id: 456, title: 'Existing Block' }
       };
       expect(isNewItem(item)).toBe(false);
+    });
+
+    it('handles items without ID', () => {
+      const item = {
+        collection: 'content_text',
+        item: { title: 'No ID' }
+      };
+      expect(isNewItem(item)).toBe(true); // isTemporaryId returns true for undefined
+    });
+
+    it('handles null ID', () => {
+      const item = {
+        id: null,
+        collection: 'content_text',
+        item: { title: 'Null ID' }
+      };
+      expect(isNewItem(item)).toBe(true); // isTemporaryId returns true for null
     });
   });
 
@@ -157,7 +220,7 @@ describe('helpers.ts', () => {
     });
 
     it('returns empty array for null input', () => {
-      expect(parseAllowedCollections(null as any)).toEqual([]);
+      expect(parseAllowedCollections(null)).toEqual([]);
     });
 
     it('returns array as-is when input is array', () => {
@@ -185,6 +248,18 @@ describe('helpers.ts', () => {
 
     it('returns array with single item for non-comma string', () => {
       expect(parseAllowedCollections('content_text')).toEqual(['content_text']);
+    });
+
+    it('handles empty string', () => {
+      expect(parseAllowedCollections('')).toEqual([]); // Filters out empty strings
+    });
+
+    it('handles numeric input', () => {
+      expect(parseAllowedCollections(123)).toEqual([]); // Not string or array, returns empty
+    });
+
+    it('handles boolean input', () => {
+      expect(parseAllowedCollections(true)).toEqual([]); // Not string or array, returns empty
     });
   });
 
@@ -251,5 +326,14 @@ describe('helpers.ts', () => {
       expect(cloned.items[1].nested).not.toBe(complex.items[1].nested);
       expect(cloned.meta.flags.tags).not.toBe(complex.meta.flags.tags);
     });
+
+    it('handles circular references', () => {
+      const obj = { a: 1 };
+      obj.self = obj;
+      
+      // The implementation doesn't handle circular references, so it will throw
+      expect(() => deepClone(obj)).toThrow('Maximum call stack size exceeded');
+    });
   });
+
 });
