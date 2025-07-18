@@ -1,6 +1,13 @@
 import { defineInterface } from '@directus/extensions-sdk';
-import type { ExtensionOptionsContext } from '@directus/types';
 import InterfaceComponent from './interface.vue';
+
+// ExtensionOptionsContext is not available in @directus/types, define it locally
+interface ExtensionOptionsContext {
+  relations?: any;
+  field?: any;
+  collections?: any;
+  stores?: any;
+}
 
 export default defineInterface({
   id: 'expandable-blocks',

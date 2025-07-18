@@ -242,7 +242,7 @@ describe('state-helpers', () => {
       const original = { a: 1, b: 2 };
       const current = { a: 1, c: 3 };
       
-      const diff = createStateDiff(() => original, () => current);
+      const diff = createStateDiff(() => original, () => current as any);
       const result = diff();
       
       expect(result.hasChanges).toBe(true);

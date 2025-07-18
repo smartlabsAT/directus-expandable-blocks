@@ -15,6 +15,9 @@ importers:
       '@directus/extensions-sdk':
         specifier: 10.1.11
         version: 10.1.11(@types/node@20.19.8)(sass@1.89.2)(terser@5.43.1)
+      '@directus/types':
+        specifier: ^13.2.0
+        version: 13.2.0(knex@3.1.0)(vue@3.5.17(typescript@5.8.3))
       '@playwright/test':
         specifier: ^1.40.1
         version: 1.54.1
@@ -95,6 +98,9 @@ packages:
   '@directus/constants@10.2.3':
     resolution: {integrity: sha512-ygXWi0ptRjQ7qqUvRDXjFQ6ITXz1gOmjT/aQw06OmgaJPscbuHoc5BFzWn4l4nhapk0hkWYhq0xskfVeA5MMtQ==}
 
+  '@directus/constants@13.0.1':
+    resolution: {integrity: sha512-7Ls9uiOPiUIRx4qsMud097AqgSytjTc9lygSK+Qiv5aPQbNx3iCiqTcpC99eoHUTWS4bD5cUuzSWIXRoQezCUg==}
+
   '@directus/extensions-sdk@10.1.11':
     resolution: {integrity: sha512-94/8m7GC6qi6si7kTWP0v6A/sEquE/cXBMwT/hb28/X05dAKz3EZF8O6TcDCuQvi6rK7VsoxKYdbPSBFrmWfXw==}
     engines: {node: '>=12.20.0'}
@@ -103,8 +109,22 @@ packages:
   '@directus/schema@10.0.2':
     resolution: {integrity: sha512-9WSdceZN5Z6tZtHFZ8GbMqGWpTBnO+56lkhYECV9dO1JW1X/rF4d7HNBJCivN8OL+4GZIZN6ChrdQyUqycSwrA==}
 
+  '@directus/schema@13.0.1':
+    resolution: {integrity: sha512-kRQ8KER70RUDQL5Caao4OWlw7YQFYXM1TNS7OlwZfvPyEGqAdEIC4z3jTh5ANJpBv2b6XZk+5BMcu+ddFwJ11w==}
+
   '@directus/types@10.1.6':
     resolution: {integrity: sha512-exQVNLETkydVOnoSbDZe+awo+9uk+Za+r7EvkQOlv3VHXv5F2gHQdR265FrG3y6kDNvTNDG2kttOrseZI2DAtg==}
+
+  '@directus/types@13.2.0':
+    resolution: {integrity: sha512-zibYxdaqAKSakOsjAaPkUzyKZ5K61/icYsvIC6UgQjcYv+dwKfoH7C6JXV3xk1MirsbfF9wTTzam6+4tm1m+YQ==}
+    peerDependencies:
+      knex: '3'
+      vue: ^3.4
+    peerDependenciesMeta:
+      knex:
+        optional: true
+      vue:
+        optional: true
 
   '@directus/utils@10.0.11':
     resolution: {integrity: sha512-wBVSDfeKG6pNteobtGK/qWHej3Px35z3duR4bxL14zhbK5YGvUIyzIoAE3+TPVjc1sT4Q4wuGdwOgxao4xLkAA==}
@@ -747,6 +767,9 @@ packages:
 
   '@types/geojson@7946.0.10':
     resolution: {integrity: sha512-Nmh0K3iWQJzniTuPRcJn5hxXkfB1T1pgB89SBig5PlJQU5yocazeu4jATJlaA0GYFKWMqDdvYemoSnF2pXgLVA==}
+
+  '@types/geojson@7946.0.16':
+    resolution: {integrity: sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg==}
 
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
@@ -1844,6 +1867,34 @@ packages:
       tedious:
         optional: true
 
+  knex@3.1.0:
+    resolution: {integrity: sha512-GLoII6hR0c4ti243gMs5/1Rb3B+AjwMOfjYm97pu0FOQa7JH56hgBxYf5WK2525ceSbBY1cjeZ9yk99GPMB6Kw==}
+    engines: {node: '>=16'}
+    hasBin: true
+    peerDependencies:
+      better-sqlite3: '*'
+      mysql: '*'
+      mysql2: '*'
+      pg: '*'
+      pg-native: '*'
+      sqlite3: '*'
+      tedious: '*'
+    peerDependenciesMeta:
+      better-sqlite3:
+        optional: true
+      mysql:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      pg-native:
+        optional: true
+      sqlite3:
+        optional: true
+      tedious:
+        optional: true
+
   lilconfig@2.1.0:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
     engines: {node: '>=10'}
@@ -2147,6 +2198,9 @@ packages:
 
   pg-connection-string@2.5.0:
     resolution: {integrity: sha512-r5o/V/ORTA6TmUnyWZR9nCj1klXCO2CEKNRlVuJptZe85QuhFayC7WeMic7ndayT5IRIR0S0xFxFi2ousartlQ==}
+
+  pg-connection-string@2.6.2:
+    resolution: {integrity: sha512-ch6OwaeaPYcova4kKZ15sbJ2hKb/VP48ZD2gE7i1J+L4MspCtBMAx8nMgz7bksc7IojCIIWuEhHibSMFH8m8oA==}
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -3045,6 +3099,8 @@ snapshots:
     dependencies:
       zod: 3.21.4
 
+  '@directus/constants@13.0.1': {}
+
   '@directus/extensions-sdk@10.1.11(@types/node@20.19.8)(sass@1.89.2)(terser@5.43.1)':
     dependencies:
       '@directus/composables': 10.1.3
@@ -3100,6 +3156,19 @@ snapshots:
       - supports-color
       - tedious
 
+  '@directus/schema@13.0.1':
+    dependencies:
+      knex: 3.1.0
+    transitivePeerDependencies:
+      - better-sqlite3
+      - mysql
+      - mysql2
+      - pg
+      - pg-native
+      - sqlite3
+      - supports-color
+      - tedious
+
   '@directus/types@10.1.6':
     dependencies:
       '@directus/constants': 10.2.3
@@ -3113,6 +3182,24 @@ snapshots:
       vue: 3.3.4
       vue-router: 4.2.0(vue@3.3.4)
       zod: 3.21.4
+    transitivePeerDependencies:
+      - better-sqlite3
+      - mysql
+      - mysql2
+      - pg
+      - pg-native
+      - sqlite3
+      - supports-color
+      - tedious
+
+  '@directus/types@13.2.0(knex@3.1.0)(vue@3.5.17(typescript@5.8.3))':
+    dependencies:
+      '@directus/constants': 13.0.1
+      '@directus/schema': 13.0.1
+      '@types/geojson': 7946.0.16
+    optionalDependencies:
+      knex: 3.1.0
+      vue: 3.5.17(typescript@5.8.3)
     transitivePeerDependencies:
       - better-sqlite3
       - mysql
@@ -3589,6 +3676,8 @@ snapshots:
       '@types/serve-static': 1.15.8
 
   '@types/geojson@7946.0.10': {}
+
+  '@types/geojson@7946.0.16': {}
 
   '@types/http-errors@2.0.5': {}
 
@@ -4877,6 +4966,25 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  knex@3.1.0:
+    dependencies:
+      colorette: 2.0.19
+      commander: 10.0.1
+      debug: 4.3.4
+      escalade: 3.2.0
+      esm: 3.2.25
+      get-package-type: 0.1.0
+      getopts: 2.3.0
+      interpret: 2.2.0
+      lodash: 4.17.21
+      pg-connection-string: 2.6.2
+      rechoir: 0.8.0
+      resolve-from: 5.0.0
+      tarn: 3.0.2
+      tildify: 2.0.0
+    transitivePeerDependencies:
+      - supports-color
+
   lilconfig@2.1.0: {}
 
   lines-and-columns@1.2.4: {}
@@ -5141,6 +5249,8 @@ snapshots:
   pathval@1.1.1: {}
 
   pg-connection-string@2.5.0: {}
+
+  pg-connection-string@2.6.2: {}
 
   picocolors@1.1.1: {}
 

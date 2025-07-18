@@ -2,6 +2,7 @@ import { watch, nextTick } from 'vue';
 import { logger } from '../utils/logger';
 import { deepClone } from '../utils/helpers';
 import type { ExpandableBlocksContext } from '../types/composable-context';
+import type { JunctionRecord } from '../types';
 
 /**
  * Composable for managing all reactive watchers in the expandable blocks extension
@@ -173,7 +174,7 @@ export function useBlockWatchers(
       const oldIds = items.value.map(item => item.id).sort();
       const newIds = (newVal || []).map((item: any) => {
         return typeof item === 'object' ? item.id : item;
-      }).filter(id => id != null).sort();
+      }).filter((id: any) => id != null).sort();
       
       if (JSON.stringify(oldIds) !== JSON.stringify(newIds)) {
         loadFullItemData();

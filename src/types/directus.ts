@@ -1,4 +1,22 @@
 import type { Ref } from 'vue';
+import type { 
+  Field as DirectusField,
+  FieldMeta,
+  Collection as DirectusCollection,
+  CollectionMeta,
+  Relation as DirectusRelation,
+  RelationMeta,
+  Item,
+  PrimaryKey
+} from '@directus/types';
+
+// Re-export commonly used Directus types
+export type { DirectusField, FieldMeta, DirectusCollection, CollectionMeta, DirectusRelation, RelationMeta, Item, PrimaryKey };
+
+/**
+ * Extension-specific types for Directus form integration
+ * These types are not available in @directus/types as they are specific to our extension implementation
+ */
 
 // Directus form injection types
 export interface DirectusFormValues {
@@ -10,52 +28,22 @@ export interface DirectusFormContext {
   initialValues: Ref<DirectusFormValues>;
 }
 
-// Store types
-export interface DirectusField {
-  field: string;
-  collection: string;
-  type?: string;
-  special?: string | string[];
-  meta?: {
-    interface?: string;
-    hidden?: boolean;
-    readonly?: boolean;
-    options?: any;
-    icon?: string;
-  };
-}
-
-export interface DirectusCollection {
-  collection: string;
-  name?: string;
-  meta?: {
-    icon?: string;
-    display_template?: string;
-    [key: string]: any;
-  };
-}
-
-export interface DirectusRelation {
-  collection: string;
-  field: string;
-  related_collection?: string | null;
-  meta?: {
-    junction_field?: string;
-    one_allowed_collections?: string[] | null;
-    sort_field?: string;
-    [key: string]: any;
-  };
-  one_allowed_collections?: string[] | null;
-  sort_field?: string;
-  junctionCollection?: string;
-  foreignKeyField?: string;
-}
-
+/**
+ * Custom notification type for our extension
+ * The official Directus Notification type has a different structure (includes id, timestamp, recipient, etc.)
+ * We use this simplified version for UI notifications within the extension
+ */
 export interface DirectusNotification {
   title: string;
   text?: string;
   type?: 'info' | 'success' | 'warning' | 'error';
 }
+
+/**
+ * Store interfaces for Directus extension development
+ * These interfaces define the shape of Directus stores when used within extensions
+ * They are not available in @directus/types and are based on the actual runtime behavior
+ */
 
 // Store interfaces
 export interface DirectusFieldsStore {

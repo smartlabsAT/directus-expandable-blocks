@@ -5,7 +5,7 @@ import type { JunctionRecord } from '../types';
 
 export interface EmitOptions {
   items: JunctionRecord[];
-  emit: (event: string, value: any) => void;
+  emit: (event: 'input', value: any[]) => void;
   prepareItemsForEmit: (items: JunctionRecord[], sortField?: string) => any[];
   isInternalUpdate: Ref<boolean>;
   source: string;
@@ -61,7 +61,7 @@ export function emitChanges(options: EmitOptions): void {
  */
 export function emitSaveChanges(
   items: JunctionRecord[],
-  emit: (event: string, value: any) => void,
+  emit: (event: 'input', value: any[]) => void,
   prepareItemsForEmit: (items: JunctionRecord[], sortField?: string) => any[],
   isInternalUpdate: Ref<boolean>,
   source: string = 'SAVE STATE'

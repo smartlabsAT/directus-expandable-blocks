@@ -46,7 +46,7 @@ export function useM2AData(
     
     // First, always try to get the M2A configured collections
     const relations = relationsStore.getRelationsForField(props.collection, props.field);
-    const junctionRelations = relations?.find(r => r.meta?.junction_field === props.field);
+    const junctionRelations = relations?.find((r: any) => r.meta?.junction_field === props.field);
     const m2aRelatedCollection = junctionRelations?.related_collection;
     
     logger.debug('Looking for allowed collections:', {
@@ -88,7 +88,7 @@ export function useM2AData(
       
       // For M2A relations, get the collections from the one_allowed_collections field
       const relatedRelations = relationsStore.getRelations();
-      const m2aConfig = relatedRelations.find(r => 
+      const m2aConfig = relatedRelations.find((r: any) => 
         r.collection === junctionRelations?.collection && 
         r.field === 'collection' &&
         r.schema?.table === junctionRelations?.collection

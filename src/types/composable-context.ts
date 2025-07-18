@@ -42,7 +42,7 @@ export interface BlockStateFunctions {
  */
 export interface BlockDependencies {
   api: any;
-  emit: (event: string, value: any) => void;
+  emit: (event: 'input', value: any[]) => void;
   props: UseExpandableBlocksProps;
   stores: {
     notificationsStore: any;

@@ -21,12 +21,12 @@ import type {
 } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
-export interface UseExpandableBlocksProps {
+// Use the UseExpandableBlocksProps from types/index.ts instead
+import type { UseExpandableBlocksProps as BaseProps } from '../types';
+
+// Extend to allow null values
+export interface UseExpandableBlocksProps extends Omit<BaseProps, 'value'> {
   value: JunctionRecord[] | null;
-  collection: string;
-  field: string;
-  primaryKey?: string | number;
-  disabled?: boolean;
   options?: ExpandableBlocksOptions;
 }
 

@@ -222,7 +222,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     // Create new item structure WITHOUT ID (important!)
     // The ID will be assigned by the API when saving
     const newItem: JunctionRecord = {
-      // No ID! This marks it as a new item
+      id: 'new_' + Date.now(), // Temporary ID for new items
       collection: collection,
       item: defaultData // Just the default data, no ID
     };

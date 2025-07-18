@@ -1,14 +1,7 @@
 import { logger } from './logger';
+import type { M2AFieldInfo } from '../types';
 
-export interface M2AFieldInfo {
-  field: string;
-  collection: string;
-  junctionCollection: string;
-  foreignKeyField: string;
-  allowedCollections: string[];
-  hasNestedM2A?: boolean;
-  nestedM2AFields?: Record<string, M2AFieldInfo>;
-}
+export type { M2AFieldInfo };
 
 export class M2AHelper {
   private api: any;
@@ -68,6 +61,7 @@ export class M2AHelper {
       field,
       collection,
       junctionCollection,
+      junctionField: field, // The field name is the junction field
       foreignKeyField,
       allowedCollections,
       nestedM2AFields: {}
