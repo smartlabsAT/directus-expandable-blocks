@@ -69,7 +69,7 @@
             v-for="collection in collections"
             :key="collection.collection"
             clickable
-            @click="() => {}"
+            @click="$emit('add-existing', collection.collection)"
           >
             <v-list-item-icon>
               <v-icon :name="collection.icon || 'box'" />
@@ -105,7 +105,7 @@ defineProps<Props>();
 
 defineEmits<{
   'add-item': [collection: string];
-  'add-existing': [type: string];
+  'add-existing': [collection: string];
 }>();
 </script>
 
