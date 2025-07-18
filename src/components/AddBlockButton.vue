@@ -65,10 +65,17 @@
         </template>
 
         <v-list>
-          <v-list-item clickable @click="$emit('add-existing', 'placeholder')">
+          <v-list-item
+            v-for="collection in collections"
+            :key="collection.collection"
+            clickable
+            @click="() => {}"
+          >
+            <v-list-item-icon>
+              <v-icon :name="collection.icon || 'box'" />
+            </v-list-item-icon>
             <v-list-item-content>
-              <!-- Placeholder for later functionality -->
-              <span style="color: var(--foreground-subdued)">Coming soon...</span>
+              {{ collection.name || collection.collection }}
             </v-list-item-content>
           </v-list-item>
         </v-list>
