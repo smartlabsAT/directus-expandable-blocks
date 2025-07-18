@@ -252,6 +252,12 @@ $expanded-border-width: 5px;
   margin: 0;
 }
 
+.button-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .add-block-container v-button {
   width: 100%;
   max-width: 400px;
