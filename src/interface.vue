@@ -38,6 +38,7 @@
       :loading="itemSelector.loading.value"
       @close="itemSelector.close"
       @confirm="handleItemSelection"
+      @confirm-copy="handleItemSelectionAsCopy"
       @search="itemSelector.handleSearch"
     />
 
@@ -117,6 +118,7 @@ const {
   updateItem,
   addNewItem,
   addExistingItems,
+  addAsNewItems,
   showDeleteDialog,
   confirmDeleteItem,
   duplicateItem,
@@ -142,6 +144,15 @@ function handleItemSelection(selectedItems: any[]) {
   if (selectedItems.length > 0 && itemSelector.selectedCollection.value) {
     // Use the addExistingItems function from the composable
     addExistingItems(itemSelector.selectedCollection.value, selectedItems);
+  }
+  itemSelector.close();
+}
+
+// Handle item selection as copy from drawer
+function handleItemSelectionAsCopy(selectedItems: any[]) {
+  if (selectedItems.length > 0 && itemSelector.selectedCollection.value) {
+    // Use the addAsNewItems function from the composable
+    addAsNewItems(itemSelector.selectedCollection.value, selectedItems);
   }
   itemSelector.close();
 }

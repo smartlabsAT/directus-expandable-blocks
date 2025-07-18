@@ -577,6 +577,72 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   }
 
   /**
+   * Create junction entries for selected items
+   */
+  function createJunctionEntries(
+    collection: string,
+    selectedItems: ItemRecord[],
+    options: {
+      idPrefix: string;
+      processItem?: (item: ItemRecord) => ItemRecord;
+    }
+  ): JunctionRecord[] {
+    return selectedItems.map((selectedItem, index) => {
+      // Process item if needed (e.g., for copying)
+      const itemToAdd = options.processItem ? options.processItem(selectedItem) : selectedItem;
+      
+      // Create new junction entry
+      const newItem: JunctionRecord = {
+        id: `${options.idPrefix}${Date.now()}_${index}`,
+        collection: collection,
+        item: itemToAdd
+      };
+      
+      // Add foreign key and sort value
+      addJunctionMetadata(
+        newItem,
+        getForeignKeyField(),
+        props.primaryKey ? getPrimaryKeyValue() : undefined,
+        relationInfo.value?.meta?.sort_field,
+        items.value.length + index
+      );
+      
+      return newItem;
+    });
+  }
+
+  /**
+   * Add junction entries to the items list and emit changes
+   */
+  function addItemsToList(
+    junctionEntries: JunctionRecord[],
+    source: string,
+    debugData: Record<string, any>
+  ): void {
+    // Add all new entries to items array
+    items.value = [...items.value, ...junctionEntries];
+    
+    // Auto-expand the first new item
+    if (junctionEntries.length > 0) {
+      expandedItems.value.push(getItemId(junctionEntries[0]));
+    }
+    
+    // Emit changes
+    emitHelper({
+      items: items.value,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source,
+      sortField: getSortField(),
+      debugData: {
+        ...debugData,
+        totalItemsCount: items.value.length
+      }
+    });
+  }
+
+  /**
    * Handle sort order changes
    */
   function onSort(): void {
@@ -614,49 +680,16 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       itemIds: selectedItems.map(item => item.id)
     });
     
-    // Create junction entries for each selected item
-    const newJunctionEntries = selectedItems.map((selectedItem, index) => {
-      // Create new junction entry with full item object
-      const newItem: JunctionRecord = {
-        id: 'existing_' + Date.now() + '_' + index, // Temporary ID
-        collection: collection,
-        item: selectedItem // Full item object (not just ID)
-      };
-      
-      // Add foreign key and sort value
-      addJunctionMetadata(
-        newItem,
-        getForeignKeyField(),
-        props.primaryKey ? getPrimaryKeyValue() : undefined,
-        relationInfo.value?.meta?.sort_field,
-        items.value.length + index
-      );
-      
-      return newItem;
+    // Create junction entries using helper
+    const newJunctionEntries = createJunctionEntries(collection, selectedItems, {
+      idPrefix: 'existing_'
     });
     
-    // Add all new entries to items array
-    items.value = [...items.value, ...newJunctionEntries];
-    
-    // Auto-expand the first new item
-    if (newJunctionEntries.length > 0) {
-      expandedItems.value.push(getItemId(newJunctionEntries[0]));
-    }
-    
-    // Emit changes
-    emitHelper({
-      items: items.value,
-      emit,
-      prepareItemsForEmit,
-      isInternalUpdate,
-      source: 'ADD EXISTING - addExistingItems',
-      sortField: getSortField(),
-      debugData: {
-        function: 'addExistingItems',
-        collection: collection,
-        addedCount: selectedItems.length,
-        totalItemsCount: items.value.length
-      }
+    // Add items to list and emit changes
+    addItemsToList(newJunctionEntries, 'ADD EXISTING - addExistingItems', {
+      function: 'addExistingItems',
+      collection: collection,
+      addedCount: selectedItems.length
     });
     
     logDebug('Added existing items', {
@@ -664,6 +697,55 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       count: selectedItems.length,
       totalItems: items.value.length
     });
+  }
+
+  /**
+   * Add items as new copies (duplicates)
+   * @param collection - The collection name
+   * @param selectedItems - Array of full item objects to copy
+   */
+  function addAsNewItems(collection: string, selectedItems: ItemRecord[]): void {
+    if (props.disabled) return;
+    
+    if (!isValidPrimaryKey(props.primaryKey)) {
+      notifyWarning('Save Required', 'Please save the item first before adding blocks.');
+      return;
+    }
+    
+    if (!selectedItems || selectedItems.length === 0) {
+      return;
+    }
+    
+    logAction('addAsNewItems', {
+      collection,
+      itemCount: selectedItems.length,
+      itemIds: selectedItems.map(item => item.id)
+    });
+    
+    // Create junction entries using helper with copy processing
+    const newJunctionEntries = createJunctionEntries(collection, selectedItems, {
+      idPrefix: 'new_',
+      processItem: (item) => {
+        const itemCopy = cleanItemMetadata(item);
+        addCopySuffix(itemCopy);
+        return itemCopy;
+      }
+    });
+    
+    // Add items to list and emit changes
+    addItemsToList(newJunctionEntries, 'ADD AS NEW - addAsNewItems', {
+      function: 'addAsNewItems',
+      collection: collection,
+      copiedCount: selectedItems.length
+    });
+    
+    logDebug('Added items as copies', {
+      collection,
+      count: selectedItems.length,
+      totalItems: items.value.length
+    });
+    
+    notifyInfo('Items Copied', `${selectedItems.length} item(s) added as copies. Save to persist changes.`);
   }
 
   return {
@@ -674,6 +756,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     // CRUD Operations
     addNewItem,
     addExistingItems,
+    addAsNewItems,
     updateItem,
     confirmDeleteItem,
     duplicateItem,

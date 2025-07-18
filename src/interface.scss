@@ -305,7 +305,7 @@ $expanded-border-width: 5px;
 .drawer-container {
   width: 400px;
   height: 100%;
-  background-color: var(--background-page);
+  background-color: var(--theme--background);
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;

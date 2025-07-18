@@ -282,6 +282,7 @@ export function useExpandableBlocks(
     showDeleteDialog: blockActions.showDeleteDialog,
     addNewItem: blockActions.addNewItem,
     addExistingItems: blockActions.addExistingItems,
+    addAsNewItems: blockActions.addAsNewItems,
     updateItem: blockActions.updateItem,
     confirmDeleteItem: blockActions.confirmDeleteItem,
     duplicateItem: blockActions.duplicateItem,

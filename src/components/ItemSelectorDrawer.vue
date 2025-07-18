@@ -67,15 +67,23 @@
           <div class="selection-info">
             {{ selectedItems.length }} item{{ selectedItems.length !== 1 ? 's' : '' }} selected
           </div>
-          <v-button secondary @click="handleClose">
-            Cancel
-          </v-button>
-          <v-button 
-            :disabled="selectedItems.length === 0"
-            @click="handleConfirm"
-          >
-            Add Selected
-          </v-button>
+          <div class="footer-actions">
+            <v-button secondary @click="handleClose">
+              Cancel
+            </v-button>
+            <v-button 
+              :disabled="selectedItems.length === 0"
+              @click="handleConfirmCopy"
+            >
+              Add as Copy
+            </v-button>
+            <v-button 
+              :disabled="selectedItems.length === 0"
+              @click="handleConfirm"
+            >
+              Add Selected
+            </v-button>
+          </div>
         </div>
       </div>
     </div>
@@ -102,6 +110,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   close: [];
   confirm: [items: any[]];
+  confirmCopy: [items: any[]];
   search: [query: string];
 }>();
 
@@ -138,6 +147,15 @@ function handleConfirm() {
     .filter(item => item !== undefined);
   
   emit('confirm', selectedFullItems);
+}
+
+function handleConfirmCopy() {
+  // Get full item objects for selected IDs
+  const selectedFullItems = selectedItems.value
+    .map(itemId => props.items.find(item => item.id === itemId))
+    .filter(item => item !== undefined);
+  
+  emit('confirmCopy', selectedFullItems);
 }
 
 // Reset when drawer opens/closes
