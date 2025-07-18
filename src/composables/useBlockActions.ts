@@ -1,9 +1,9 @@
-import { deepClone, getActualItem, getItemCollection, TITLE_FIELDS } from '../utils/helpers';
+import { deepClone, getActualItem, getItemCollection, TITLE_FIELDS, METADATA_FIELDS, addJunctionMetadata } from '../utils/helpers';
 import { emitChanges as emitHelper } from '../utils/emit-helpers';
 import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
 import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
 import { createNotificationHelpers } from '../utils/notifications';
-import { setLoadingState, clearLoadingState } from '../utils/state-helpers';
+import { setLoadingState, clearLoadingState, updateBlockDirtyState } from '../utils/state-helpers';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -55,11 +55,10 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
    */
   function cleanItemMetadata(item: any): any {
     const cleaned = { ...item };
-    delete cleaned.id;
-    delete cleaned.user_created;
-    delete cleaned.user_updated;
-    delete cleaned.date_created;
-    delete cleaned.date_updated;
+    // Remove all metadata fields using the constant
+    for (const field of METADATA_FIELDS) {
+      delete cleaned[field];
+    }
     return cleaned;
   }
 
@@ -180,14 +179,14 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     };
     items.value = updatedItems;
     
-    // Check if this update actually makes the item dirty
-    const originalData = blockOriginalStates.value.get(String(itemId));
-    if (originalData) {
-      const newItemData = updatedItems[index].item;
-      const isDirty = !deepEqual(newItemData, originalData);
-      blockDirtyStates.value.set(String(itemId), isDirty);
-      logDebug(`updateItem: Set dirty state for ${itemId} to ${isDirty}`);
-    }
+    // Update dirty state using helper
+    updateBlockDirtyState(
+      String(itemId),
+      updatedItems[index].item,
+      blockOriginalStates.value,
+      blockDirtyStates.value,
+      deepEqual
+    );
     
     // Emit with dirty tracking
     emitHelper({
@@ -222,16 +221,14 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       item: defaultData // Just the default data, no ID
     };
     
-    // Add foreign key
-    const foreignKey = getForeignKeyField();
-    if (foreignKey && props.primaryKey) {
-      (newItem as any)[foreignKey] = getPrimaryKeyValue();
-    }
-    
-    // Add sort value
-    if (relationInfo.value?.meta?.sort_field) {
-      (newItem as any)[relationInfo.value.meta.sort_field] = items.value.length;
-    }
+    // Add foreign key and sort value using helper
+    addJunctionMetadata(
+      newItem,
+      getForeignKeyField(),
+      props.primaryKey ? getPrimaryKeyValue() : undefined,
+      relationInfo.value?.meta?.sort_field,
+      items.value.length
+    );
     
     // Add to items array
     items.value = [...items.value, newItem];
@@ -391,21 +388,21 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         item: itemCopy // Copied data without ID
       };
       
-      // Add foreign key if needed
-      if (relationInfo.value?.foreignKeyField && props.primaryKey) {
-        const foreignKeyField = relationInfo.value.foreignKeyField;
-        newItem[foreignKeyField] = getPrimaryKeyValue();
-        
-        logDebug('Foreign key assignment (duplicate)', {
-          foreignKey: foreignKeyField,
-          primaryKey: props.primaryKey,
-          value: newItem[foreignKeyField]
-        });
-      }
+      // Add foreign key and sort value using helper
+      addJunctionMetadata(
+        newItem,
+        relationInfo.value?.foreignKeyField,
+        props.primaryKey ? getPrimaryKeyValue() : undefined,
+        relationInfo.value?.meta?.sort_field,
+        index + 1
+      );
       
-      // Add sort value
-      if (relationInfo.value?.meta?.sort_field) {
-        newItem[relationInfo.value.meta.sort_field] = index + 1;
+      if (relationInfo.value?.foreignKeyField && props.primaryKey) {
+        logDebug('Foreign key assignment (duplicate)', {
+          foreignKey: relationInfo.value.foreignKeyField,
+          primaryKey: props.primaryKey,
+          value: newItem[relationInfo.value.foreignKeyField]
+        });
       }
       
       // Insert at position
@@ -482,19 +479,17 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       }
       items.value = updatedItems;
       
-      // Check if this update actually makes the item dirty
+      // Update dirty state using helper
       const blockId = getItemId(item);
       if (blockId) {
-        const originalData = blockOriginalStates.value.get(String(blockId));
-        if (originalData) {
-          const newItemData = updatedItems[index].item || updatedItems[index];
-          const isDirty = !deepEqual(newItemData, originalData);
-          blockDirtyStates.value.set(String(blockId), isDirty);
-          logDebug(`Status update: Set dirty state for ${blockId} to ${isDirty}`);
-        } else {
-          blockDirtyStates.value.set(String(blockId), true);
-          logDebug('Block marked as dirty after status update (no original)', { blockId });
-        }
+        const newItemData = updatedItems[index].item || updatedItems[index];
+        updateBlockDirtyState(
+          String(blockId),
+          newItemData,
+          blockOriginalStates.value,
+          blockDirtyStates.value,
+          deepEqual
+        );
       }
       
       // Emit changes

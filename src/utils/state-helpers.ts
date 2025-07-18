@@ -386,3 +386,29 @@ export function setLoadingState(loading: Ref<Record<string | number, boolean>>, 
 export function clearLoadingState(loading: Ref<Record<string | number, boolean>>, key: string | number): void {
   delete loading.value[key];
 }
+
+/**
+ * Update dirty state for a block based on comparison with original data
+ * @param blockId - The block ID to update
+ * @param currentData - The current data to compare
+ * @param originalStates - Map of original states
+ * @param dirtyStates - Map of dirty states
+ * @param deepEqual - Function to compare data deeply
+ */
+export function updateBlockDirtyState(
+  blockId: string,
+  currentData: any,
+  originalStates: Map<string, any>,
+  dirtyStates: Map<string, boolean>,
+  deepEqual: (a: any, b: any) => boolean
+): void {
+  const originalData = originalStates.get(blockId);
+  if (originalData) {
+    const isDirty = !deepEqual(currentData, originalData);
+    dirtyStates.set(blockId, isDirty);
+    logger.debug(`Set dirty state for ${blockId} to ${isDirty}`);
+  } else {
+    dirtyStates.set(blockId, true);
+    logger.debug('Block marked as dirty (no original state)', { blockId });
+  }
+}
