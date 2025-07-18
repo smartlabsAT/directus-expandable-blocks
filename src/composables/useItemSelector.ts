@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
+import { debounce } from 'lodash-es';
 import type { CollectionInfo } from '../types';
 import { logDebug, logError } from '../utils/logger-wrapper';
 
@@ -59,13 +60,7 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
         params: {
           limit: -1,
           fields: ['*'],
-          filter: searchQuery.value ? {
-            _or: [
-              { name: { _contains: searchQuery.value } },
-              { title: { _contains: searchQuery.value } },
-              { label: { _contains: searchQuery.value } }
-            ]
-          } : {}
+          search: searchQuery.value || undefined
         }
       });
       
@@ -83,11 +78,16 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
   }
 
   /**
+   * Debounced load items function
+   */
+  const debouncedLoadItems = debounce(loadItems, 300);
+
+  /**
    * Handle search query changes
    */
-  async function handleSearch(query: string) {
+  function handleSearch(query: string) {
     searchQuery.value = query;
-    await loadItems();
+    debouncedLoadItems();
   }
 
   /**

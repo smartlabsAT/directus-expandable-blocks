@@ -28,6 +28,13 @@
               <template #prepend>
                 <v-icon name="search" />
               </template>
+              <template #append v-if="searchQuery">
+                <v-icon 
+                  name="close" 
+                  clickable
+                  @click="clearSearch"
+                />
+              </template>
             </v-input>
           </div>
 
@@ -37,8 +44,13 @@
             <p>Loading items...</p>
           </div>
 
+          <!-- Results Count -->
+          <div v-else-if="searchQuery" class="results-info">
+            <span>{{ items.length }} {{ items.length === 1 ? 'result' : 'results' }} found</span>
+          </div>
+
           <!-- Items List -->
-          <div v-else-if="items.length > 0" class="items-list">
+          <div v-if="!loading && items.length > 0" class="items-list">
             <label 
               v-for="item in items"
               :key="item.id || item"
@@ -56,9 +68,10 @@
           </div>
 
           <!-- Empty State -->
-          <div v-else class="empty-state">
-            <v-icon name="search_off" large />
-            <p>No items found</p>
+          <div v-else-if="!loading" class="empty-state">
+            <v-icon :name="searchQuery ? 'search_off' : 'inbox'" large />
+            <p>{{ searchQuery ? 'No items found matching your search' : 'No items available' }}</p>
+            <p v-if="searchQuery" class="empty-state-hint">Try adjusting your search terms</p>
           </div>
         </div>
 
@@ -143,6 +156,11 @@ const collectionName = computed(() => {
 
 function handleClose() {
   emit('close');
+}
+
+function clearSearch() {
+  searchQuery.value = '';
+  emit('search', '');
 }
 
 function handleConfirm() {

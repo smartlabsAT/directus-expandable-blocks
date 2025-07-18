@@ -432,6 +432,24 @@ $expanded-border-width: 5px;
       margin: 0;
       font-size: 14px;
     }
+    
+    .empty-state-hint {
+      font-size: 12px;
+      color: var(--foreground-subdued);
+      margin-top: 8px;
+    }
+  }
+  
+  .results-info {
+    padding: 12px 24px;
+    background-color: var(--background-normal-alt);
+    border-bottom: 1px solid var(--border-subdued);
+    font-size: 12px;
+    color: var(--foreground-subdued);
+    
+    span {
+      font-weight: 600;
+    }
   }
 }
 
