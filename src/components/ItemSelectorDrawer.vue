@@ -43,10 +43,22 @@
             <v-progress-circular indeterminate />
             <p>Loading items...</p>
           </div>
-
-          <!-- Results Count -->
-          <div v-else-if="searchQuery" class="results-info">
-            <span>{{ items.length }} {{ items.length === 1 ? 'result' : 'results' }} found</span>
+          
+          <!-- Search Info Bar -->
+          <div v-if="!loading && (searchQuery || totalItems > itemsPerPage)" class="search-info-bar">
+            <div class="results-info">
+              <span v-if="searchQuery">{{ totalItems }} {{ totalItems === 1 ? 'result' : 'results' }} found</span>
+            </div>
+            
+            <!-- Pagination -->
+            <v-pagination
+              v-if="totalItems > itemsPerPage"
+              v-model="currentPageLocal"
+              :length="totalPages"
+              :total-visible="3"
+              :show-first-last="true"
+              @update:model-value="emit('update:current-page', $event)"
+            />
           </div>
 
           <!-- Items List -->
@@ -78,7 +90,14 @@
         <!-- Drawer Footer -->
         <div class="drawer-footer">
           <div class="selection-info">
-            {{ selectedItems.length }} item{{ selectedItems.length !== 1 ? 's' : '' }} selected
+            <span>{{ selectedItems.length }} item{{ selectedItems.length !== 1 ? 's' : '' }} selected</span>
+            <a 
+              v-if="selectedItems.length > 0" 
+              class="deselect-link"
+              @click="deselectAll"
+            >
+              Deselect all
+            </a>
           </div>
 
           <v-button secondary @click="handleClose">
@@ -122,6 +141,9 @@ interface Props {
   collections: CollectionInfo[];
   items: any[];
   loading?: boolean;
+  currentPage?: number;
+  itemsPerPage?: number;
+  totalItems?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -133,6 +155,7 @@ const emit = defineEmits<{
   confirm: [items: any[]];
   confirmCopy: [items: any[]];
   search: [query: string];
+  'update:current-page': [page: number];
 }>();
 
 // Local state
@@ -152,6 +175,16 @@ const collectionName = computed(() => {
   return props.collectionName || props.collection || 'Items';
 });
 
+const totalPages = computed(() => {
+  if (!props.totalItems || !props.itemsPerPage) return 1;
+  return Math.ceil(props.totalItems / props.itemsPerPage);
+});
+
+const currentPageLocal = computed({
+  get: () => props.currentPage || 1,
+  set: (value) => emit('update:current-page', value)
+});
+
 // Methods - using existing helper
 
 function handleClose() {
@@ -161,6 +194,10 @@ function handleClose() {
 function clearSearch() {
   searchQuery.value = '';
   emit('search', '');
+}
+
+function deselectAll() {
+  selectedItems.value = [];
 }
 
 function handleConfirm() {

@@ -38,10 +38,14 @@
       :collections="allowedCollections"
       :items="itemSelector.availableItems.value"
       :loading="itemSelector.loading.value"
+      :current-page="itemSelector.currentPage.value"
+      :items-per-page="itemSelector.itemsPerPage.value"
+      :total-items="itemSelector.totalItems.value"
       @close="itemSelector.close"
       @confirm="handleItemSelection"
       @confirm-copy="handleItemSelectionAsCopy"
       @search="itemSelector.handleSearch"
+      @update:current-page="itemSelector.handlePageChange"
     />
 
     <!-- Delete Dialog -->

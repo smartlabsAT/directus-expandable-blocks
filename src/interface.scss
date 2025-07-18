@@ -440,15 +440,26 @@ $expanded-border-width: 5px;
     }
   }
   
-  .results-info {
+  .search-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 12px 24px;
     background-color: var(--background-normal-alt);
     border-bottom: 1px solid var(--border-subdued);
-    font-size: 12px;
-    color: var(--foreground-subdued);
+    gap: 16px;
     
-    span {
-      font-weight: 600;
+    .results-info {
+      font-size: 12px;
+      color: var(--foreground-subdued);
+      
+      span {
+        font-weight: 600;
+      }
+    }
+    
+    .v-pagination {
+      margin: 0;
     }
   }
 }
@@ -467,6 +478,21 @@ $expanded-border-width: 5px;
     color: var(--foreground-subdued);
     width: 100%;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    .deselect-link {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s;
+      
+      &:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+      }
+    }
   }
   
   .v-button {
