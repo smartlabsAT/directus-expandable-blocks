@@ -1,4 +1,4 @@
-import { deepClone } from '../utils/helpers';
+import { deepClone, getActualItem, getItemCollection } from '../utils/helpers';
 import { emitChanges as emitHelper } from '../utils/emit-helpers';
 import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
 import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
@@ -369,8 +369,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     
     const dupKey = `dup_${Date.now()}`;
     try {
-      const actualItem = item.item || item;
-      const collection = item.collection || (actualItem as any).collection;
+      const actualItem = getActualItem(item);
+      const collection = getItemCollection(item);
       
       if (!isValidCollection(collection)) {
         logEvent('Cannot duplicate: no collection found', {});
@@ -475,9 +475,9 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     if (props.disabled) return;
     
     try {
-      const actualItem = item.item || item;
+      const actualItem = getActualItem(item);
       const itemId = (actualItem as ItemRecord).id;
-      const collection = item.collection || (actualItem as any).collection;
+      const collection = getItemCollection(item);
       
       if (!itemId || !isValidCollection(collection)) {
         logEvent('Cannot update status: missing item ID or collection', {});

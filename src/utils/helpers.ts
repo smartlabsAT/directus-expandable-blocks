@@ -86,6 +86,38 @@ export function parseAllowedCollections(
 }
 
 /**
+ * Get the actual item from a junction record
+ * Junction records can have nested items, this extracts the actual item data
+ * @param item - The junction record or item
+ * @returns The actual item data
+ */
+export function getActualItem(item: JunctionRecord | ItemRecord): any {
+  return (item as JunctionRecord).item || item;
+}
+
+/**
+ * Extract collection name from an item
+ * Tries multiple strategies to find the collection name
+ * @param item - The junction record or item
+ * @returns The collection name or undefined
+ */
+export function getItemCollection(item: JunctionRecord | ItemRecord): string | undefined {
+  const actualItem = getActualItem(item);
+  
+  // First try the junction record's collection
+  if ('collection' in item && item.collection) {
+    return item.collection;
+  }
+  
+  // Then try the actual item's collection
+  if (actualItem && typeof actualItem === 'object' && 'collection' in actualItem) {
+    return actualItem.collection;
+  }
+  
+  return undefined;
+}
+
+/**
  * Deep clone an object
  */
 export function deepClone<T>(obj: T): T {

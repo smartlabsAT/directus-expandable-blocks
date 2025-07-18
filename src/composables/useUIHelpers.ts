@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger-wrapper';
-import { extractItemTitle, getActualItemId as getItemActualId } from '../utils/helpers';
+import { extractItemTitle, getActualItemId as getItemActualId, getActualItem, getItemCollection } from '../utils/helpers';
 import { isValidCollection } from '../utils/validation';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
@@ -31,15 +31,15 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   // Collection helpers
   function getCollectionName(item: JunctionRecord): string {
-    const actualItem = item.item || item;
-    const collection = (actualItem as any).collection || item.collection;
+    const collection = getItemCollection(item);
+    if (!collection) return 'Unknown';
     const collectionInfo = collectionsStore.getCollection(collection);
-    return collectionInfo?.name || collection || 'Unknown';
+    return collectionInfo?.name || collection;
   }
 
   function getCollectionIcon(item: JunctionRecord): string | null {
-    const actualItem = item.item || item;
-    const collection = (actualItem as any).collection || item.collection;
+    const collection = getItemCollection(item);
+    if (!collection) return null;
     const collectionInfo = collectionsStore.getCollection(collection);
     return collectionInfo?.meta?.icon || null;
   }
@@ -80,7 +80,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
   }
 
   function getItemStatus(item: JunctionRecord): string {
-    const actualItem = item.item || item;
+    const actualItem = getActualItem(item);
     return (actualItem as ItemRecord).status || 'draft';
   }
 
