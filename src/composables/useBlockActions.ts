@@ -1,8 +1,9 @@
-import { deepClone, getActualItem, getItemCollection } from '../utils/helpers';
+import { deepClone, getActualItem, getItemCollection, TITLE_FIELDS } from '../utils/helpers';
 import { emitChanges as emitHelper } from '../utils/emit-helpers';
 import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
 import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
 import { createNotificationHelpers } from '../utils/notifications';
+import { setLoadingState, clearLoadingState } from '../utils/state-helpers';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -66,12 +67,12 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
    * Add copy suffix to item title/name
    */
   function addCopySuffix(item: any): void {
-    if (item.title) {
-      item.title += ' (Copy)';
-    } else if (item.name) {
-      item.name += ' (Copy)';
-    } else if (item.headline) {
-      item.headline += ' (Copy)';
+    // Find the first available title field and add suffix
+    for (const field of TITLE_FIELDS) {
+      if (item[field] && typeof item[field] === 'string') {
+        item[field] += ' (Copy)';
+        break;
+      }
     }
   }
 
@@ -283,7 +284,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     
     try {
       const itemId = getItemId(item);
-      loading.value[itemId] = true;
+      setLoadingState(loading, itemId);
       
       // Delete junction record
       if (item.id && !isNewItem(item)) {
@@ -351,7 +352,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       logEvent('Error deleting block', { error });
       notifyError('Error', 'Failed to delete block');
     } finally {
-      delete loading.value[getItemId(item)];
+      clearLoadingState(loading, getItemId(item));
     }
   }
 
@@ -377,7 +378,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         return;
       }
       
-      loading.value[dupKey] = true;
+      setLoadingState(loading, dupKey);
       
       // Create copy and clean metadata
       const itemCopy = cleanItemMetadata(actualItem as ItemRecord);
@@ -464,7 +465,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       logEvent('Error duplicating block', { error });
       notifyError('Error', 'Failed to duplicate block');
     } finally {
-      delete loading.value[dupKey];
+      clearLoadingState(loading, dupKey);
     }
   }
 

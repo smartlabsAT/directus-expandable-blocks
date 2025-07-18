@@ -7,6 +7,12 @@ import { deepEqual } from './state-helpers';
 import { isTemporaryId } from './validation';
 
 /**
+ * Common fields that typically contain the title/name of an item
+ * Used for consistent title extraction across the codebase
+ */
+export const TITLE_FIELDS = ['title', 'name', 'headline', 'label', 'heading'] as const;
+
+/**
  * Build fields string for M2A queries
  */
 export function buildM2AFieldsString(allowedCollections: CollectionInfo[]): string {
@@ -38,12 +44,15 @@ export function extractItemTitle(item: ItemRecord | JunctionRecord): string {
     return 'Untitled Block';
   }
   
-  return (itemData as ItemRecord).title || 
-         (itemData as ItemRecord).name || 
-         (itemData as ItemRecord).headline || 
-         (itemData as ItemRecord).label ||
-         (itemData as ItemRecord).heading ||
-         'Untitled Block';
+  // Check each title field in order of preference
+  for (const field of TITLE_FIELDS) {
+    const value = (itemData as any)[field];
+    if (value && typeof value === 'string') {
+      return value;
+    }
+  }
+  
+  return 'Untitled Block';
 }
 
 /**

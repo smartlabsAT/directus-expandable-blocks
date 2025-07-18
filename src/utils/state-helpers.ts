@@ -368,3 +368,21 @@ export function safeStringify(obj: any, space?: number): string {
     return value;
   }, space);
 }
+
+/**
+ * Set loading state for a specific key
+ * @param loading - The loading state ref object
+ * @param key - The key to set loading state for
+ */
+export function setLoadingState(loading: Ref<Record<string | number, boolean>>, key: string | number): void {
+  loading.value[key] = true;
+}
+
+/**
+ * Clear loading state for a specific key
+ * @param loading - The loading state ref object
+ * @param key - The key to clear loading state for
+ */
+export function clearLoadingState(loading: Ref<Record<string | number, boolean>>, key: string | number): void {
+  delete loading.value[key];
+}
