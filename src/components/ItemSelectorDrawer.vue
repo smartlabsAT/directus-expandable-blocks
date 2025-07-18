@@ -67,23 +67,29 @@
           <div class="selection-info">
             {{ selectedItems.length }} item{{ selectedItems.length !== 1 ? 's' : '' }} selected
           </div>
-          <div class="footer-actions">
-            <v-button secondary @click="handleClose">
-              Cancel
-            </v-button>
-            <v-button 
+
+          <v-button secondary @click="handleClose">
+            <v-icon name="close"/>
+            Cancel
+          </v-button>
+          <v-button
               :disabled="selectedItems.length === 0"
+              kind="warning"
               @click="handleConfirmCopy"
-            >
-              Add as Copy
-            </v-button>
-            <v-button 
+              class="icon-button"
+              v-tooltip.top="tooltipCopy"
+          >
+            <v-icon name="content_copy"/>
+          </v-button>
+          <v-button
               :disabled="selectedItems.length === 0"
               @click="handleConfirm"
-            >
-              Add Selected
-            </v-button>
-          </div>
+              class="icon-button"
+              v-tooltip.left="tooltipReference"
+          >
+            <v-icon name="link"/>
+          </v-button>
+
         </div>
       </div>
     </div>
@@ -93,6 +99,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { extractItemTitle } from '../utils/helpers';
+import { getCollectionIconByName, getCollectionDisplayName } from '../composables/useUIHelpers';
 import type { CollectionInfo } from '../types';
 
 interface Props {
@@ -118,6 +125,10 @@ const emit = defineEmits<{
 const selectedItems = ref<(string | number)[]>([]);
 const searchQuery = ref('');
 
+// Tooltip texts
+const tooltipCopy = 'Creates an independent copy of the selected item. Changes to the copy will not affect the original.';
+const tooltipReference = 'Adds a reference to the selected item. Changes to the item will affect all places where it is used.';
+
 // Computed
 const collectionInfo = computed(() => {
   if (!props.collection || !props.collections) return null;
@@ -127,11 +138,11 @@ const collectionInfo = computed(() => {
 });
 
 const collectionIcon = computed(() => {
-  return collectionInfo.value?.icon || 'box';
+  return getCollectionIconByName(props.collection, props.collections);
 });
 
 const collectionName = computed(() => {
-  return collectionInfo.value?.name || props.collection || 'Items';
+  return getCollectionDisplayName(props.collection, props.collections);
 });
 
 // Methods - using existing helper

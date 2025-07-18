@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger-wrapper';
 import { extractItemTitle, getActualItemId as getItemActualId, getActualItem, getItemCollection } from '../utils/helpers';
 import { isValidCollection } from '../utils/validation';
-import type { JunctionRecord, ItemRecord } from '../types';
+import type { JunctionRecord, ItemRecord, CollectionInfo } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**
@@ -150,7 +150,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 /**
  * Get collection icon by name
  */
-function getCollectionIconByName(
+export function getCollectionIconByName(
   collectionName: string | null, 
   collections: CollectionInfo[]
 ): string {
@@ -162,7 +162,7 @@ function getCollectionIconByName(
 /**
  * Get collection display name
  */
-function getCollectionDisplayName(
+export function getCollectionDisplayName(
   collectionName: string | null,
   collections: CollectionInfo[]
 ): string {
