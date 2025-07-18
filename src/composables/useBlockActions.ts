@@ -359,7 +359,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   /**
    * Duplicate an existing block
    */
-  async function duplicateItem(item: JunctionRecord, index: number): Promise<void> {
+  function duplicateItem(item: JunctionRecord, index: number): void {
     if (props.disabled) return;
     
     // Check if we can add more blocks
@@ -369,61 +369,43 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     }
     
     const dupKey = `dup_${Date.now()}`;
+    const actualItem = getActualItem(item);
+    const collection = getItemCollection(item);
+    
+    if (!isValidCollection(collection)) {
+      logEvent('Cannot duplicate: no collection found', {});
+      return;
+    }
+    
+    setLoadingState(loading, dupKey);
+    
     try {
-      const actualItem = getActualItem(item);
-      const collection = getItemCollection(item);
-      
-      if (!isValidCollection(collection)) {
-        logEvent('Cannot duplicate: no collection found', {});
-        return;
-      }
-      
-      setLoadingState(loading, dupKey);
-      
       // Create copy and clean metadata
       const itemCopy = cleanItemMetadata(actualItem as ItemRecord);
       addCopySuffix(itemCopy);
       
-      // Create duplicate
-      const newItemResponse = await api.post(`/items/${collection}`, itemCopy);
-      const createdItem = newItemResponse.data.data;
-      
-      // Create junction
-      const junctionData: any = {
+      // Create new junction record with temporary ID (no API calls)
+      const newItem: JunctionRecord = {
+        id: dupKey, // Temporary ID for tracking
         collection: collection,
-        item: createdItem.id
+        item: itemCopy // Copied data without ID
       };
       
+      // Add foreign key if needed
       if (relationInfo.value?.foreignKeyField && props.primaryKey) {
-        const primaryKeyValue = getPrimaryKeyValue();
-        junctionData[relationInfo.value.foreignKeyField] = primaryKeyValue;
+        const foreignKeyField = relationInfo.value.foreignKeyField;
+        newItem[foreignKeyField] = getPrimaryKeyValue();
         
         logDebug('Foreign key assignment (duplicate)', {
-          foreignKey: relationInfo.value.foreignKeyField,
-          originalPrimaryKey: props.primaryKey,
-          originalType: typeof props.primaryKey,
-          convertedValue: primaryKeyValue,
-          convertedType: typeof primaryKeyValue
+          foreignKey: foreignKeyField,
+          primaryKey: props.primaryKey,
+          value: newItem[foreignKeyField]
         });
       }
       
+      // Add sort value
       if (relationInfo.value?.meta?.sort_field) {
-        junctionData[relationInfo.value.meta.sort_field] = index + 1;
-      }
-      
-      const junctionCollection = getJunctionCollection();
-      const junctionResponse = await api.post(`/items/${junctionCollection}`, junctionData);
-      const junctionRecord = junctionResponse.data.data;
-      
-      // Create complete item
-      const newItem: JunctionRecord = {
-        id: junctionRecord.id,
-        collection: collection,
-        item: createdItem
-      };
-      
-      if (relationInfo.value?.foreignKeyField) {
-        newItem[relationInfo.value.foreignKeyField] = getPrimaryKeyValue();
+        newItem[relationInfo.value.meta.sort_field] = index + 1;
       }
       
       // Insert at position
@@ -431,8 +413,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       updatedItems.splice(index + 1, 0, newItem);
       items.value = updatedItems;
       
-      // Auto-expand
-      expandedItems.value.push(String(junctionRecord.id));
+      // Auto-expand the duplicated item
+      expandedItems.value.push(dupKey);
       
       // Emit changes
       emitHelper({
@@ -440,26 +422,21 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         emit,
         prepareItemsForEmit,
         isInternalUpdate,
-        source: 'SAVE STATE - duplicateItem',
+        source: 'DUPLICATE - duplicateItem (no API calls)',
         sortField: getSortField(),
         debugData: buildDebugData('duplicateItem', {
           originalItem: {
             id: item.id,
-            collection: item.collection,
-            itemType: typeof item.item
+            collection: item.collection
           },
           duplicatedItem: {
-            id: createdItem.id,
-            data: createdItem
-          },
-          duplicatedJunction: {
-            id: junctionRecord.id,
-            data: junctionRecord
+            tempId: dupKey,
+            collection: collection
           }
         })
       });
       
-      notifySuccess('Duplicated', 'Block duplicated successfully');
+      notifySuccess('Duplicated', 'Block duplicated. Save to persist changes.');
       
     } catch (error) {
       logEvent('Error duplicating block', { error });

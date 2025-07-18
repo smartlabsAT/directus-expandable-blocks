@@ -164,13 +164,16 @@ export function useBlockState(relationInfo?: Ref<any>) {
         isDirty: true,
         isNew: true
       });
+      
+      // Create a copy without the temporary ID
+      const { id, ...itemWithoutId } = item;
+      
       // If sort field exists, ensure it's set
       if (sortField) {
-        const itemToEmit = { ...item };
-        itemToEmit[sortField] = index;
-        return itemToEmit;
+        itemWithoutId[sortField] = index;
       }
-      return item;
+      
+      return itemWithoutId;
     });
 
     // Check if order has changed
