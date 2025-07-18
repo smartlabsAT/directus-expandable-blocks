@@ -1,5 +1,6 @@
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger-wrapper';
 import { extractItemTitle, getActualItemId as getItemActualId } from '../utils/helpers';
+import { isValidCollection } from '../utils/validation';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -48,7 +49,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
     const actualItem = item.item || item;
     const collection = (actualItem as any).collection || item.collection;
     
-    if (!collection) {
+    if (!isValidCollection(collection)) {
       logger.warn('No collection found for item:', item);
       return [];
     }
@@ -72,7 +73,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
     const actualItem = item.item || item;
     const collection = item.collection || (actualItem as any).collection;
     
-    if (!collection) return false;
+    if (!isValidCollection(collection)) return false;
     
     const fields = fieldsStore.getFieldsForCollection(collection);
     return fields.some((field: any) => field.field === 'status');

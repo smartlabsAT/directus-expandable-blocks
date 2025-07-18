@@ -1,6 +1,8 @@
 import { deepClone } from '../utils/helpers';
 import { emitChanges as emitHelper } from '../utils/emit-helpers';
 import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
+import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
+import { createNotificationHelpers } from '../utils/notifications';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -73,16 +75,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     }
   }
 
-  /**
-   * Show notification helper
-   */
-  function notify(title: string, text: string, type: 'success' | 'warning' | 'error' | 'info' = 'info'): void {
-    if (notificationsStore && typeof notificationsStore.add === 'function') {
-      notificationsStore.add({ title, text, type });
-    } else {
-      logWarn('Notifications store not available', { title, text, type });
-    }
-  }
+  // Create notification helpers bound to the notifications store
+  const { notify, notifySuccess, notifyError, notifyWarning, notifyInfo } = createNotificationHelpers(notificationsStore);
 
   /**
    * Build common debug data for emit operations
@@ -211,8 +205,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   function addNewItem(collection: string): void {
     if (props.disabled) return;
     
-    if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
-      notify('Save Required', 'Please save the item first before adding blocks.', 'warning');
+    if (!isValidPrimaryKey(props.primaryKey)) {
+      notifyWarning('Save Required', 'Please save the item first before adding blocks.');
       return;
     }
     
@@ -266,7 +260,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       }
     });
     
-    notify('Block Added', 'New block added. Save to persist changes.');
+    notifyInfo('Block Added', 'New block added. Save to persist changes.');
   }
 
   /**
@@ -351,11 +345,11 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       
       itemToDelete.value = null;
       
-      notify('Deleted', 'Block deleted successfully', 'success');
+      notifySuccess('Deleted', 'Block deleted successfully');
       
     } catch (error) {
       logEvent('Error deleting block', { error });
-      notify('Error', 'Failed to delete block', 'error');
+      notifyError('Error', 'Failed to delete block');
     } finally {
       delete loading.value[getItemId(item)];
     }
@@ -369,7 +363,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     
     // Check if we can add more blocks
     if (!canAddMoreBlocks.value) {
-      notify('Maximum Reached', `Maximum number of blocks (${mergedOptions.value?.maxBlocks}) reached`, 'warning');
+      notifyWarning('Maximum Reached', `Maximum number of blocks (${mergedOptions.value?.maxBlocks}) reached`);
       return;
     }
     
@@ -378,7 +372,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       const actualItem = item.item || item;
       const collection = item.collection || (actualItem as any).collection;
       
-      if (!collection) {
+      if (!isValidCollection(collection)) {
         logEvent('Cannot duplicate: no collection found', {});
         return;
       }
@@ -464,11 +458,11 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         })
       });
       
-      notify('Duplicated', 'Block duplicated successfully', 'success');
+      notifySuccess('Duplicated', 'Block duplicated successfully');
       
     } catch (error) {
       logEvent('Error duplicating block', { error });
-      notify('Error', 'Failed to duplicate block', 'error');
+      notifyError('Error', 'Failed to duplicate block');
     } finally {
       delete loading.value[dupKey];
     }
@@ -485,7 +479,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       const itemId = (actualItem as ItemRecord).id;
       const collection = item.collection || (actualItem as any).collection;
       
-      if (!itemId || !collection) {
+      if (!itemId || !isValidCollection(collection)) {
         logEvent('Cannot update status: missing item ID or collection', {});
         return;
       }
@@ -549,7 +543,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       
     } catch (error) {
       logEvent('Error updating status', { error });
-      notify('Error', 'Failed to update status', 'error');
+      notifyError('Error', 'Failed to update status');
     }
   }
 
@@ -606,7 +600,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     });
     
     // Show notification
-    notify('Changes Discarded', 'Block reverted to last saved state', 'success');
+    notifySuccess('Changes Discarded', 'Block reverted to last saved state');
   }
 
   /**

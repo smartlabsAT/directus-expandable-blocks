@@ -1,6 +1,7 @@
 import { watch, nextTick } from 'vue';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger-wrapper';
 import { deepClone } from '../utils/helpers';
+import { isValidPrimaryKey, isItemObject } from '../utils/validation';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 import type { JunctionRecord } from '../types';
 
@@ -45,9 +46,9 @@ export function useBlockWatchers(
       if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
         logger.debug('Setting originalItemOrder from value watcher:', newVal);
         originalItemOrder.value = newVal.map(item => 
-          typeof item === 'object' && item !== null ? item.id : item
+          isItemObject(item) ? item.id : item
         );
-        if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+        if (isValidPrimaryKey(props.primaryKey)) {
           await loadFullItemData();
         }
         isFullyInitialized.value = true;
@@ -60,7 +61,7 @@ export function useBlockWatchers(
         
         if (allAreIds) {
           const newOrder = newVal.map(item => 
-            typeof item === 'object' && item !== null ? (item as any).id : item
+            isItemObject(item) ? (item as any).id : item
           );
           
           // If all blocks are IDs only, this is a save event
@@ -85,7 +86,7 @@ export function useBlockWatchers(
             });
             
             // Reload data in new order after save
-            if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+            if (isValidPrimaryKey(props.primaryKey)) {
               await loadFullItemData(true);  // Pass true to indicate this is after a save
             }
             return;
@@ -107,7 +108,7 @@ export function useBlockWatchers(
             });
             
             // Reload data to get fresh state after save
-            if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
+            if (isValidPrimaryKey(props.primaryKey)) {
               await loadFullItemData(true);  // Pass true to indicate this is after a save
             }
             return;
@@ -131,7 +132,7 @@ export function useBlockWatchers(
         newVal.forEach(item => {
           if (typeof item === 'number' || typeof item === 'string') {
             hasJustIds = true;
-          } else if (typeof item === 'object' && item !== null) {
+          } else if (isItemObject(item)) {
             if ('collection' in item && 'item' in item) {
               if (item.id) {
                 hasObjectsWithId = true;
@@ -213,7 +214,7 @@ export function useBlockWatchers(
         // WICHTIG: Reset originalItemOrder to the initial/saved order
         if (Array.isArray(initialVal)) {
           originalItemOrder.value = initialVal.map(item => 
-            typeof item === 'object' && item !== null ? item.id : item
+            isItemObject(item) ? item.id : item
           );
           
           logger.debug('Reset originalItemOrder to:', originalItemOrder.value);

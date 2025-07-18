@@ -1,6 +1,7 @@
 import { ref, type Ref } from 'vue';
-import { logger } from '../utils/logger';
-import { deepClone } from '../utils/helpers';
+import { logger } from '../utils/logger-wrapper';
+import { deepClone, deepEqual } from '../utils/helpers';
+import { isTemporaryId } from '../utils/validation';
 import type { JunctionRecord } from '../types';
 
 /**
@@ -28,26 +29,6 @@ export function useBlockState(relationInfo?: Ref<any>) {
   const isInternalUpdate = ref(false);
   const isFullyInitialized = ref(false);
 
-  /**
-   * Deep equality check for objects
-   */
-  function deepEqual(a: any, b: any): boolean {
-    if (a === b) return true;
-    if (a == null || b == null) return false;
-    if (typeof a !== 'object' || typeof b !== 'object') return false;
-    
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    
-    if (keysA.length !== keysB.length) return false;
-    
-    for (const key of keysA) {
-      if (!keysB.includes(key)) return false;
-      if (!deepEqual(a[key], b[key])) return false;
-    }
-    
-    return true;
-  }
 
   /**
    * Get item ID from a junction record
@@ -65,7 +46,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
    * Check if an item is new (not saved to database yet)
    */
   function isNewItem(item: JunctionRecord): boolean {
-    return !item.id || String(item.id).startsWith('temp_');
+    return isTemporaryId(item.id);
   }
 
   /**
@@ -313,7 +294,6 @@ export function useBlockState(relationInfo?: Ref<any>) {
     removeBlockState,
     
     // Utility functions
-    deepEqual,
     getItemId,
     isNewItem
   };

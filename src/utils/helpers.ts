@@ -3,6 +3,8 @@
  */
 
 import type { JunctionRecord, ItemRecord, CollectionInfo } from '../types';
+import { deepEqual } from './state-helpers';
+import { isTemporaryId } from './validation';
 
 /**
  * Build fields string for M2A queries
@@ -58,8 +60,7 @@ export function getActualItemId(item: JunctionRecord): string | number {
  * Check if item is new (not saved to database)
  */
 export function isNewItem(item: JunctionRecord): boolean {
-  const id = String(item.id);
-  return !item.id || id.startsWith('new_') || id.startsWith('temp_') || id.startsWith('dup_');
+  return isTemporaryId(item.id);
 }
 
 /**
@@ -118,3 +119,6 @@ export function deepClone<T>(obj: T): T {
   
   return clonedObj;
 }
+
+// Re-export deepEqual for backward compatibility
+export { deepEqual };

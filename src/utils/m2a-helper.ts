@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { isNotNullish } from './validation';
 import type { M2AFieldInfo } from '../types';
 
 export type { M2AFieldInfo };
@@ -199,7 +200,7 @@ export class M2AHelper {
         }
         
         // Use schema default if available
-        if (field.schema?.default_value !== null && field.schema?.default_value !== undefined) {
+        if (isNotNullish(field.schema?.default_value)) {
           defaultData[field.field] = field.schema.default_value;
           return;
         }

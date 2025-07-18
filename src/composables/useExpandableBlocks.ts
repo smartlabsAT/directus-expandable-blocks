@@ -1,8 +1,9 @@
 import { ref, computed, nextTick, type Ref } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
-import { deepClone } from '../utils/helpers';
+import { deepClone, deepEqual } from '../utils/helpers';
 import { logDebug, logError } from '../utils/logger-wrapper';
+import { isItemObject } from '../utils/validation';
 import { useBlockState } from './useBlockState';
 import { useBlockActions } from './useBlockActions';
 import { useM2AData } from './useM2AData';
@@ -106,7 +107,6 @@ export function useExpandableBlocks(
     updateOriginalState,
     updateOriginalItemOrder,
     removeBlockState,
-    deepEqual,
     getItemId,
     isNewItem
   } = blockState;
@@ -205,7 +205,7 @@ export function useExpandableBlocks(
     // Store the original order from props.value
     if (Array.isArray(props.value)) {
       originalItemOrder.value = props.value.map(item => {
-        return typeof item === 'object' && item !== null ? item.id : item;
+        return isItemObject(item) ? item.id : item;
       });
     }
     

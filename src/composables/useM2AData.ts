@@ -1,5 +1,6 @@
 import { computed } from 'vue';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger-wrapper';
+import { isValidPrimaryKey, isItemObject } from '../utils/validation';
 import type { JunctionRecord, ItemRecord, M2AStructure } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -207,7 +208,7 @@ export function useM2AData(
    */
   async function loadFullItemData(isAfterSave: boolean = false) {
     try {
-      if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
+      if (!isValidPrimaryKey(props.primaryKey)) {
         items.value = [];
         return;
       }
@@ -312,7 +313,7 @@ export function useM2AData(
       });
       
       // Handle different paste formats
-      if (typeof pastedItem === 'object' && pastedItem !== null) {
+      if (isItemObject(pastedItem)) {
         if (pastedItem.id && pastedItem.collection) {
           // Full junction record format
           pastedIds.add(pastedItem.id);
@@ -327,7 +328,7 @@ export function useM2AData(
             }
           }
           
-          newItems.push(pastedItem);
+          newItems.push(pastedItem as JunctionRecord);
         } else if (pastedItem.collection && pastedItem.item) {
           // Item without junction ID - create new junction
           const junctionData: any = {

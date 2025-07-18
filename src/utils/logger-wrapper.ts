@@ -4,6 +4,9 @@ import { logger } from './logger';
  * Logger wrapper functions to reduce code duplication and standardize logging patterns
  */
 
+// Re-export logger for backward compatibility
+export { logger };
+
 /**
  * Log an action with automatic formatting and timestamp
  */
