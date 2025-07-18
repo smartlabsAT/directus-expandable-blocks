@@ -591,6 +591,81 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     }));
   }
 
+  /**
+   * Add existing items from another collection
+   * @param collection - The collection name
+   * @param selectedItems - Array of full item objects to add
+   */
+  function addExistingItems(collection: string, selectedItems: ItemRecord[]): void {
+    if (props.disabled) return;
+    
+    if (!isValidPrimaryKey(props.primaryKey)) {
+      notifyWarning('Save Required', 'Please save the item first before adding blocks.');
+      return;
+    }
+    
+    if (!selectedItems || selectedItems.length === 0) {
+      return;
+    }
+    
+    logAction('addExistingItems', {
+      collection,
+      itemCount: selectedItems.length,
+      itemIds: selectedItems.map(item => item.id)
+    });
+    
+    // Create junction entries for each selected item
+    const newJunctionEntries = selectedItems.map((selectedItem, index) => {
+      // Create new junction entry with full item object
+      const newItem: JunctionRecord = {
+        id: 'existing_' + Date.now() + '_' + index, // Temporary ID
+        collection: collection,
+        item: selectedItem // Full item object (not just ID)
+      };
+      
+      // Add foreign key and sort value
+      addJunctionMetadata(
+        newItem,
+        getForeignKeyField(),
+        props.primaryKey ? getPrimaryKeyValue() : undefined,
+        relationInfo.value?.meta?.sort_field,
+        items.value.length + index
+      );
+      
+      return newItem;
+    });
+    
+    // Add all new entries to items array
+    items.value = [...items.value, ...newJunctionEntries];
+    
+    // Auto-expand the first new item
+    if (newJunctionEntries.length > 0) {
+      expandedItems.value.push(getItemId(newJunctionEntries[0]));
+    }
+    
+    // Emit changes
+    emitHelper({
+      items: items.value,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source: 'ADD EXISTING - addExistingItems',
+      sortField: getSortField(),
+      debugData: {
+        function: 'addExistingItems',
+        collection: collection,
+        addedCount: selectedItems.length,
+        totalItemsCount: items.value.length
+      }
+    });
+    
+    logDebug('Added existing items', {
+      collection,
+      count: selectedItems.length,
+      totalItems: items.value.length
+    });
+  }
+
   return {
     // UI Actions
     toggleExpand,
@@ -598,6 +673,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     
     // CRUD Operations
     addNewItem,
+    addExistingItems,
     updateItem,
     confirmDeleteItem,
     duplicateItem,
