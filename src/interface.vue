@@ -33,6 +33,8 @@
     <item-selector-drawer
       :open="itemSelector.isOpen.value"
       :collection="itemSelector.selectedCollection.value"
+      :collection-name="itemSelector.selectedCollectionName.value"
+      :collection-icon="itemSelector.selectedCollectionIcon.value"
       :collections="allowedCollections"
       :items="itemSelector.availableItems.value"
       :loading="itemSelector.loading.value"

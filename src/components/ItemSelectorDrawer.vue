@@ -99,12 +99,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { extractItemTitle } from '../utils/helpers';
-import { getCollectionIconByName, getCollectionDisplayName } from '../composables/useUIHelpers';
 import type { CollectionInfo } from '../types';
 
 interface Props {
   open: boolean;
   collection: string | null;
+  collectionName?: string;  // Props werden vom composable übergeben
+  collectionIcon?: string;  // Props werden vom composable übergeben
   collections: CollectionInfo[];
   items: any[];
   loading?: boolean;
@@ -130,19 +131,12 @@ const tooltipCopy = 'Creates an independent copy of the selected item. Changes t
 const tooltipReference = 'Adds a reference to the selected item. Changes to the item will affect all places where it is used.';
 
 // Computed
-const collectionInfo = computed(() => {
-  if (!props.collection || !props.collections) return null;
-  // Ensure collections is an array
-  const collectionsArray = Array.isArray(props.collections) ? props.collections : [];
-  return collectionsArray.find(c => c.collection === props.collection);
-});
-
 const collectionIcon = computed(() => {
-  return getCollectionIconByName(props.collection, props.collections);
+  return props.collectionIcon || 'box';
 });
 
 const collectionName = computed(() => {
-  return getCollectionDisplayName(props.collection, props.collections);
+  return props.collectionName || props.collection || 'Items';
 });
 
 // Methods - using existing helper
