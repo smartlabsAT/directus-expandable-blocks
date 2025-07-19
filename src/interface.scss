@@ -289,243 +289,150 @@ $expanded-border-width: 5px;
   color: var(--foreground-subdued);
 }
 
-// Item Selector Drawer Styles
-.drawer-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 500;
-  display: flex;
-  justify-content: flex-end;
+// Item Selector Drawer Styles - Directus Conform
+.item-selector-drawer {
+  --v-drawer-max-width: 856px;
 }
 
-.drawer-container {
-  width: 600px;
-  height: 100%;
-  background-color: var(--theme--background);
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.3s ease-out;
-  
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-.drawer-header {
+// v-drawer content styles (not nested)
+.drawer-collection-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border-normal);
-  background-color: var(--background-normal);
+  gap: 12px;
+}
+
+.header-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--primary-10);
+  border-radius: 8px;
   
-  .drawer-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--foreground-normal);
-    
-    .v-icon {
-      --v-icon-color: var(--primary);
-    }
+  .v-icon {
+    --v-icon-color: var(--primary);
   }
 }
 
-.drawer-content {
+.header-content {
   flex: 1;
-  overflow-y: auto;
-  padding: 0;
-  
-  .search-container {
-    padding: 16px 24px;
-    background-color: var(--background-page);
-    border-bottom: 1px solid var(--border-subdued);
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
-  
-  .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 24px;
-    color: var(--foreground-subdued);
-    gap: 16px;
-    
-    p {
-      margin: 0;
-      font-size: 14px;
-    }
-  }
-  
-  .items-list {
-    padding: 8px 0;
-  }
-  
-  .item-row {
-    display: flex;
-    align-items: center;
-    padding: 12px 24px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    
-    &:hover {
-      background-color: var(--background-normal-alt);
-    }
-    
-    .v-checkbox {
-      margin-right: 16px;
-    }
-    
-    .item-content {
-      flex: 1;
-      min-width: 0;
-      
-      .item-title {
-        font-size: 14px;
-        color: var(--foreground-normal);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      
-      .item-meta {
-        font-size: 12px;
-        color: var(--foreground-subdued);
-        margin-top: 2px;
-      }
-    }
-  }
-  
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 24px;
-    color: var(--foreground-subdued);
-    gap: 16px;
-    
-    .v-icon {
-      --v-icon-color: var(--foreground-subdued);
-    }
-    
-    p {
-      margin: 0;
-      font-size: 14px;
-    }
-    
-    .empty-state-hint {
-      font-size: 12px;
-      color: var(--foreground-subdued);
-      margin-top: 8px;
-    }
-  }
-  
-  .search-info-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 24px;
-    background-color: var(--background-normal-alt);
-    border-bottom: 1px solid var(--border-subdued);
-    gap: 16px;
-    
-    .results-info {
-      font-size: 12px;
-      color: var(--foreground-subdued);
-      
-      span {
-        font-weight: 600;
-      }
-    }
-    
-    .v-pagination {
-      margin: 0;
-    }
-  }
 }
 
-.drawer-footer {
-  border-top: 1px solid var(--border-normal);
-  padding: 16px 24px;
-  background-color: var(--background-normal);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.header-name {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--foreground-normal);
+}
+
+.header-count {
+  font-size: 14px;
+  color: var(--foreground-subdued);
   
-  .selection-info {
-    font-size: 12px;
-    color: var(--foreground-subdued);
-    width: 100%;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  .selection-info-inline {
+    margin-left: 8px;
     
-    .deselect-link {
-      color: var(--primary);
+    a.deselect-link {
+      color: var(--primary) !important;
       cursor: pointer;
       text-decoration: none;
-      transition: opacity 0.2s;
+      transition: color var(--fast);
+      margin-left: 4px;
       
       &:hover {
-        opacity: 0.8;
+        color: var(--primary-75) !important;
         text-decoration: underline;
       }
     }
   }
+}
   
-  .v-button {
-    min-width: auto;
-    flex-shrink: 0;
+// Main Content Body
+.drawer-collection-body {
+    padding-left: var(--content-padding);
+    padding-right: var(--content-padding);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     
-    &.icon-button {
-
-      padding: 0;
-
-      button {
-        min-width: auto;
+    .search-container {
+      padding: 16px 0;
+      background-color: var(--background-page);
+      border-bottom: 1px solid var(--border-subdued);
+      
+      .search-input {
+        width: 100%;
       }
-
-      .v-icon {
+    }
+  
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px;
+      color: var(--foreground-subdued);
+      gap: 16px;
+      
+      p {
+        margin: 0;
+        font-size: 14px;
+      }
+    }
+    
+    // v-list component is used for items
+    .items-list {
+      // Styles are handled by v-list component
+    }
+    
+    // v-notice is used for empty state
+    .v-notice {
+      margin: 80px 24px;
+    }
+    
+    .search-info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background-color: var(--background-normal-alt);
+      border-bottom: 1px solid var(--border-subdued);
+      gap: 16px;
+      border-radius: var(--theme--border-radius);
+      
+      .results-info {
+        font-size: 12px;
+        color: var(--foreground-subdued);
+        
+        span {
+          font-weight: 600;
+        }
+      }
+      
+      .v-pagination {
         margin: 0;
       }
-    }
-    
-    &.secondary {
-      margin-right: auto;
       
-      .v-icon {
-        margin-right: 4px;
+      .search-pagination {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        .page-info {
+          font-size: 12px;
+          color: var(--foreground-subdued);
+          margin: 0 8px;
+        }
       }
     }
-  }
+    
 }
 
-.empty-state v-icon {
-  margin-bottom: 16px;
-  color: var(--foreground-subdued);
-}
+// Removed - drawer footer is now handled by v-drawer's actions-append slot
+
+// Empty state icons are handled by v-notice component
 
 .drag-ghost {
   opacity: 0.5;

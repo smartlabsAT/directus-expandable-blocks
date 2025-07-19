@@ -77,13 +77,34 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
       });
       
       availableItems.value = response.data.data || [];
-      totalItems.value = response.data.meta?.total_count || 0;
+      
+      // Directus doesn't provide accurate total_count for search results
+      // We'll use a different approach
+      if (!searchQuery.value) {
+        // Without search, use the API's total_count
+        totalItems.value = response.data.meta?.total_count || 0;
+      } else {
+        // With search, we can't trust total_count from the API
+        // Instead, we'll calculate based on the current results
+        const hasMorePages = availableItems.value.length === itemsPerPage.value;
+        
+        if (hasMorePages) {
+          // We don't know the exact total, so we'll estimate
+          // This will show pagination but not exact page numbers
+          totalItems.value = (currentPage.value + 1) * itemsPerPage.value;
+        } else {
+          // This is the last page
+          totalItems.value = offset + availableItems.value.length;
+        }
+      }
       
       logDebug('Loaded items', { 
         collection: selectedCollection.value, 
-        count: availableItems.value.length,
+        searchQuery: searchQuery.value,
+        itemsOnPage: availableItems.value.length,
         totalCount: totalItems.value,
-        page: currentPage.value
+        currentPage: currentPage.value,
+        totalPages: Math.ceil(totalItems.value / itemsPerPage.value)
       });
     } catch (error) {
       logError('Error loading items', error);
