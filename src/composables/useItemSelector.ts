@@ -1,23 +1,12 @@
 import { ref, type Ref } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
-import type { CollectionInfo } from '../types';
 import { logDebug, logError } from '../utils/logger-wrapper';
 
-/**
- * Composable for managing the item selector drawer functionality
- * 
- * Handles:
- * - Opening/closing the drawer
- * - Loading items from selected collection
- * - Search functionality
- * - Selection state management
- */
-export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
-  // Get stores
+export function useItemSelector(api: any) {  // collections entfernt
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
-  
+
   // State
   const isOpen = ref(false);
   const selectedCollection = ref<string | null>(null);
@@ -26,46 +15,22 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
   const searchQuery = ref('');
   const availableItems = ref<any[]>([]);
   const loading = ref(false);
-  
+
   // Pagination state
   const currentPage = ref(1);
   const itemsPerPage = ref(10);
   const totalItems = ref(0);
 
   /**
-   * Open the selector for a specific collection
-   */
-  async function open(collection: string) {
-    logDebug('Opening item selector', { collection });
-    selectedCollection.value = collection;
-    
-    // Get collection info from store (same as BlockHeader does)
-    const storeCollectionInfo = collectionsStore.getCollection(collection);
-    
-    // Set name and icon from store or use defaults
-    selectedCollectionName.value = storeCollectionInfo?.name || collection;
-    selectedCollectionIcon.value = storeCollectionInfo?.meta?.icon || 'box';
-    
-    // Reset search and pagination
-    searchQuery.value = '';
-    currentPage.value = 1;
-    isOpen.value = true;
-    
-    // Load items
-    await loadItems();
-  }
-
-  /**
    * Load items from the selected collection
    */
   async function loadItems() {
     if (!selectedCollection.value) return;
-    
+
     loading.value = true;
     try {
-      // Calculate offset
       const offset = (currentPage.value - 1) * itemsPerPage.value;
-      
+
       const response = await api.get(`/items/${selectedCollection.value}`, {
         params: {
           limit: itemsPerPage.value,
@@ -75,15 +40,12 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
           meta: '*'
         }
       });
-      
+
       availableItems.value = response.data.data || [];
-      
+      totalItems.value = response.data.meta?.filter_count || 0;  // Optional chaining
 
-
-    totalItems.value = response.data.meta['filter_count']  || 0;
-      
-      logDebug('Loaded items', { 
-        collection: selectedCollection.value, 
+      logDebug('Loaded items', {
+        collection: selectedCollection.value,
         searchQuery: searchQuery.value,
         itemsOnPage: availableItems.value.length,
         totalCount: totalItems.value,
@@ -99,20 +61,43 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
     }
   }
 
-  /**
-   * Debounced load items function
-   */
+  // Debounced load items direkt definieren
   const debouncedLoadItems = debounce(loadItems, 300);
+
+  /**
+   * Open the selector for a specific collection
+   */
+  async function open(collection: string) {
+    logDebug('Opening item selector', { collection });
+
+    selectedCollection.value = collection;
+
+    // Get collection info from store
+    const storeCollectionInfo = collectionsStore.getCollection(collection);
+    selectedCollectionName.value = storeCollectionInfo?.name || collection;
+    selectedCollectionIcon.value = storeCollectionInfo?.meta?.icon || 'box';
+
+    // Reset state
+    searchQuery.value = '';
+    currentPage.value = 1;
+    availableItems.value = [];
+    totalItems.value = 0;
+
+    isOpen.value = true;
+
+    // Load items
+    await loadItems();
+  }
 
   /**
    * Handle search query changes
    */
   function handleSearch(query: string) {
     searchQuery.value = query;
-    currentPage.value = 1; // Reset to first page on search
+    currentPage.value = 1;
     debouncedLoadItems();
   }
-  
+
   /**
    * Handle page changes
    */
@@ -122,17 +107,10 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
   }
 
   /**
-   * Close the selector and reset state
+   * Close the selector
    */
   function close() {
     isOpen.value = false;
-    selectedCollection.value = null;
-    selectedCollectionName.value = null;
-    selectedCollectionIcon.value = null;
-    searchQuery.value = '';
-    availableItems.value = [];
-    currentPage.value = 1;
-    totalItems.value = 0;
   }
 
   return {
@@ -144,12 +122,12 @@ export function useItemSelector(api: any, collections: Ref<CollectionInfo[]>) {
     searchQuery,
     availableItems,
     loading,
-    
+
     // Pagination
     currentPage,
     itemsPerPage,
     totalItems,
-    
+
     // Methods
     open,
     close,

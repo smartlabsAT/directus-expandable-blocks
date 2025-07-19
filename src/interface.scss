@@ -329,23 +329,6 @@ $expanded-border-width: 5px;
 .header-count {
   font-size: 14px;
   color: var(--foreground-subdued);
-  
-  .selection-info-inline {
-    margin-left: 8px;
-    
-    a.deselect-link {
-      color: var(--primary) !important;
-      cursor: pointer;
-      text-decoration: none;
-      transition: color var(--fast);
-      margin-left: 4px;
-      
-      &:hover {
-        color: var(--primary-75) !important;
-        text-decoration: underline;
-      }
-    }
-  }
 }
   
 // Main Content Body
@@ -424,6 +407,23 @@ $expanded-border-width: 5px;
           font-size: 12px;
           color: var(--foreground-subdued);
           margin: 0 8px;
+        }
+      }
+
+      .selection-info-inline {
+        //margin-left: 8px;
+
+        a.deselect-link {
+          color: var(--primary) !important;
+          cursor: pointer;
+          text-decoration: none;
+          transition: color var(--fast);
+          margin: 0 4px;
+
+          &:hover {
+            color: var(--primary-75) !important;
+            text-decoration: underline;
+          }
         }
       }
     }
