@@ -15,7 +15,7 @@
         <div class="header-content">
           <div class="header-name">Select {{ collectionName }}</div>
           <div v-if="!loading" class="header-count">
-            <span v-if="!searchQuery && totalItems !== null">{{ totalItems }} {{ totalItems === 1 ? 'item' : 'items' }}</span>
+            <span v-if=" totalItems !== null">{{ totalItems }} {{ totalItems === 1 ? 'item' : 'items' }}</span>
             <span v-if="selectedItems.length > 0" class="selection-info-inline">
               ({{ selectedItems.length }} selected |
               <a class="deselect-link" @click="deselectAll">Deselect all</a>)
@@ -36,7 +36,7 @@
           type="search"
           placeholder="Search items..."
           class="search-input"
-          @input="$emit('search', searchQuery)"
+          @update:model-value="$emit('search', $event)"
         >
           <template #prepend>
             <v-icon name="search" />
