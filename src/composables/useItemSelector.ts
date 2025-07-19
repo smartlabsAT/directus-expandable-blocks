@@ -15,6 +15,7 @@ export function useItemSelector(api: any) {  // collections entfernt
   const searchQuery = ref('');
   const availableItems = ref<any[]>([]);
   const loading = ref(false);
+  const availableFields = ref<any[]>([]);
 
   // Pagination state
   const currentPage = ref(1);
@@ -77,6 +78,25 @@ export function useItemSelector(api: any) {  // collections entfernt
     selectedCollectionName.value = storeCollectionInfo?.name || collection;
     selectedCollectionIcon.value = storeCollectionInfo?.meta?.icon || 'box';
 
+    // Load collection fields - NEU!
+    try {
+      const fieldsResponse = await api.get(`/fields/${collection}`);
+      const fields = fieldsResponse.data.data || [];
+
+      // Filter out system fields that you want to exclude
+      const excludedFields = ['date_created', 'date_updated', 'id', 'status', 'user_created', 'user_updated', 'sort'];
+      availableFields.value = fields.filter(field => !excludedFields.includes(field.field));
+
+      logDebug('Loaded fields', {
+        collection,
+        fieldCount: availableFields.value.length,
+        fields: availableFields.value.map(f => f.field)
+      });
+    } catch (error) {
+      logError('Error loading fields', error);
+      availableFields.value = [];
+    }
+
     // Reset state
     searchQuery.value = '';
     currentPage.value = 1;
@@ -122,6 +142,7 @@ export function useItemSelector(api: any) {  // collections entfernt
     searchQuery,
     availableItems,
     loading,
+    availableFields,
 
     // Pagination
     currentPage,

@@ -10,12 +10,12 @@
       :header-shadow="false"
   >
     <template #subtitle>
-      <v-breadcrumb :items="[{ name: collectionName, disabled: true }]" />
+      <v-breadcrumb :items="[{ name: collectionName, disabled: true }]"/>
     </template>
 
     <template #title-outer:prepend>
       <v-button class="header-icon" rounded icon secondary disabled>
-        <v-icon :name="collectionIcon" />
+        <v-icon :name="collectionIcon"/>
       </v-button>
     </template>
 
@@ -31,12 +31,12 @@
             @update:model-value="$emit('search', $event)"
         >
           <template #prepend>
-            <!-- Loading spinner oder Search icon -->
-            <v-progress-circular v-if="loading" indeterminate small />
-            <v-icon v-else name="search" />
+            <v-progress-circular v-if="loading" indeterminate small/>
+            <v-icon v-else name="search"/>
           </template>
-          <template #append v-if="searchQuery">
+          <template #append>
             <v-icon
+                v-if="searchQuery"
                 name="close"
                 clickable
                 @click="clearSearch"
@@ -60,14 +60,56 @@
           </span>
         </div>
 
-        <v-pagination
-            v-if="totalItems > itemsPerPage && totalPages > 1"
-            v-model="currentPageLocal"
-            :length="totalPages"
-            :total-visible="3"
-            :show-first-last="true"
-            @update:model-value="emit('update:current-page', $event)"
-        />
+        <div class="pagination-controls">
+          <v-pagination
+              v-if="totalItems > itemsPerPage && totalPages > 1"
+              v-model="currentPageLocal"
+              :length="totalPages"
+              :total-visible="3"
+              :show-first-last="true"
+              @update:model-value="emit('update:current-page', $event)"
+          />
+
+          <!-- Settings Button -->
+          <v-menu placement="bottom-end" show-arrow>
+            <template #activator="{ toggle }">
+              <v-button
+                  v-tooltip.bottom="'Display Settings'"
+                  icon
+                  x-small
+                  secondary
+                  @click="toggle"
+              >
+                <v-icon name="settings"/>
+              </v-button>
+            </template>
+
+            <v-list>
+              <v-list-item-content>
+                <div class="field-selector-header">Select fields to display:</div>
+              </v-list-item-content>
+              <v-divider/>
+              <v-list-item
+                  v-for="field in availableFields"
+                  :key="field.field"
+                  clickable
+                  @click="toggleFieldDisplay(field.field)"
+              >
+                <v-list-item-icon>
+                  <v-checkbox
+                      :model-value="displayFields.includes(field.field)"
+                      @update:model-value="toggleFieldDisplay(field.field)"
+                      @click.stop
+                  />
+                </v-list-item-icon>
+                <v-list-item-content>
+                  <v-list-item-title>{{ field.name || field.field }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ field.type }}</v-list-item-subtitle>
+                </v-list-item-content>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
       </div>
 
       <!-- Items List -->
@@ -78,6 +120,7 @@
             clickable
             :active="isSelected(item)"
             @click="toggleSelection(item)"
+            class="custom-list-item"
         >
           <v-list-item-icon>
             <v-checkbox
@@ -88,8 +131,42 @@
           </v-list-item-icon>
 
           <v-list-item-content>
-            <v-list-item-title>{{ extractItemTitle(item) }}</v-list-item-title>
-            <v-list-item-subtitle v-if="item.id">ID: {{ item.id }}</v-list-item-subtitle>
+            <!-- Titel-Zeile mit fester Position -->
+            <div class="item-title-row">
+              <span class="item-title">{{ extractItemTitle(item) }}</span>
+              <v-chip v-if="item.id" x-small label class="item-id-badge">
+                ID: {{ item.id }}
+              </v-chip>
+            </div>
+
+            <!-- Additional Fields - darunter -->
+            <div v-if="displayFields.length > 0" class="item-fields">
+              <div
+                  v-for="field in displayFields"
+                  :key="field"
+                  class="field-item"
+              >
+                <span class="field-label">{{ getFieldLabel(field) }}:</span>
+
+                <!-- Boolean as Badge -->
+                <v-chip
+                    v-if="typeof item[field] === 'boolean'"
+                    x-small
+                    :class="item[field] ? 'boolean-true' : 'boolean-false'"
+                >
+                  {{ item[field] ? 'Yes' : 'No' }}
+                </v-chip>
+
+                <!-- Text with Truncation -->
+                <span
+                    v-else
+                    class="field-value"
+                    v-tooltip="getFieldValue(item[field]).length > 100 ? getFieldValue(item[field]) : null"
+                >
+            {{ truncateText(getFieldValue(item[field]), 100) }}
+          </span>
+              </div>
+            </div>
           </v-list-item-content>
         </v-list-item>
       </v-list>
@@ -124,10 +201,9 @@
     </template>
   </v-drawer>
 </template>
-
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { extractItemTitle } from '../utils/helpers';
+import {ref, computed, watch} from 'vue';
+import {extractItemTitle} from '../utils/helpers';
 
 interface Props {
   open: boolean;
@@ -139,6 +215,11 @@ interface Props {
   currentPage?: number;
   itemsPerPage?: number;
   totalItems?: number;
+  availableFields?: Array<{
+    field: string;
+    name?: string;
+    type: string;
+  }>;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -156,6 +237,7 @@ const emit = defineEmits<{
 // Local state
 const selectedItems = ref<(string | number)[]>([]);
 const searchQuery = ref('');
+const displayFields = ref<string[]>([]);
 
 // Computed
 const collectionIcon = computed(() => props.collectionIcon || 'box');
@@ -216,6 +298,35 @@ function handleConfirmCopy() {
   emit('confirmCopy', selectedFullItems);
 }
 
+function toggleFieldDisplay(field: string) {
+  const index = displayFields.value.indexOf(field);
+  if (index > -1) {
+    displayFields.value.splice(index, 1);
+  } else {
+    displayFields.value.push(field);
+  }
+  // Optional: Save to localStorage
+  localStorage.setItem(`displayFields_${props.collection}`, JSON.stringify(displayFields.value));
+}
+
+function getFieldLabel(field: string): string {
+  const fieldInfo = props.availableFields?.find(f => f.field === field);
+  return fieldInfo?.name || field;
+}
+
+
+function getFieldValue(value: any): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+
 // Reset when drawer opens/closes
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
@@ -225,8 +336,14 @@ watch(() => props.open, (isOpen) => {
 });
 
 // Reset when collection changes
-watch(() => props.collection, () => {
+watch(() => props.collection, (collection) => {
   selectedItems.value = [];
   searchQuery.value = '';
-});
+  if (collection) {
+    const saved = localStorage.getItem(`displayFields_${collection}`);
+    if (saved) {
+      displayFields.value = JSON.parse(saved);
+    }
+  }
+}, {immediate: true});
 </script>

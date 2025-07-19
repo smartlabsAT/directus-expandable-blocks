@@ -1,51 +1,51 @@
 <template>
   <div class="expandable-blocks">
     <block-list
-      v-model="items"
-      :expanded-items="expandedItems"
-      :loading="loading"
-      :sortable="sortable"
-      :disabled="disabled"
-      :compact-mode="mergedOptions?.compactMode"
-      :show-item-id="shouldShowItemId"
-      :allow-duplicate="mergedOptions?.isAllowedDuplicate !== false"
-      :allow-delete="mergedOptions?.isAllowedDelete !== false"
-      :available-statuses="availableStatuses"
-      :expandable-blocks="expandableBlocks"
-      @toggle-expand="toggleExpand"
-      @update-item="updateItem"
-      @update-status="updateItemStatus"
-      @duplicate="duplicateItem"
-      @discard-changes="discardChanges"
-      @delete="showDeleteDialog"
-      @sort="onSort"
+        v-model="items"
+        :expanded-items="expandedItems"
+        :loading="loading"
+        :sortable="sortable"
+        :disabled="disabled"
+        :compact-mode="mergedOptions?.compactMode"
+        :show-item-id="shouldShowItemId"
+        :allow-duplicate="mergedOptions?.isAllowedDuplicate !== false"
+        :allow-delete="mergedOptions?.isAllowedDelete !== false"
+        :available-statuses="availableStatuses"
+        :expandable-blocks="expandableBlocks"
+        @toggle-expand="toggleExpand"
+        @update-item="updateItem"
+        @update-status="updateItemStatus"
+        @duplicate="duplicateItem"
+        @discard-changes="discardChanges"
+        @delete="showDeleteDialog"
+        @sort="onSort"
     />
 
     <add-block-button
-      :disabled="disabled"
-      :collections="allowedCollections"
-      :can-add="canAddMoreBlocks"
-      @add-item="addNewItem"
-      @add-existing="itemSelector.open"
+        :disabled="disabled"
+        :collections="allowedCollections"
+        :can-add="canAddMoreBlocks"
+        @add-item="addNewItem"
+        @add-existing="itemSelector.open"
     />
 
     <!-- Item Selector Drawer -->
-    <item-selector-drawer
-      :open="itemSelector.isOpen.value"
-      :collection="itemSelector.selectedCollection.value"
-      :collection-name="itemSelector.selectedCollectionName.value"
-      :collection-icon="itemSelector.selectedCollectionIcon.value"
-      :collections="allowedCollections"
-      :items="itemSelector.availableItems.value"
-      :loading="itemSelector.loading.value"
-      :current-page="itemSelector.currentPage.value"
-      :items-per-page="itemSelector.itemsPerPage.value"
-      :total-items="itemSelector.totalItems.value"
-      @close="itemSelector.close"
-      @confirm="handleItemSelection"
-      @confirm-copy="handleItemSelectionAsCopy"
-      @search="itemSelector.handleSearch"
-      @update:current-page="itemSelector.handlePageChange"
+    <ItemSelectorDrawer
+        :open="itemSelector.isOpen.value"
+        :collection="itemSelector.selectedCollection.value"
+        :collection-name="itemSelector.selectedCollectionName.value"
+        :collection-icon="itemSelector.selectedCollectionIcon.value"
+        :items="itemSelector.availableItems.value"
+        :loading="itemSelector.loading.value"
+        :current-page="itemSelector.currentPage.value"
+        :items-per-page="itemSelector.itemsPerPage.value"
+        :total-items="itemSelector.totalItems.value"
+        :available-fields="itemSelector.availableFields.value"
+        @close="itemSelector.close"
+        @confirm="handleConfirm"
+        @confirm-copy="handleConfirmCopy"
+        @search="itemSelector.handleSearch"
+        @update:current-page="itemSelector.handlePageChange"
     />
 
     <!-- Delete Dialog -->
@@ -65,16 +65,17 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs, inject, ref, onMounted, computed } from 'vue';
-import { useExpandableBlocks } from './composables/useExpandableBlocks';
-import { useItemSelector } from './composables/useItemSelector';
-import { useApi } from '@directus/extensions-sdk';
+import {toRefs, inject, ref, onMounted, computed} from 'vue';
+import {useExpandableBlocks} from './composables/useExpandableBlocks';
+import {useItemSelector} from './composables/useItemSelector';
+import {useApi} from '@directus/extensions-sdk';
 import BlockList from './components/BlockList.vue';
 import AddBlockButton from './components/AddBlockButton.vue';
 import ItemSelectorDrawer from './components/ItemSelectorDrawer.vue';
-import type { UseExpandableBlocksProps } from './composables/useExpandableBlocks';
+import type {UseExpandableBlocksProps} from './composables/useExpandableBlocks';
 
-interface Props extends UseExpandableBlocksProps {}
+interface Props extends UseExpandableBlocksProps {
+}
 
 const props = defineProps<Props>();
 const emit = defineEmits(['input']);
@@ -84,14 +85,14 @@ const values = inject('values', ref({}));
 const initialValues = inject('initialValues', ref({}));
 
 // Get refs for reactive props
-const { value: modelValue, collection, field, primaryKey, disabled, options } = toRefs(props);
+const {value: modelValue, collection, field, primaryKey, disabled, options} = toRefs(props);
 
 // Initialize expandable blocks composable
 const expandableBlocks = useExpandableBlocks(
-  props,
-  (event, value) => emit(event, value),
-  values,
-  initialValues
+    props,
+    (event, value) => emit(event, value),
+    values,
+    initialValues
 );
 
 // Destructure everything we need
@@ -104,12 +105,12 @@ const {
   mergedOptions,
   availableStatuses,
   allowedCollections,
-  
+
   // Computed
   sortable,
   shouldShowItemId,
   canAddMoreBlocks,
-  
+
   // Methods
   initialize,
   getItemId,

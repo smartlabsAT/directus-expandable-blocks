@@ -410,6 +410,12 @@ $expanded-border-width: 5px;
         }
       }
 
+      .pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .selection-info-inline {
         //margin-left: 8px;
 
@@ -427,7 +433,81 @@ $expanded-border-width: 5px;
         }
       }
     }
-    
+  // v-list component is used for items
+  .items-list {
+    .custom-list-item {
+      // Checkbox alignment
+      .v-list-item-icon {
+        align-self: flex-start !important;
+        padding-top: 8px !important; // Gleiche Höhe wie Titel
+      }
+
+      // Content container
+      .v-list-item-content {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+    }
+
+    // Titel-Zeile mit fester Positionierung
+    .item-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 45px; // Mindesthöhe
+      padding: 8px 0; // Vertikaler Padding
+    }
+
+    .item-title {
+      font-weight: 600;
+      color: var(--theme--foreground);
+      line-height: 24px; // Feste Zeilenhöhe
+    }
+
+    .item-id-badge {
+      --v-chip-color: var(--theme--foreground-subdued);
+      --v-chip-background-color: var(--theme--background-accent);
+      font-family: var(--theme--fonts--monospace--font-family);
+      font-size: 11px;
+      flex-shrink: 0; // Verhindert Schrumpfen
+    }
+
+    // Additional fields
+    .item-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      margin-top: -4px; // Reduziert Abstand zum Titel
+      padding-bottom: 8px;
+    }
+
+    .field-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .field-label {
+      color: var(--theme--foreground-subdued);
+      font-weight: 500;
+    }
+
+    .field-value {
+      color: var(--theme--foreground);
+    }
+
+    // Boolean badges
+    .boolean-true {
+      --v-chip-background-color: var(--theme--success-background);
+      --v-chip-color: var(--theme--success);
+    }
+
+    .boolean-false {
+      --v-chip-background-color: var(--theme--danger-background);
+      --v-chip-color: var(--theme--danger);
+    }
+  }
 }
 
 // Removed - drawer footer is now handled by v-drawer's actions-append slot
