@@ -57,7 +57,7 @@
     "release:major": "npm version major"
   },
   "devDependencies": {
-    "@directus/extensions-sdk": "10.1.11",
+    "@directus/extensions-sdk": "^11.0.0",
     "@directus/types": "^13.2.0",
     "@playwright/test": "^1.40.1",
     "@testing-library/jest-dom": "^6.1.5",
