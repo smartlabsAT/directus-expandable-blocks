@@ -32,9 +32,23 @@
     "node": ">=16"
   },
   "directus:extension": {
-    "type": "interface",
-    "path": "dist/index.js",
-    "source": "src/index.ts",
+    "type": "bundle",
+    "path": {
+      "app": "dist/index.js",
+      "api": "dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "interface",
+        "name": "expandable-blocks",
+        "source": "src/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "items-with-relations",
+        "source": "src/api/items-with-relations.ts"
+      }
+    ],
     "host": "^11.0.0"
   },
   "scripts": {
