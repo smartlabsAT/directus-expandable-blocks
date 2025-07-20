@@ -379,6 +379,10 @@ $expanded-border-width: 5px;
   }
 
   .search-help-section {
+    &:not(:last-child) {
+      margin-bottom: 20px;
+    }
+
     h4 {
       margin: 0 0 12px 0;
       font-size: 13px;
@@ -386,6 +390,88 @@ $expanded-border-width: 5px;
       color: var(--theme--foreground-subdued);
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+  }
+
+  // Field chips in help
+  .field-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .field-chip {
+    background: var(--theme--background);
+    border: 1px solid var(--theme--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--theme--primary-background);
+      border-color: var(--theme--primary);
+      transform: translateY(-1px);
+    }
+
+    .v-icon {
+      margin-right: 4px;
+      color: var(--theme--primary);
+    }
+
+    .field-type {
+      margin-left: 4px;
+      font-size: 11px;
+      color: var(--theme--foreground-subdued);
+      opacity: 0.7;
+    }
+  }
+
+  // Operators grid
+  .operators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .operator-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background: var(--theme--background);
+    border: 1px solid var(--theme--border-color);
+    border-radius: var(--theme--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--theme--primary-background);
+      border-color: var(--theme--primary);
+    }
+
+    .operator-button {
+      min-width: 40px;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .operator-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .operator-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme--foreground);
+    }
+
+    .operator-example {
+      font-size: 11px;
+      color: var(--theme--foreground-subdued);
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 

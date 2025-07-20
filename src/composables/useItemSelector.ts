@@ -28,12 +28,14 @@ export function useItemSelector(api: any) {  // collections entfernt
 
   /**
    * Parse search query for field-specific searches
-   * Examples: "title=test", "status=published", "name=%test%"
+   * Supports multiple space-separated queries
+   * Examples: "title=test", "status=published", "name=%test%", "title=product status=active"
    */
   function parseSearchQuery(query: string) {
     // Unterstützte Operatoren
     const operators = {
       '=%': '_contains',
+      '!~': '_ncontains',
       '=': '_eq',
       '~': '_contains',
       '!=': '_neq',
@@ -42,7 +44,11 @@ export function useItemSelector(api: any) {  // collections entfernt
       '>=': '_gte',
       '<=': '_lte',
       '^': '_starts_with',
-      '$': '_ends_with'
+      '$': '_ends_with',
+      'empty': '_empty',
+      '!empty': '_nempty',
+      'null': '_null',
+      '!null': '_nnull'
     };
 
     // Regex mit allen Operatoren
@@ -76,6 +82,52 @@ export function useItemSelector(api: any) {  // collections entfernt
     };
   }
 
+  /**
+   * Parse multiple search queries from a single string
+   * Example: "title=product status=active" -> [{field: 'title', operator: '_eq', value: 'product'}, ...]
+   */
+  function parseMultipleQueries(query: string): Array<{field: string, operator: string, value: string}> {
+    const operators = {
+      '=%': '_contains',
+      '!~': '_ncontains',
+      '=': '_eq',
+      '~': '_contains',
+      '!=': '_neq',
+      '>': '_gt',
+      '<': '_lt',
+      '>=': '_gte',
+      '<=': '_lte',
+      '^': '_starts_with',
+      '$': '_ends_with',
+      'empty': '_empty',
+      '!empty': '_nempty',
+      'null': '_null',
+      '!null': '_nnull'
+    };
+
+    const results = [];
+    const operatorPattern = Object.keys(operators)
+        .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('|');
+    
+    // Match pattern: field operator value (with support for quoted values)
+    const regex = new RegExp(`(\\w+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
+    
+    let match;
+    while ((match = regex.exec(query)) !== null) {
+      const [, field, operator, quotedValue, unquotedValue] = match;
+      const value = quotedValue || unquotedValue;
+      
+      results.push({
+        field,
+        operator: operators[operator] || '_eq',
+        value
+      });
+    }
+    
+    return results;
+  }
+
 
   /**
    * Load items from the selected collection
@@ -107,8 +159,22 @@ export function useItemSelector(api: any) {  // collections entfernt
           }
         };
       } else if (searchQuery.value) {
-        // Normale Volltextsuche
-        params.search = searchQuery.value;
+        // Check if query contains multiple search terms
+        const queries = parseMultipleQueries(searchQuery.value);
+        if (queries.length > 0) {
+          // Build complex filter from multiple queries
+          const filters = queries.map(q => ({
+            [q.field]: {
+              [q.operator]: q.value
+            }
+          }));
+          params.filter = {
+            _and: filters
+          };
+        } else {
+          // Normale Volltextsuche
+          params.search = searchQuery.value;
+        }
       }
 
       const response = await api.get(`/items/${selectedCollection.value}`, { params });

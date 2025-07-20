@@ -23,99 +23,65 @@
     <div class="drawer-collection-body">
       <!-- Search Bar -->
       <div class="search-container">
-        <v-input
-            v-model="searchQuery"
-            type="search"
-            placeholder="Search items..."
+        <SearchTagInput
+            ref="searchTagInputRef"
             class="search-input"
+            v-model="searchQuery"
+            :loading="loading"
+            :show-help="showSearchHelp"
+            :available-fields="availableFields"
+            placeholder="Search items..."
             @update:model-value="$emit('search', $event)"
-        >
-          <template #prepend>
-            <v-progress-circular v-if="loading" indeterminate small/>
-            <v-icon v-else name="search"/>
-          </template>
-          <template #append>
-            <v-icon
-                v-if="searchQuery"
-                name="close"
-                clickable
-                @click="clearSearch"
-            />
-            <v-icon
-
-                name="help_outline"
-                clickable
-                @click="showSearchHelp = !showSearchHelp"
-                :class="{ 'rotated': showSearchHelp }"
-            />
-          </template>
-        </v-input>
+            @toggle-help="showSearchHelp = !showSearchHelp"
+        />
 
         <!-- Collapsible Search Help -->
         <transition name="expand">
           <div v-if="showSearchHelp" class="search-help-panel">
             <div class="search-help-content">
+              <!-- Available Fields Section -->
+              <div class="search-help-section" v-if="availableFields.length > 0">
+                <h4>Available Fields</h4>
+                <div class="field-chips">
+                  <v-chip
+                      v-for="field in availableFields"
+                      :key="field.field"
+                      x-small
+                      label
+                      clickable
+                      class="field-chip"
+                      @click="addFieldToSearch(field.field)"
+                  >
+                    <v-icon name="text_fields" x-small />
+                    {{ field.field }}
+                    <span class="field-type">{{ field.type }}</span>
+                  </v-chip>
+                </div>
+              </div>
+
+              <!-- Search Operators Section -->
               <div class="search-help-section">
                 <h4>Search Operators</h4>
-                <table class="search-operators-table">
-                  <tbody>
-                    <tr>
-                      <td><code>=</code></td>
-                      <td>Exact match</td>
-                      <td><code>status=published</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>~</code></td>
-                      <td>Contains</td>
-                      <td><code>title~product</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>=%text%</code></td>
-                      <td>Contains (alt)</td>
-                      <td><code>name=%john%</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>!=</code></td>
-                      <td>Not equals</td>
-                      <td><code>status!=archived</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>&gt;</code></td>
-                      <td>Greater than</td>
-                      <td><code>sort&gt;10</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>&lt;</code></td>
-                      <td>Less than</td>
-                      <td><code>price&lt;100</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>&gt;=</code></td>
-                      <td>Greater or equal</td>
-                      <td><code>quantity&gt;=5</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>&lt;=</code></td>
-                      <td>Less or equal</td>
-                      <td><code>stock&lt;=20</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>^</code></td>
-                      <td>Starts with</td>
-                      <td><code>name^John</code></td>
-                    </tr>
-                    <tr>
-                      <td><code>$</code></td>
-                      <td>Ends with</td>
-                      <td><code>email$@gmail.com</code></td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div class="operators-grid">
+                  <div 
+                      v-for="(op, index) in searchOperators" 
+                      :key="index"
+                      class="operator-item"
+                      @click="addOperatorToSearch(op.symbol)"
+                  >
+                    <v-button x-small secondary class="operator-button">
+                      {{ op.symbol }}
+                    </v-button>
+                    <div class="operator-info">
+                      <div class="operator-name">{{ op.name }}</div>
+                      <div class="operator-example">{{ op.example }}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="search-help-tips">
-                <strong>Tips:</strong> Type normally for full-text search • Use operators for field searches • Field
-                names are case-sensitive
+                <strong>Tips:</strong> Click a field to start searching • Click an operator to add it • Combine multiple criteria
               </div>
             </div>
           </div>
@@ -341,6 +307,7 @@
 <script setup lang="ts">
 import {ref, computed, watch} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
+import SearchTagInput from './SearchTagInput.vue';
 
 interface Props {
   open: boolean;
@@ -378,6 +345,26 @@ const selectedItems = ref<(string | number)[]>([]);
 const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
 const showSearchHelp = ref(false);
+const searchTagInputRef = ref<InstanceType<typeof SearchTagInput>>();
+
+// Search operators configuration
+const searchOperators = [
+  { symbol: '=', name: 'Exact match', example: 'status=published' },
+  { symbol: '~', name: 'Contains', example: 'title~product' },
+  { symbol: '!~', name: 'Not contains', example: 'title!~draft' },
+  { symbol: '!=', name: 'Not equals', example: 'status!=archived' },
+  { symbol: '>', name: 'Greater than', example: 'sort>10' },
+  { symbol: '<', name: 'Less than', example: 'price<100' },
+  { symbol: '>=', name: 'Greater or equal', example: 'quantity>=5' },
+  { symbol: '<=', name: 'Less or equal', example: 'stock<=20' },
+  { symbol: '^', name: 'Starts with', example: 'name^John' },
+  { symbol: '$', name: 'Ends with', example: 'email$@gmail.com' },
+  { symbol: '=%', name: 'Contains (alt)', example: 'name=%john%' },
+  { symbol: 'empty', name: 'Is empty', example: 'description=empty' },
+  { symbol: '!empty', name: 'Not empty', example: 'image!empty' },
+  { symbol: 'null', name: 'Is null', example: 'deleted_at=null' },
+  { symbol: '!null', name: 'Not null', example: 'image!null' }
+];
 
 // Computed
 const collectionIcon = computed(() => props.collectionIcon || 'box');
@@ -400,6 +387,14 @@ function handleClose() {
 function clearSearch() {
   searchQuery.value = '';
   emit('search', '');
+}
+
+function addFieldToSearch(field: string) {
+  searchTagInputRef.value?.addFieldToSearch(field);
+}
+
+function addOperatorToSearch(operator: string) {
+  searchTagInputRef.value?.addOperatorToSearch(operator);
 }
 
 function deselectAll() {
