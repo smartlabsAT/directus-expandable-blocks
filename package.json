@@ -21,7 +21,6 @@
     "cms"
   ],
   "type": "module",
-  "main": "dist/index.js",
   "files": [
     "dist/",
     "README.md",
@@ -53,7 +52,6 @@
   },
   "scripts": {
     "build": "directus-extension build",
-    "build-dev": "directus-extension build --sourcemap --no-minify",
     "dev": "directus-extension build -w --no-minify",
     "link": "directus-extension link",
     "type-check": "tsc --noEmit",
