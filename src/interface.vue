@@ -42,8 +42,8 @@
         :total-items="itemSelector.totalItems.value"
         :available-fields="itemSelector.availableFields.value"
         @close="itemSelector.close"
-        @confirm="handleConfirm"
-        @confirm-copy="handleConfirmCopy"
+        @confirm="handleItemSelection"
+        @confirm-copy="handleItemSelectionAsCopy"
         @search="itemSelector.handleSearch"
         @update:current-page="itemSelector.handlePageChange"
     />

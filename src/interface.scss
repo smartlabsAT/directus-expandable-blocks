@@ -309,7 +309,7 @@ $expanded-border-width: 5px;
   height: 40px;
   background-color: var(--primary-10);
   border-radius: 8px;
-  
+
   .v-icon {
     --v-icon-color: var(--primary);
   }
@@ -330,109 +330,203 @@ $expanded-border-width: 5px;
   font-size: 14px;
   color: var(--foreground-subdued);
 }
-  
+
 // Main Content Body
 .drawer-collection-body {
-    padding-left: var(--content-padding);
-    padding-right: var(--content-padding);
-    height: 100%;
+  padding-left: var(--content-padding);
+  padding-right: var(--content-padding);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .search-container {
+    padding: 16px 0;
+    background-color: var(--background-page);
+    border-bottom: 1px solid var(--border-subdued);
+
+    .search-input {
+      width: 100%;
+    }
+
+    // Rotating help icon
+    .v-icon.rotated {
+      transform: rotate(180deg);
+      transition: transform 0.3s ease;
+    }
+
+    // Help icon hover state
+    .v-icon[name="help_outline"] {
+      cursor: help;
+
+      &:hover {
+        color: var(--theme--primary);
+      }
+    }
+  }
+
+  // Search Help Panel
+  .search-help-panel {
+    margin-top: 12px;
+    background: var(--theme--background-subdued);
+    border: 1px solid var(--theme--border-subdued);
+    border-radius: var(--theme--border-radius);
+    overflow: hidden;
+  }
+
+  .search-help-content {
+    padding: 16px;
+  }
+
+  .search-help-section {
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+
+  .search-operators-table {
+    width: 100%;
+    font-size: 12px;
+
+    tr {
+      td {
+        padding: 4px 8px 4px 0;
+
+        &:first-child {
+          width: 60px;
+          font-family: var(--theme--fonts--monospace--font-family);
+        }
+
+        &:nth-child(2) {
+          color: var(--theme--foreground-subdued);
+        }
+
+        &:last-child {
+          text-align: right;
+          opacity: 0.7;
+        }
+
+        code {
+          background: var(--theme--background-normal);
+          padding: 2px 4px;
+          border-radius: 2px;
+          font-size: 11px;
+        }
+      }
+    }
+  }
+
+  .search-help-tips {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--theme--border-subdued);
+    font-size: 12px;
+    color: var(--theme--foreground-subdued);
+
+    strong {
+      color: var(--theme--foreground);
+    }
+  }
+
+  .loading-state {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    
-    .search-container {
-      padding: 16px 0;
-      background-color: var(--background-page);
-      border-bottom: 1px solid var(--border-subdued);
-      
-      .search-input {
-        width: 100%;
-      }
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    color: var(--foreground-subdued);
+    gap: 16px;
+
+    p {
+      margin: 0;
+      font-size: 14px;
     }
-  
-    .loading-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 80px 24px;
+  }
+
+  // v-list component is used for items
+  .items-list {
+    // Styles are handled by v-list component
+  }
+
+  // v-notice is used for empty state
+  .v-notice {
+    margin: 80px 24px;
+  }
+
+  .search-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: var(--background-normal-alt);
+    border-bottom: 1px solid var(--border-subdued);
+    gap: 16px;
+    border-radius: var(--theme--border-radius);
+
+    .results-info {
+      font-size: 12px;
       color: var(--foreground-subdued);
-      gap: 16px;
-      
-      p {
-        margin: 0;
-        font-size: 14px;
+
+      span {
+        font-weight: 600;
       }
     }
-    
-    // v-list component is used for items
-    .items-list {
-      // Styles are handled by v-list component
+
+    .v-pagination {
+      margin: 0;
     }
-    
-    // v-notice is used for empty state
-    .v-notice {
-      margin: 80px 24px;
-    }
-    
-    .search-info-bar {
+
+    .search-pagination {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 12px 24px;
-      background-color: var(--background-normal-alt);
-      border-bottom: 1px solid var(--border-subdued);
-      gap: 16px;
-      border-radius: var(--theme--border-radius);
-      
-      .results-info {
+      gap: 8px;
+
+      .page-info {
         font-size: 12px;
         color: var(--foreground-subdued);
-        
-        span {
-          font-weight: 600;
-        }
+        margin: 0 8px;
       }
-      
-      .v-pagination {
-        margin: 0;
-      }
-      
-      .search-pagination {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        
-        .page-info {
-          font-size: 12px;
-          color: var(--foreground-subdued);
-          margin: 0 8px;
-        }
-      }
+    }
 
-      .pagination-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
 
-      .selection-info-inline {
-        //margin-left: 8px;
+      // Settings button - gleiche Größe wie Pagination
+      > .v-button {
+        height: 36px !important;
+        width: 36px !important;
 
-        a.deselect-link {
-          color: var(--primary) !important;
-          cursor: pointer;
-          text-decoration: none;
-          transition: color var(--fast);
-          margin: 0 4px;
-
-          &:hover {
-            color: var(--primary-75) !important;
-            text-decoration: underline;
-          }
+        .v-icon {
+          --v-icon-size: 18px; // Etwas größeres Icon
         }
       }
     }
+
+    .selection-info-inline {
+      //margin-left: 8px;
+
+      a.deselect-link {
+        color: var(--primary) !important;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color var(--fast);
+        margin: 0 4px;
+
+        &:hover {
+          color: var(--primary-75) !important;
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
   // v-list component is used for items
   .items-list {
     .custom-list-item {
@@ -455,7 +549,28 @@ $expanded-border-width: 5px;
       align-items: center;
       gap: 8px;
       min-height: 45px; // Mindesthöhe
-      padding: 8px 0; // Vertikaler Padding
+      padding: 8px 0 ; // Vertikaler Padding
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--foreground-subdued);
+        flex-shrink: 0;
+        margin-right: -2px;
+
+        &.status-published {
+          background: var(--theme--primary);
+        }
+
+        &.status-draft {
+          background: var(--theme--foreground);
+        }
+
+        &.status-archived {
+          background: var(--theme--warning);
+        }
+      }
     }
 
     .item-title {
@@ -507,6 +622,125 @@ $expanded-border-width: 5px;
       --v-chip-background-color: var(--theme--danger-background);
       --v-chip-color: var(--theme--danger);
     }
+
+
+    .usage-indicator {
+      margin-left: auto; // Rechtsbündig
+
+      .usage-chip {
+        --v-chip-background-color: var(--theme--warning-background);
+        --v-chip-color: var(--theme--warning);
+        cursor: pointer;
+
+        &:hover {
+          --v-chip-background-color: var(--theme--warning);
+          --v-chip-color: var(--white);
+        }
+
+        .v-icon {
+          margin-right: 4px;
+        }
+      }
+    }
+
+    .usage-warning {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--theme--warning);
+
+      .v-icon {
+        --v-icon-color: var(--theme--warning);
+      }
+    }
+
+    .usage-details {
+      padding: 12px;
+      min-width: 300px;
+      max-width: 400px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .usage-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+    }
+
+    .usage-item {
+      margin-top: 12px;
+
+      &:first-child {
+        margin-top: 8px;
+      }
+    }
+
+    .usage-collection {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+      font-size: 13px;
+
+      strong {
+        color: var(--theme--foreground);
+      }
+
+      .usage-count {
+        color: var(--theme--foreground-subdued);
+        font-size: 12px;
+      }
+    }
+
+    .usage-list {
+      padding-left: 20px;
+      font-size: 12px;
+      color: var(--theme--foreground-subdued);
+    }
+
+    .usage-entry {
+      padding: 2px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .usage-more {
+      padding: 2px 0;
+      font-style: italic;
+      color: var(--theme--foreground-subdued);
+    }
+
+  }
+}
+
+// Field selector styles
+.field-selector-header {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--theme--foreground-subdued);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-selector-title {
+  font-weight: 600 !important;
+  font-size: 14px;
+}
+
+// Disabled header item styling
+.v-list-item[disabled] {
+  pointer-events: none;
+  background-color: var(--theme--background-subdued);
+
+  .v-list-item-content {
+    padding: 8px 16px;
   }
 }
 
@@ -588,10 +822,10 @@ $expanded-border-width: 5px;
   right: 0;
   bottom: 0;
   background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0) 100%
+                  90deg,
+                  rgba(255, 255, 255, 0) 0%,
+                  rgba(255, 255, 255, 0.2) 50%,
+                  rgba(255, 255, 255, 0) 100%
   );
   animation: shimmer 1.5s infinite;
 }
@@ -673,12 +907,12 @@ $expanded-border-width: 5px;
 
 .expand-enter-to {
   opacity: 1;
-  max-height: 2000px;
+  max-height: 400px; // Angepasst für Search Help Panel
 }
 
 .expand-leave-from {
   opacity: 1;
-  max-height: 2000px;
+  max-height: 400px; // Angepasst für Search Help Panel
 }
 
 .expand-leave-to {
@@ -802,7 +1036,7 @@ $expanded-border-width: 5px;
   .block-item.expanded {
     box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.4);
   }
-  
+
   .block-item.has-changes::after {
     box-shadow: 0 0 0 2px var(--background-normal);
   }

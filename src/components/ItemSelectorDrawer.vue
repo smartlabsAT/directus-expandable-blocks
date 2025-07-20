@@ -41,8 +41,85 @@
                 clickable
                 @click="clearSearch"
             />
+            <v-icon
+
+                name="help_outline"
+                clickable
+                @click="showSearchHelp = !showSearchHelp"
+                :class="{ 'rotated': showSearchHelp }"
+            />
           </template>
         </v-input>
+
+        <!-- Collapsible Search Help -->
+        <transition name="expand">
+          <div v-if="showSearchHelp" class="search-help-panel">
+            <div class="search-help-content">
+              <div class="search-help-section">
+                <h4>Search Operators</h4>
+                <table class="search-operators-table">
+                  <tbody>
+                    <tr>
+                      <td><code>=</code></td>
+                      <td>Exact match</td>
+                      <td><code>status=published</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>~</code></td>
+                      <td>Contains</td>
+                      <td><code>title~product</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>=%text%</code></td>
+                      <td>Contains (alt)</td>
+                      <td><code>name=%john%</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>!=</code></td>
+                      <td>Not equals</td>
+                      <td><code>status!=archived</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>&gt;</code></td>
+                      <td>Greater than</td>
+                      <td><code>sort&gt;10</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>&lt;</code></td>
+                      <td>Less than</td>
+                      <td><code>price&lt;100</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>&gt;=</code></td>
+                      <td>Greater or equal</td>
+                      <td><code>quantity&gt;=5</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>&lt;=</code></td>
+                      <td>Less or equal</td>
+                      <td><code>stock&lt;=20</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>^</code></td>
+                      <td>Starts with</td>
+                      <td><code>name^John</code></td>
+                    </tr>
+                    <tr>
+                      <td><code>$</code></td>
+                      <td>Ends with</td>
+                      <td><code>email$@gmail.com</code></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="search-help-tips">
+                <strong>Tips:</strong> Type normally for full-text search • Use operators for field searches • Field
+                names are case-sensitive
+              </div>
+            </div>
+          </div>
+        </transition>
       </div>
 
       <!-- Search Info Bar with Pagination -->
@@ -76,7 +153,6 @@
               <v-button
                   v-tooltip.bottom="'Display Settings'"
                   icon
-                  x-small
                   secondary
                   @click="toggle"
               >
@@ -85,9 +161,11 @@
             </template>
 
             <v-list>
-              <v-list-item-content>
-                <div class="field-selector-header">Select fields to display:</div>
-              </v-list-item-content>
+              <v-list-item disabled>
+                <v-list-item-content>
+                  <div class="field-selector-header">Select fields to display</div>
+                </v-list-item-content>
+              </v-list-item>
               <v-divider/>
               <v-list-item
                   v-for="field in availableFields"
@@ -103,8 +181,9 @@
                   />
                 </v-list-item-icon>
                 <v-list-item-content>
-                  <v-list-item-title>{{ field.name || field.field }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ field.type }}</v-list-item-subtitle>
+                  <v-list-item-title class="field-selector-title">
+                    {{ capitalizeField(field.name || field.field) }}
+                  </v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
             </v-list>
@@ -133,10 +212,69 @@
           <v-list-item-content>
             <!-- Titel-Zeile mit fester Position -->
             <div class="item-title-row">
+    <span
+        v-if="item.status"
+        class="status-dot"
+        :class="`status-${item.status}`"
+        v-tooltip.top="capitalizeField(item.status)"
+    />
               <span class="item-title">{{ extractItemTitle(item) }}</span>
               <v-chip v-if="item.id" x-small label class="item-id-badge">
                 ID: {{ item.id }}
               </v-chip>
+
+              <!-- Relations/Usage Indicator -->
+              <div v-if="itemRelations && itemRelations[item.id]" class="usage-indicator">
+                <v-menu placement="bottom" show-arrow>
+                  <template #activator="{ toggle }">
+                    <v-chip
+                        x-small
+                        class="usage-chip"
+                        @click.stop="toggle"
+                    >
+                      <v-icon name="link" x-small/>
+                      {{ getTotalUsageCount(item.id) }}
+                    </v-chip>
+                  </template>
+
+                  <div class="usage-details">
+                    <div class="usage-header">
+                      <v-icon name="info"/>
+                      <span>This item is used in:</span>
+                    </div>
+                    <v-divider/>
+                    <div
+                        v-for="usage in itemRelations[item.id]"
+                        :key="`${usage.collection}-${usage.field}`"
+                        class="usage-item"
+                    >
+                      <div class="usage-collection">
+                        <v-icon name="box" x-small/>
+                        <strong>{{ capitalizeField(usage.collection) }}</strong>
+                        <span class="usage-count">({{ usage.count }})</span>
+                      </div>
+                      <div class="usage-list">
+                        <div
+                            v-for="usedIn in usage.items.slice(0, 5)"
+                            :key="usedIn.id"
+                            class="usage-entry"
+                        >
+                          • {{ extractItemTitle(usedIn) || `ID: ${usedIn.id}` }}
+                        </div>
+                        <div v-if="usage.count > 5" class="usage-more">
+                          ... and {{ usage.count - 5 }} more
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </v-menu>
+              </div>
+            </div>
+
+            <!-- Usage Warning -->
+            <div v-if="itemRelations && itemRelations[item.id]" class="usage-warning">
+              <v-icon name="warning" x-small/>
+              <span>Used in {{ getTotalUsageCount(item.id) }} place{{ getTotalUsageCount(item.id) > 1 ? 's' : '' }} - changes will affect all references</span>
             </div>
 
             <!-- Additional Fields - darunter -->
@@ -146,8 +284,7 @@
                   :key="field"
                   class="field-item"
               >
-                <span class="field-label">{{ getFieldLabel(field) }}:</span>
-
+                <span class="field-label">{{ capitalizeField(getFieldLabel(field)) }}:</span>
                 <!-- Boolean as Badge -->
                 <v-chip
                     v-if="typeof item[field] === 'boolean'"
@@ -156,15 +293,14 @@
                 >
                   {{ item[field] ? 'Yes' : 'No' }}
                 </v-chip>
-
                 <!-- Text with Truncation -->
                 <span
                     v-else
                     class="field-value"
                     v-tooltip="getFieldValue(item[field]).length > 100 ? getFieldValue(item[field]) : null"
                 >
-            {{ truncateText(getFieldValue(item[field]), 100) }}
-          </span>
+        {{ truncateText(getFieldValue(item[field]), 100) }}
+      </span>
               </div>
             </div>
           </v-list-item-content>
@@ -201,6 +337,7 @@
     </template>
   </v-drawer>
 </template>
+
 <script setup lang="ts">
 import {ref, computed, watch} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
@@ -220,6 +357,8 @@ interface Props {
     name?: string;
     type: string;
   }>;
+  itemRelations?: Record<string, any[]>;
+  loadingRelations?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -238,6 +377,7 @@ const emit = defineEmits<{
 const selectedItems = ref<(string | number)[]>([]);
 const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
+const showSearchHelp = ref(false);
 
 // Computed
 const collectionIcon = computed(() => props.collectionIcon || 'box');
@@ -305,7 +445,6 @@ function toggleFieldDisplay(field: string) {
   } else {
     displayFields.value.push(field);
   }
-  // Optional: Save to localStorage
   localStorage.setItem(`displayFields_${props.collection}`, JSON.stringify(displayFields.value));
 }
 
@@ -313,7 +452,6 @@ function getFieldLabel(field: string): string {
   const fieldInfo = props.availableFields?.find(f => f.field === field);
   return fieldInfo?.name || field;
 }
-
 
 function getFieldValue(value: any): string {
   if (value === null || value === undefined) return '';
@@ -326,12 +464,29 @@ function truncateText(text: string, maxLength: number): string {
   return text.substring(0, maxLength) + '...';
 }
 
+function capitalizeField(fieldName: string): string {
+  return fieldName
+      .replace(/_/g, ' ')
+      .replace(/([A-Z])/g, ' $1')
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+}
+
+function getTotalUsageCount(itemId: string | number): number {
+  const relations = props.itemRelations?.[itemId];
+  if (!relations) return 0;
+
+  return relations.reduce((total, usage) => total + usage.count, 0);
+}
 
 // Reset when drawer opens/closes
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
     selectedItems.value = [];
     searchQuery.value = '';
+    showSearchHelp.value = false;
   }
 });
 
@@ -339,6 +494,7 @@ watch(() => props.open, (isOpen) => {
 watch(() => props.collection, (collection) => {
   selectedItems.value = [];
   searchQuery.value = '';
+  showSearchHelp.value = false;
   if (collection) {
     const saved = localStorage.getItem(`displayFields_${collection}`);
     if (saved) {
