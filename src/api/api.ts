@@ -9,14 +9,28 @@ import {TranslationFieldAnalyzer} from './services/TranslationFieldAnalyzer';
 import {TranslationFieldAnalyzerConfig} from './types/TranslationFieldAnalyzerTypes';
 import {UsageFinderService} from './services/UsageFinderService';
 import {PathBuilderService} from './services/PathBuilderService';
-import {CacheServiceImpl} from './services/CacheService';
+import {DirectusCacheWrapper} from './services/DirectusCacheWrapper';
 import {CacheKeys, CacheTTL} from './types/CacheTypes';
+import {log} from "@directus/extensions-sdk/dist/cli/utils/logger";
+
+// Create a singleton cache instance that persists across requests
+let cacheInstance: DirectusCacheWrapper | null = null;
 
 export default defineEndpoint({
     id: 'expandable-blocks-api',
     handler: (router, context) => {
-        const {getSchema} = context;
+        const {getSchema, services} = context;
 
+        // Initialize singleton cache instance if not already created
+        if (!cacheInstance) {
+            cacheInstance = new DirectusCacheWrapper({
+                database: context.database,
+                services: context.services,
+                defaultTTL: CacheTTL.LONG,
+                prefix: 'expandable_blocks'
+            });
+            console.log('[API] Initialized singleton cache instance');
+        }
 
         /**
          * Route 1: Metadata Endpoint
@@ -28,12 +42,8 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-                // Create CacheService instance
-                const cache = new CacheServiceImpl({
-                    database: context.database,
-                    services: context.services,
-                    defaultTTL: CacheTTL.LONG
-                });
+                // Use singleton cache instance
+                const cache = cacheInstance!;
 
                 // Initialize analyzers
                 const relationAnalyzerConfig: RelationAnalyzerConfig = {
@@ -186,11 +196,8 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-                // Create CacheService instance
-                const cache = new CacheServiceImpl({
-                    database: context.database,
-                    services: context.services
-                });
+                // Use singleton cache instance
+                const cache = cacheInstance!;
 
                 // Create ItemLoader instance
                 const itemLoader = new ItemLoader({
@@ -252,7 +259,13 @@ export default defineEndpoint({
                 // Add usage information to each item
                 const itemsWithUsage = await Promise.all(
                     itemsResult.data.map(async (item) => {
-                        try {
+                        // Try to get complete cached result first
+                        const itemCacheKey = CacheKeys.itemDetail(collection, item.id, fields);
+                        
+                        return cache.getOrSet(
+                            itemCacheKey,
+                            async () => {
+                                try {
                             // Find all usages for this item (cached)
                             const usageTreeCacheKey = CacheKeys.itemUsage(collection, item.id);
                             const usageTree = await cache.getOrSet(
@@ -265,33 +278,45 @@ export default defineEndpoint({
                                 {ttl: CacheTTL.SHORT}
                             );
 
-                            // Get usage statistics
-                            const usageStats = await usageFinder.getUsageStatistics(collection, item.id, usageTree);
+                            // Get usage statistics (cached separately)
+                            const usageStatsCacheKey = CacheKeys.itemUsageStats(collection, item.id);
+                            const usageStats = await cache.getOrSet(
+                                usageStatsCacheKey,
+                                async () => usageFinder.getUsageStatistics(collection, item.id, usageTree),
+                                { ttl: CacheTTL.SHORT }
+                            );
 
-                            // Build paths for direct usages
-                            const usagePaths = await Promise.all(
-                                usageTree.direct_usages.map(async (usage) => {
-                                    const path = await pathBuilder.buildPath(usage, {
-                                        includeCollections: true,
-                                        includeFields: true,
-                                        includeIds: false,
-                                        includeAdminUrls: true,
-                                        adminBaseUrl: '/admin'
-                                    });
+                            // Build paths for direct usages (cached)
+                            const usagePathsCacheKey = CacheKeys.itemUsagePaths(collection, item.id);
+                            const usagePaths = await cache.getOrSet(
+                                usagePathsCacheKey,
+                                async () => {
+                                    return Promise.all(
+                                        usageTree.direct_usages.map(async (usage) => {
+                                            const path = await pathBuilder.buildPath(usage, {
+                                                includeCollections: true,
+                                                includeFields: true,
+                                                includeIds: false,
+                                                includeAdminUrls: true,
+                                                adminBaseUrl: '/admin'
+                                            });
 
-                                    const breadcrumbs = await pathBuilder.buildBreadcrumbs(usage, {
-                                        includeAdminUrls: true,
-                                        adminBaseUrl: '/admin'
-                                    });
+                                            const breadcrumbs = await pathBuilder.buildBreadcrumbs(usage, {
+                                                includeAdminUrls: true,
+                                                adminBaseUrl: '/admin'
+                                            });
 
-                                    return {
-                                        ...usage,
-                                        path: path.formatted,
-                                        short_path: path.short_formatted,
-                                        breadcrumbs,
-                                        admin_url: path.to.admin_url
-                                    };
-                                })
+                                            return {
+                                                ...usage,
+                                                path: path.formatted,
+                                                short_path: path.short_formatted,
+                                                breadcrumbs,
+                                                admin_url: path.to.admin_url
+                                            };
+                                        })
+                                    );
+                                },
+                                { ttl: CacheTTL.SHORT }
                             );
 
                             // Build all paths collection
@@ -300,27 +325,30 @@ export default defineEndpoint({
                                 adminBaseUrl: '/admin'
                             });
 
-                            return {
-                                ...item,
-                                _usage: {
-                                    direct_usages: usagePaths,
-                                    total_usage_count: usageTree.total_usage_count,
-                                    usage_tree: usageTree,
-                                    usage_stats: usageStats,
-                                    paths_by_collection: allPaths.by_collection,
-                                    shortest_paths: allPaths.shortest_paths,
-                                    has_circular_reference: usageTree.has_circular_reference
+                                    return {
+                                        ...item,
+                                        _usage: {
+                                            direct_usages: usagePaths,
+                                            total_usage_count: usageTree.total_usage_count,
+                                            usage_tree: usageTree,
+                                            usage_stats: usageStats,
+                                            paths_by_collection: allPaths.by_collection,
+                                            shortest_paths: allPaths.shortest_paths,
+                                            has_circular_reference: usageTree.has_circular_reference
+                                        }
+                                    };
+                                } catch (error) {
+                                    console.error(`[Usage] Error processing usage for item ${item.id}:`, error);
+                                    return {
+                                        ...item,
+                                        _usage: {
+                                            error: error.message || 'Failed to load usage information'
+                                        }
+                                    };
                                 }
-                            };
-                        } catch (error) {
-                            console.error(`[Usage] Error processing usage for item ${item.id}:`, error);
-                            return {
-                                ...item,
-                                _usage: {
-                                    error: error.message || 'Failed to load usage information'
-                                }
-                            };
-                        }
+                            },
+                            { ttl: CacheTTL.SHORT }
+                        );
                     })
                 );
 
