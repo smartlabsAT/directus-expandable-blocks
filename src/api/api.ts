@@ -11,7 +11,7 @@ import {UsageFinderService} from './services/UsageFinderService';
 import {PathBuilderService} from './services/PathBuilderService';
 import {DirectusCacheWrapper} from './services/DirectusCacheWrapper';
 import {CacheKeys, CacheTTL} from './types/CacheTypes';
-import {log} from "@directus/extensions-sdk/dist/cli/utils/logger";
+// Note: Remove unused import - use context.logger instead
 
 // Create a singleton cache instance that persists across requests
 let cacheInstance: DirectusCacheWrapper | null = null;
@@ -29,7 +29,7 @@ export default defineEndpoint({
                 defaultTTL: CacheTTL.LONG,
                 prefix: 'expandable_blocks'
             });
-            console.log('[API] Initialized singleton cache instance');
+            context.logger.info('[API] Initialized singleton cache instance');
         }
 
         /**
@@ -99,7 +99,7 @@ export default defineEndpoint({
                 });
 
             } catch (error) {
-                console.error('Error in metadata endpoint:', error);
+                context.logger.error('Error in metadata endpoint:', error);
                 res.status(500).json({
                     errors: [{
                         message: error.message || 'Internal server error',
@@ -141,14 +141,27 @@ export default defineEndpoint({
                 const itemLoader = new ItemLoader(itemLoaderConfig);
 
 
+                // Parse fields - handle both array and string formats
+                let parsedFields: string[];
+                if (Array.isArray(fields)) {
+                    // Handle fields[]=* & fields[]=translations.* format
+                    parsedFields = fields as string[];
+                } else if (fields === '*') {
+                    parsedFields = ['*'];
+                } else {
+                    // Handle comma-separated string
+                    parsedFields = String(fields).split(',');
+                }
+
                 // Build query
                 const query: ItemQuery = {
                     limit: Number(limit),
                     offset: Number(offset),
-                    fields: fields === '*' ? ['*'] : String(fields).split(','),
+                    fields: parsedFields,
                     search: search as string,
                     filter: filter ? (typeof filter === 'string' ? JSON.parse(filter) : filter) : undefined,
-                    sort: sort ? String(sort).split(',') : undefined
+                    sort: sort ? String(sort).split(',') : undefined,
+                    expandTranslations: true  // Always expand translations for search endpoint
                 };
 
                 // Load items with translations
@@ -161,7 +174,7 @@ export default defineEndpoint({
                 });
 
             } catch (error) {
-                console.error('Error in search endpoint:', error);
+                context.logger.error('Error in search endpoint:', error);
                 res.status(500).json({
                     errors: [{
                         message: error.message || 'Internal server error',
@@ -286,7 +299,7 @@ export default defineEndpoint({
                                         usage_summary: summary
                                     };
                                 } catch (error) {
-                                    console.error(`[Usage] Error processing usage for item ${item.id}:`, error);
+                                    context.logger.error(`[Usage] Error processing usage for item ${item.id}:`, error);
                                     return {
                                         ...item,
                                         usage_locations: [],
@@ -308,7 +321,7 @@ export default defineEndpoint({
                 });
 
             } catch (error) {
-                console.error('Error in batch usage endpoint:', error);
+                context.logger.error('Error in batch usage endpoint:', error);
                 res.status(500).json({
                     errors: [{
                         message: error.message || 'Internal server error',
