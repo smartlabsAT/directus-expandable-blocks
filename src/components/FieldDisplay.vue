@@ -21,7 +21,7 @@
           x-small 
           class="choice-icon"
       />
-      {{ selectedChoice?.text || value }}
+      {{ selectedChoice?.text || props.value }}
     </v-chip>
 
     <!-- WYSIWYG Field -->
@@ -58,32 +58,16 @@
 
     <!-- Image Field -->
     <div v-else-if="isImageField" class="image-field">
-      <v-menu 
-          placement="bottom" 
-          show-arrow
-          :close-on-content-click="false"
-          :triggers="['hover']"
+      <div 
+          class="image-preview"
+          v-tooltip.top="imageTooltipContent"
       >
-        <template #activator="{ active }">
-          <div class="image-preview" :class="{ active }">
-            <img 
-                :src="imageUrl" 
-                :alt="field"
-                @error="handleImageError"
-            />
-          </div>
-        </template>
-        <div class="image-popover">
-          <img 
-              :src="imageUrl" 
-              :alt="field"
-              class="full-image"
-          />
-          <div class="image-info">
-            {{ getImageFilename }}
-          </div>
-        </div>
-      </v-menu>
+        <img 
+            :src="imageUrl" 
+            :alt="field"
+            @error="handleImageError"
+        />
+      </div>
     </div>
 
     <!-- JSON Field -->
@@ -193,14 +177,29 @@ const truncatedValue = computed(() => {
 
 // Select dropdown choice
 const selectedChoice = computed(() => {
-  if (!isSelectDropdown.value || !props.fieldInfo?.options?.choices) return null;
+  if (!isSelectDropdown.value) return null;
   
-  const choices = props.fieldInfo.options.choices;
+  // Check different locations for choices
+  const choices = props.fieldInfo?.options?.choices;
+  
+  if (!choices) {
+    return null;
+  }
+  
   if (Array.isArray(choices)) {
-    return choices.find(choice => choice.value === props.value);
+    // Handle array format [{ text: 'Label', value: 'value' }]
+    const found = choices.find(choice => choice.value === props.value);
+    return found || null;
   } else if (typeof choices === 'object') {
-    // Handle object format { value: { text, icon } }
-    return choices[props.value];
+    // Handle object format { value: { text, icon } } or { value: 'Label' }
+    const choice = choices[props.value];
+    if (!choice) {
+      return null;
+    }
+    if (typeof choice === 'string') {
+      return { text: choice, value: props.value };
+    }
+    return choice;
   }
   
   return null;
@@ -292,6 +291,16 @@ const getImageFilename = computed(() => {
   }
   
   return String(props.value);
+});
+
+const imageTooltipContent = computed(() => {
+  if (!imageUrl.value) return '';
+  
+  return {
+    content: `<img src="${imageUrl.value}" style="max-width: 300px; max-height: 300px;" />`,
+    html: true,
+    delay: 300
+  };
 });
 
 function handleImageError(event: Event) {
@@ -424,8 +433,7 @@ function handleImageError(event: Event) {
   transition: all 0.2s;
 }
 
-.image-preview:hover,
-.image-preview.active {
+.image-preview:hover {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px var(--primary-25);
 }
@@ -434,28 +442,5 @@ function handleImageError(event: Event) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.image-popover {
-  background: var(--background-page);
-  border-radius: 4px;
-  overflow: hidden;
-  max-width: 500px;
-}
-
-.full-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 400px;
-  object-fit: contain;
-}
-
-.image-info {
-  padding: 8px 12px;
-  font-size: 12px;
-  color: var(--foreground-subdued);
-  border-top: 1px solid var(--border-subdued);
-  word-break: break-all;
 }
 </style>

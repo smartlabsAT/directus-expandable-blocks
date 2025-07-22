@@ -51,6 +51,9 @@ export function useItemSelector(api: any) {  // collections entfernt
           field: field.field,
           type: field.type,
           name: field.name || field.field,
+          interface: field.interface,
+          display: field.display,
+          options: field.options,
           display_name: field.display_name || field.field,
           searchable: field.searchable,
           weight: field.weight,
@@ -488,11 +491,7 @@ export function useItemSelector(api: any) {  // collections entfernt
    * Check if a field is translatable
    */
   function isFieldTranslatable(field: string): boolean {
-    logDebug('isFieldTranslatable called', {
-      field,
-      hasTranslations: translationInfo.value?.hasTranslations,
-      translationFields: translationInfo.value?.translationFields
-    });
+
     
     if (!translationInfo.value?.hasTranslations) return false;
     
@@ -501,10 +500,7 @@ export function useItemSelector(api: any) {  // collections entfernt
       tf => tf.field === field
     );
     
-    logDebug('isFieldTranslatable result', {
-      field,
-      isTranslatable
-    });
+
     
     if (isTranslatable) return true;
     
