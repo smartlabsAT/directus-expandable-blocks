@@ -18,6 +18,7 @@ export function useItemSelector(api: any) {  // collections entfernt
   const loading = ref(false);
   const availableFields = ref<any[]>([]);
   const loadingRelations = ref(false);
+  const apiError = ref<string | null>(null);
 
 
   // Pagination state
@@ -25,6 +26,39 @@ export function useItemSelector(api: any) {  // collections entfernt
   const itemsPerPage = ref(10);
   const totalItems = ref(0);
 
+
+  /**
+   * Load collection metadata including searchable fields
+   */
+  async function loadCollectionMetadata() {
+    if (!selectedCollection.value) return;
+    
+    try {
+      apiError.value = null;
+      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/metadata`);
+      
+      if (response.data?.searchableFields) {
+        // Transform searchableFields to match the expected format
+        availableFields.value = response.data.searchableFields.map((field: any) => ({
+          field: field.field,
+          type: field.type,
+          display_name: field.display_name || field.field,
+          searchable: field.searchable,
+          weight: field.weight
+        }));
+      }
+      
+      logDebug('Loaded collection metadata', {
+        collection: selectedCollection.value,
+        fieldsCount: availableFields.value.length
+      });
+    } catch (error) {
+      logError('Error loading collection metadata', error);
+      apiError.value = 'Fehler beim Laden der Metadaten. Bitte versuchen Sie es später erneut.';
+      // Fallback to empty fields
+      availableFields.value = [];
+    }
+  }
 
   /**
    * Parse search query for field-specific searches
@@ -240,11 +274,14 @@ export function useItemSelector(api: any) {  // collections entfernt
         }
       }
 
-      const response = await api.get(`/items/${selectedCollection.value}`, { params });
+      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { params });
 
       availableItems.value = response.data.data || [];
       totalItems.value = response.data.meta?.filter_count || 0;
       await loadItemRelations();
+      
+      // Clear any previous API errors
+      apiError.value = null;
 
       logDebug('Loaded items', {
         collection: selectedCollection.value,
@@ -257,6 +294,7 @@ export function useItemSelector(api: any) {  // collections entfernt
       logError('Error loading items', error);
       availableItems.value = [];
       totalItems.value = 0;
+      apiError.value = 'Die API ist nicht erreichbar. Bitte versuchen Sie es später erneut.';
     } finally {
       loading.value = false;
     }
@@ -350,24 +388,8 @@ export function useItemSelector(api: any) {  // collections entfernt
     selectedCollectionName.value = storeCollectionInfo?.name || collection;
     selectedCollectionIcon.value = storeCollectionInfo?.meta?.icon || 'box';
 
-    // Load collection fields - NEU!
-    try {
-      const fieldsResponse = await api.get(`/fields/${collection}`);
-      const fields = fieldsResponse.data.data || [];
-
-      // Filter out system fields that you want to exclude
-      const excludedFields = ['date_created', 'date_updated', 'id', 'status', 'user_created', 'user_updated', 'sort'];
-      availableFields.value = fields.filter(field => !excludedFields.includes(field.field));
-
-      logDebug('Loaded fields', {
-        collection,
-        fieldCount: availableFields.value.length,
-        fields: availableFields.value.map(f => f.field)
-      });
-    } catch (error) {
-      logError('Error loading fields', error);
-      availableFields.value = [];
-    }
+    // Load collection metadata including searchable fields
+    await loadCollectionMetadata();
 
     // Reset state
     searchQuery.value = '';
@@ -417,6 +439,7 @@ export function useItemSelector(api: any) {  // collections entfernt
     availableFields,
     itemRelations,
     loadingRelations,
+    apiError,
 
     // Pagination
     currentPage,

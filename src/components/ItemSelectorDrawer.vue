@@ -309,6 +309,11 @@
         </v-list-item>
       </v-list>
 
+      <!-- Error State -->
+      <v-notice v-else-if="apiError" type="danger" icon="error">
+        <div>{{ apiError }}</div>
+      </v-notice>
+
       <!-- Empty State -->
       <v-notice v-else :icon="searchQuery ? 'search_off' : 'inbox'">
         <div>{{ searchQuery ? 'No items found matching your search' : 'No items available' }}</div>
@@ -362,6 +367,7 @@ interface Props {
   }>;
   itemRelations?: Record<string, any[]>;
   loadingRelations?: boolean;
+  apiError?: string | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
