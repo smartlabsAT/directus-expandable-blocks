@@ -46,11 +46,6 @@
         "type": "endpoint",
         "name": "items-with-relations",
         "source": "src/api/api.ts"
-      },
-      {
-        "type": "hook",
-        "name": "expandable-blocks-cache",
-        "source": "src/hooks/index.ts"
       }
     ],
     "host": "^11.0.0"
