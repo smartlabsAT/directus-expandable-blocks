@@ -326,22 +326,12 @@
                       class="field-translation-icon"
                   />:
                 </span>
-                <!-- Boolean as Badge -->
-                <v-chip
-                    v-if="typeof item[field] === 'boolean'"
-                    x-small
-                    :class="item[field] ? 'boolean-true' : 'boolean-false'"
-                >
-                  {{ item[field] ? 'Yes' : 'No' }}
-                </v-chip>
-                <!-- Text with Truncation -->
-                <span
-                    v-else
-                    class="field-value"
-                    v-tooltip="getTranslatedValue(item, field).length > 100 ? getTranslatedValue(item, field) : null"
-                >
-        {{ truncateText(getTranslatedValue(item, field), 100) }}
-      </span>
+                <FieldDisplay
+                    :value="getTranslatedValue(item, field)"
+                    :field="field"
+                    :field-info="getFieldInfo(field)"
+                    :max-length="100"
+                />
               </div>
             </div>
           </v-list-item-content>
@@ -388,6 +378,7 @@
 import {ref, computed, watch} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import SearchTagInput from './SearchTagInput.vue';
+import FieldDisplay from './FieldDisplay.vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 
 // Create scoped logger for this component
@@ -407,6 +398,9 @@ interface Props {
     field: string;
     name?: string;
     type: string;
+    interface?: string;
+    display?: string;
+    options?: any;
     translatable?: boolean;
     translation_type?: string;
   }>;
@@ -562,6 +556,10 @@ function toggleFieldDisplay(field: string) {
 function getFieldLabel(field: string): string {
   const fieldInfo = props.availableFields?.find(f => f.field === field);
   return fieldInfo?.name || field;
+}
+
+function getFieldInfo(field: string) {
+  return props.availableFields?.find(f => f.field === field);
 }
 
 function getFieldValue(value: any): string {
