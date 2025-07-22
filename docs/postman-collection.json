@@ -1,0 +1,337 @@
+{
+  "info": {
+    "_postman_id": "expandable-blocks-api",
+    "name": "Directus Expandable Blocks API",
+    "description": "API endpoints for the Directus Expandable Blocks extension with usage tracking",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{directus_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://b.smartlabs.at/",
+      "type": "string"
+    },
+    {
+      "key": "directus_token",
+      "value": "your-directus-token-here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Collection Metadata",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/expandable-blocks-api/pages/metadata",
+          "host": ["{{base_url}}"],
+          "path": ["expandable-blocks-api", "pages", "metadata"]
+        },
+        "description": "Get metadata for a collection including possible usage locations, searchable fields, and translation information. This data is cached for 30 minutes."
+      },
+      "response": [
+        {
+          "name": "Metadata Response Example",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/pages/metadata",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "pages", "metadata"]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "body": "{\n  \"collection\": \"pages\",\n  \"possibleLocations\": [\n    {\n      \"collection\": \"page_blocks\",\n      \"fields\": [\"page\"],\n      \"display_name\": \"Page Blocks\",\n      \"icon\": \"view_module\"\n    },\n    {\n      \"collection\": \"navigation_items\",\n      \"fields\": [\"page_id\"],\n      \"display_name\": \"Navigation Items\",\n      \"icon\": \"menu\"\n    }\n  ],\n  \"searchableFields\": [\n    {\n      \"field\": \"title\",\n      \"type\": \"string\",\n      \"display_name\": \"Title\",\n      \"searchable\": true,\n      \"weight\": 10\n    },\n    {\n      \"field\": \"content\",\n      \"type\": \"text\",\n      \"display_name\": \"Content\",\n      \"searchable\": true,\n      \"weight\": 5\n    }\n  ],\n  \"translationInfo\": {\n    \"hasTranslations\": true,\n    \"combinedTranslationFields\": [\n      {\n        \"field\": \"translations\",\n        \"type\": \"combined\",\n        \"interface\": \"translations\",\n        \"translatedFields\": [\"title\", \"content\", \"meta_description\"]\n      }\n    ],\n    \"standardTranslationFields\": [],\n    \"jsonTranslationFields\": []\n  },\n  \"cached_at\": \"2025-07-21T16:30:00.000Z\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Fast Search",
+      "item": [
+        {
+          "name": "Basic Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/pages/search?limit=10&search=home",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "pages", "search"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "home"
+                }
+              ]
+            },
+            "description": "Search for items with translations. This endpoint is optimized for speed and does not include usage information."
+          }
+        },
+        {
+          "name": "Search with Pagination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/pages/search?limit=20&offset=40&sort=-date_created",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "pages", "search"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of items per page"
+                },
+                {
+                  "key": "offset",
+                  "value": "40",
+                  "description": "Skip first 40 items (page 3 with limit 20)"
+                },
+                {
+                  "key": "sort",
+                  "value": "-date_created",
+                  "description": "Sort by date_created descending"
+                }
+              ]
+            },
+            "description": "Example of pagination: Get page 3 (items 41-60) sorted by newest first"
+          }
+        },
+        {
+          "name": "Search with Filter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/pages/search?filter[status][_eq]=published&filter[featured][_eq]=true&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "pages", "search"],
+              "query": [
+                {
+                  "key": "filter[status][_eq]",
+                  "value": "published",
+                  "description": "Filter by status = published"
+                },
+                {
+                  "key": "filter[featured][_eq]",
+                  "value": "true",
+                  "description": "Filter by featured = true"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Filter for published and featured pages"
+          }
+        },
+        {
+          "name": "Search with Complex Filter (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items-with-relations/blocks/search?filter={\"_and\":[{\"status\":{\"_eq\":\"published\"}},{\"_or\":[{\"type\":{\"_eq\":\"hero\"}},{\"type\":{\"_eq\":\"cta\"}}]}]}&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "blocks", "search"],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "{\"_and\":[{\"status\":{\"_eq\":\"published\"}},{\"_or\":[{\"type\":{\"_eq\":\"hero\"}},{\"type\":{\"_eq\":\"cta\"}}]}]}",
+                  "description": "Complex filter: status = published AND (type = hero OR type = cta)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Complex filter example using JSON format"
+          }
+        },
+        {
+          "name": "Search with Specific Fields",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/items-with-relations/pages/search?fields=id,title,slug,status,translations&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "pages", "search"],
+              "query": [
+                {
+                  "key": "fields",
+                  "value": "id,title,slug,status,translations",
+                  "description": "Only return specific fields"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Return only specific fields to reduce payload size"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Item Detail with Usage",
+      "item": [
+        {
+          "name": "Get Item Details by IDs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [1, 2, 3, 5, 8],\n  \"fields\": \"*\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/pages/detail",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "pages", "detail"]
+            },
+            "description": "Get specific items by their IDs with full usage information. This endpoint calculates where each item is used throughout the system."
+          },
+          "response": [
+            {
+              "name": "Usage Response Example",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [1, 2],\n  \"fields\": \"*\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/items-with-relations/pages/with-usage",
+                  "host": ["{{base_url}}"],
+                  "path": ["items-with-relations", "pages", "with-usage"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Homepage\",\n      \"slug\": \"home\",\n      \"status\": \"published\",\n      \"_usage\": {\n        \"direct_usages\": [\n          {\n            \"collection\": \"navigation_items\",\n            \"item_id\": 1,\n            \"item_name\": \"Main Menu - Home\",\n            \"field\": \"page_id\",\n            \"relation_type\": \"M2O\",\n            \"path\": \"Navigation Items → Main Menu - Home\",\n            \"short_path\": \"Main Menu - Home\",\n            \"admin_url\": \"/admin/content/navigation_items/1\",\n            \"usage_count\": 1\n          },\n          {\n            \"collection\": \"page_blocks\",\n            \"item_id\": 5,\n            \"item_name\": \"Hero Banner\",\n            \"field\": \"page\",\n            \"relation_type\": \"M2A\",\n            \"path\": \"Page Blocks → Hero Banner\",\n            \"usage_count\": 3\n          }\n        ],\n        \"total_usage_count\": 4,\n        \"usage_stats\": {\n          \"direct_count\": 2,\n          \"indirect_count\": 2,\n          \"collections_using\": [\"navigation_items\", \"page_blocks\"],\n          \"most_common_field\": \"page_blocks.blocks\",\n          \"max_depth\": 2,\n          \"has_circular_references\": false\n        },\n        \"has_circular_reference\": false\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Blocks with Usage (Different Collection)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [101, 102, 103, 104, 105, 106, 107, 108, 109, 110],\n  \"fields\": \"id,type,title,status\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/blocks/detail",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "blocks", "detail"]
+            },
+            "description": "Example for a different collection (blocks) with limited fields to reduce response size"
+          }
+        },
+        {
+          "name": "Large Batch Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [\n    1, 2, 3, 4, 5, 6, 7, 8, 9, 10,\n    11, 12, 13, 14, 15, 16, 17, 18, 19, 20,\n    21, 22, 23, 24, 25, 26, 27, 28, 29, 30,\n    31, 32, 33, 34, 35, 36, 37, 38, 39, 40,\n    41, 42, 43, 44, 45, 46, 47, 48, 49, 50\n  ],\n  \"fields\": \"*\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/expandable-blocks-api/products/detail",
+              "host": ["{{base_url}}"],
+              "path": ["expandable-blocks-api", "products", "detail"]
+            },
+            "description": "Example of requesting many items at once. The endpoint uses caching to optimize performance for repeated requests."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login to Get Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"your-password\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Get an access token to use with the API endpoints. Save the returned access_token in the directus_token variable."
+          }
+        }
+      ]
+    }
+  ]
+}
