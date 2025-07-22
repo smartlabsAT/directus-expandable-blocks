@@ -11,7 +11,7 @@
 
     <!-- Select Dropdown Field -->
     <v-chip
-        v-else-if="isSelectDropdown"
+        v-else-if="isSelectDropdown && props.value"
         x-small
         class="select-chip"
     >
