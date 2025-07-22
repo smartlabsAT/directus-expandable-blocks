@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
+import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption } from '../types';
 
 export function useItemSelector(api: any) {  // collections entfernt
   const { useCollectionsStore } = useStores();
@@ -16,9 +17,14 @@ export function useItemSelector(api: any) {  // collections entfernt
   const searchQuery = ref('');
   const availableItems = ref<any[]>([]);
   const loading = ref(false);
-  const availableFields = ref<any[]>([]);
+  const availableFields = ref<FieldWithTranslation[]>([]);
   const loadingRelations = ref(false);
   const apiError = ref<string | null>(null);
+  
+  // Translation state
+  const translationInfo = ref<TranslationInfo | null>(null);
+  const selectedLanguage = ref<string>('en-US');
+  const availableLanguages = ref<LanguageOption[]>([]);
 
 
   // Pagination state
@@ -37,20 +43,68 @@ export function useItemSelector(api: any) {  // collections entfernt
       apiError.value = null;
       const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/metadata`);
       
-      if (response.data?.searchableFields) {
+      const metadata = response.data as CollectionMetadata;
+      
+      if (metadata?.searchableFields) {
         // Transform searchableFields to match the expected format
-        availableFields.value = response.data.searchableFields.map((field: any) => ({
+        availableFields.value = metadata.searchableFields.map((field: any) => ({
           field: field.field,
           type: field.type,
+          name: field.name || field.field,
           display_name: field.display_name || field.field,
           searchable: field.searchable,
-          weight: field.weight
+          weight: field.weight,
+          translatable: field.translatable || false,
+          translation_type: field.translation_type || 'none'
         }));
+      }
+      
+      // Store translation info
+      if (metadata?.translationInfo) {
+        translationInfo.value = metadata.translationInfo;
+        
+        logDebug('Translation info loaded', {
+          hasTranslations: metadata.translationInfo.hasTranslations,
+          translationType: metadata.translationInfo.translationType,
+          translationFields: metadata.translationInfo.translationFields
+        });
+        
+        // Update available languages if provided
+        if (metadata.translationInfo.availableLanguages) {
+          availableLanguages.value = metadata.translationInfo.availableLanguages;
+        }
+        
+        // Add translation fields to availableFields for combined translations
+        if (metadata.translationInfo.hasTranslations && 
+            metadata.translationInfo.translationType === 'combined' &&
+            metadata.translationInfo.translationFields) {
+          
+          // Add translation fields that are not already in availableFields
+          metadata.translationInfo.translationFields.forEach((tf: any) => {
+            if (!availableFields.value.find(f => f.field === tf.field)) {
+              availableFields.value.push({
+                field: tf.field,
+                type: tf.type,
+                name: tf.name || tf.field,
+                display_name: tf.name || tf.field,
+                searchable: false,
+                weight: 0,
+                translatable: true,
+                translation_type: 'combined'
+              });
+            }
+          });
+          
+          logDebug('Added translation fields to availableFields', {
+            addedFields: metadata.translationInfo.translationFields.map((tf: any) => tf.field)
+          });
+        }
       }
       
       logDebug('Loaded collection metadata', {
         collection: selectedCollection.value,
-        fieldsCount: availableFields.value.length
+        fieldsCount: availableFields.value.length,
+        hasTranslations: translationInfo.value?.hasTranslations || false
       });
     } catch (error) {
       logError('Error loading collection metadata', error);
@@ -223,6 +277,11 @@ export function useItemSelector(api: any) {  // collections entfernt
         fields: ['*'],
         meta: '*'
       };
+      
+      // Include translations if collection has them
+      if (translationInfo.value?.hasTranslations) {
+        params.fields.push('translations.*');
+      }
 
       // Apply search or filter
       if (searchParsed.isFieldSearch) {
@@ -303,6 +362,7 @@ export function useItemSelector(api: any) {  // collections entfernt
 
   /**
    * Load relation information for all loaded items
+   * Currently not implemented - placeholder for future usage tracking
    */
   async function loadItemRelations() {
     if (!selectedCollection.value || availableItems.value.length === 0) return;
@@ -311,59 +371,9 @@ export function useItemSelector(api: any) {  // collections entfernt
     itemRelations.value = {};
 
     try {
-      // Get all relations that point TO this collection
-      // const relationsResponse = await api.get('/relations', {
-      //   params: {
-      //     filter: {
-      //       related_collection: {
-      //         _eq: selectedCollection.value
-      //       }
-      //     }
-      //   }
-      // });
-
-      // const incomingRelations = relationsResponse.data.data || [];
-
-      // Für jedes Item prüfen, wo es verwendet wird
-      // for (const item of availableItems.value) {
-      //   if (!item.id) continue;
-      //
-      //   const usages = [];
-
-        // Prüfe jede eingehende Relation
-        // for (const relation of incomingRelations) {
-        //   try {
-        //     // Suche nach Items die auf dieses Item verweisen
-        //     const usageResponse = await api.get(`/items/${relation.collection}`, {
-        //       params: {
-        //         filter: {
-        //           [relation.field]: {
-        //             _eq: item.id
-        //           }
-        //         },
-        //         fields: ['id', 'status', relation.meta?.display_template || '*'],
-        //         limit: 100
-        //       }
-        //     });
-        //
-        //     if (usageResponse.data.data?.length > 0) {
-        //       usages.push({
-        //         collection: relation.collection,
-        //         field: relation.field,
-        //         items: usageResponse.data.data,
-        //         count: usageResponse.data.data.length
-        //       });
-        //     }
-        //   } catch (error) {
-        //     logError(`Error checking usage in ${relation.collection}`, error);
-        //   }
-        // }
-
-      //   if (usages.length > 0) {
-      //     itemRelations.value[item.id] = usages;
-      //   }
-      // }
-
+      // TODO: Implement relation loading when needed
+      // This would load usage information for each item
+      
       logDebug('Loaded item relations', itemRelations.value);
     } catch (error) {
       logError('Error loading relations', error);
@@ -427,6 +437,76 @@ export function useItemSelector(api: any) {  // collections entfernt
     isOpen.value = false;
   }
 
+  /**
+   * Get translated field value from item
+   */
+  function getTranslatedFieldValue(item: any, field: string, language?: string): string {
+    const lang = language || selectedLanguage.value;
+    
+    // Check if field is translatable
+    if (!translationInfo.value?.hasTranslations) {
+      return item[field] || '';
+    }
+    
+    // Check if this specific field is translatable
+    const translatableField = translationInfo.value.translationFields?.find(
+      tf => tf.field === field || tf.coversFields?.includes(field)
+    );
+    
+    if (!translatableField) {
+      return item[field] || '';
+    }
+    
+    // Check for translations array (O2M relation)
+    if (item.translations && Array.isArray(item.translations)) {
+      // Find translation for selected language
+      const translation = item.translations.find((t: any) => t.languages_code === lang);
+      
+      if (translation) {
+        // For combined translations where fields are covered
+        if (translationInfo.value.translationType === 'combined' && translatableField.coversFields?.includes(field)) {
+          // Return the translated value from the translation object
+          return translation[field] || item[field] || '';
+        }
+        
+        // For standard translations
+        return translation[field] || item[field] || '';
+      }
+    }
+    
+    // Fallback to main value
+    return item[field] || '';
+  }
+  
+  /**
+   * Check if a field is translatable
+   */
+  function isFieldTranslatable(field: string): boolean {
+    logDebug('isFieldTranslatable called', {
+      field,
+      hasTranslations: translationInfo.value?.hasTranslations,
+      translationFields: translationInfo.value?.translationFields
+    });
+    
+    if (!translationInfo.value?.hasTranslations) return false;
+    
+    // Check if field is in translationFields (only direct matches, not coversFields)
+    const isTranslatable = translationInfo.value.translationFields?.some(
+      tf => tf.field === field
+    );
+    
+    logDebug('isFieldTranslatable result', {
+      field,
+      isTranslatable
+    });
+    
+    if (isTranslatable) return true;
+    
+    // Also check availableFields as fallback
+    const fieldInfo = availableFields.value.find(f => f.field === field);
+    return fieldInfo?.translatable || false;
+  }
+
   return {
     // State
     isOpen,
@@ -440,6 +520,11 @@ export function useItemSelector(api: any) {  // collections entfernt
     itemRelations,
     loadingRelations,
     apiError,
+    
+    // Translation state
+    translationInfo,
+    selectedLanguage,
+    availableLanguages,
 
     // Pagination
     currentPage,
@@ -451,6 +536,8 @@ export function useItemSelector(api: any) {  // collections entfernt
     close,
     loadItems,
     handleSearch,
-    handlePageChange
+    handlePageChange,
+    getTranslatedFieldValue,
+    isFieldTranslatable
   };
 }
