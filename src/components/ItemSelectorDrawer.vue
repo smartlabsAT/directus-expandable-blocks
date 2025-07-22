@@ -316,7 +316,16 @@
                   :key="field"
                   class="field-item"
               >
-                <span class="field-label">{{ capitalizeField(getFieldLabel(field)) }}:</span>
+                <span class="field-label">
+                  {{ capitalizeField(getFieldLabel(field)) }}
+                  <v-icon 
+                      v-if="isFieldTranslatable ? isFieldTranslatable(field) : false" 
+                      name="translate" 
+                      x-small
+                      v-tooltip.top="'This field is translatable'"
+                      class="field-translation-icon"
+                  />:
+                </span>
                 <!-- Boolean as Badge -->
                 <v-chip
                     v-if="typeof item[field] === 'boolean'"
@@ -639,5 +648,22 @@ watch(() => props.collection, (collection) => {
 /* Language selector */
 .v-select {
   min-height: 36px;
+}
+
+/* Translation icon in field labels */
+.field-translation-icon {
+  color: var(--primary);
+  opacity: 0.7;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.field-translation-icon:hover {
+  opacity: 1;
+}
+
+.field-label {
+  display: inline-flex;
+  align-items: center;
 }
 </style>
