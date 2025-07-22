@@ -61,18 +61,41 @@ export class ItemLoader {
     });
 
     try {
-      // Load items
-      const items = await itemsService.readByQuery({
+      // Prepare query with deep relations for translations
+      const queryOptions: any = {
         limit: normalizedQuery.limit,
         offset: normalizedQuery.offset,
         fields: expandedFields,
         filter: normalizedQuery.filter,
         search: normalizedQuery.search,
         sort: normalizedQuery.sort
-      });
+      };
+      
+      // Add deep parameter if translations are included
+      if (expandedFields.some(f => f.includes('translations'))) {
+        queryOptions.deep = {
+          translations: {
+            _filter: {}
+          }
+        };
+      }
+      
+      // Load items
+      const items = await itemsService.readByQuery(queryOptions);
 
       // Ensure items is always an array
       const itemsArray = Array.isArray(items) ? items : [items];
+      
+      // Debug logging for translations
+      if (expandedFields.some(f => f.includes('translations')) && itemsArray.length > 0) {
+        const firstItem = itemsArray[0];
+        console.log('[ItemLoader] First item with translations:', {
+          id: firstItem.id,
+          hasTranslations: !!firstItem.translations,
+          translationsCount: firstItem.translations?.length || 0,
+          translationsSample: firstItem.translations?.[0] || 'no translations'
+        });
+      }
 
       // Get counts
       const [totalCount, filterCount] = await Promise.all([

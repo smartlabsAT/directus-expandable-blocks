@@ -443,6 +443,14 @@ export function useItemSelector(api: any) {  // collections entfernt
   function getTranslatedFieldValue(item: any, field: string, language?: string): string {
     const lang = language || selectedLanguage.value;
     
+    // Debug logging
+    logDebug('getTranslatedFieldValue called', {
+      field,
+      lang,
+      hasTranslations: !!item.translations,
+      translationsCount: item.translations?.length || 0
+    });
+    
     // Check if field is translatable
     if (!translationInfo.value?.hasTranslations) {
       return item[field] || '';
@@ -460,9 +468,21 @@ export function useItemSelector(api: any) {  // collections entfernt
     // Check for translations array (O2M relation)
     if (item.translations && Array.isArray(item.translations)) {
       // Find translation for selected language
-      const translation = item.translations.find((t: any) => t.languages_code === lang);
+      // Try different possible language field names
+      const translation = item.translations.find((t: any) => {
+        return t.languages_code === lang || 
+               t.languages_id === lang || 
+               t.language_code === lang ||
+               t.language === lang;
+      });
       
       if (translation) {
+        logDebug('Translation found', { 
+          translation,
+          field,
+          value: translation[field]
+        });
+        
         // For combined translations where fields are covered
         if (translationInfo.value.translationType === 'combined' && translatableField.coversFields?.includes(field)) {
           // Return the translated value from the translation object
@@ -471,6 +491,8 @@ export function useItemSelector(api: any) {  // collections entfernt
         
         // For standard translations
         return translation[field] || item[field] || '';
+      } else {
+        logDebug('No translation found for language', { lang, availableTranslations: item.translations });
       }
     }
     
