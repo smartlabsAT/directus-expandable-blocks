@@ -163,6 +163,27 @@
             </template>
 
             <v-list>
+              <!-- Language Selector (if translations available) -->
+              <template v-if="props.translationInfo?.hasTranslations">
+                <v-list-item disabled>
+                  <v-list-item-content>
+                    <div class="field-selector-header">Language</div>
+                  </v-list-item-content>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-content>
+                    <v-select
+                        :model-value="props.selectedLanguage"
+                        :items="props.availableLanguages || []"
+                        item-text="name"
+                        item-value="code"
+                        @update:model-value="$emit('update:selected-language', $event)"
+                    />
+                  </v-list-item-content>
+                </v-list-item>
+                <v-divider/>
+              </template>
+              
               <v-list-item disabled>
                 <v-list-item-content>
                   <div class="field-selector-header">Select fields to display</div>
@@ -184,7 +205,16 @@
                 </v-list-item-icon>
                 <v-list-item-content>
                   <v-list-item-title class="field-selector-title">
-                    {{ capitalizeField(field.name || field.field) }}
+                    <span class="field-name">
+                      {{ capitalizeField(field.name || field.field) }}
+                    </span>
+                    <v-icon 
+                        v-if="isFieldTranslatable ? isFieldTranslatable(field.field) : field.translatable" 
+                        name="translate" 
+                        small
+                        v-tooltip.top="'This field is translatable'"
+                        class="translation-icon"
+                    />
                   </v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
@@ -299,9 +329,9 @@
                 <span
                     v-else
                     class="field-value"
-                    v-tooltip="getFieldValue(item[field]).length > 100 ? getFieldValue(item[field]) : null"
+                    v-tooltip="getTranslatedValue(item, field).length > 100 ? getTranslatedValue(item, field) : null"
                 >
-        {{ truncateText(getFieldValue(item[field]), 100) }}
+        {{ truncateText(getTranslatedValue(item, field), 100) }}
       </span>
               </div>
             </div>
@@ -349,6 +379,10 @@
 import {ref, computed, watch} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import SearchTagInput from './SearchTagInput.vue';
+import { createScopedLogger } from '../utils/logger-wrapper';
+
+// Create scoped logger for this component
+const logger = createScopedLogger('ItemSelectorDrawer');
 
 interface Props {
   open: boolean;
@@ -364,10 +398,17 @@ interface Props {
     field: string;
     name?: string;
     type: string;
+    translatable?: boolean;
+    translation_type?: string;
   }>;
   itemRelations?: Record<string, any[]>;
   loadingRelations?: boolean;
   apiError?: string | null;
+  translationInfo?: any;
+  selectedLanguage?: string;
+  availableLanguages?: Array<{ code: string; name: string; }>;
+  getTranslatedFieldValue?: (item: any, field: string) => string;
+  isFieldTranslatable?: (field: string) => boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -380,6 +421,7 @@ const emit = defineEmits<{
   confirmCopy: [items: any[]];
   search: [query: string];
   'update:current-page': [page: number];
+  'update:selected-language': [language: string];
 }>();
 
 // Local state
@@ -388,6 +430,19 @@ const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
 const showSearchHelp = ref(false);
 const searchTagInputRef = ref<InstanceType<typeof SearchTagInput>>();
+
+// Debug watchers
+watch(() => props.availableFields, (fields) => {
+  logger.debug('availableFields changed', { fields });
+});
+
+watch(() => props.translationInfo, (info) => {
+  logger.debug('translationInfo changed', { info });
+});
+
+watch(() => props.isFieldTranslatable, (fn) => {
+  logger.debug('isFieldTranslatable function changed', { exists: !!fn });
+});
 
 // Search operators configuration
 const searchOperators = [
@@ -440,12 +495,8 @@ function addOperatorToSearch(operator: string) {
 }
 
 function addLogicalOperator(op: 'AND' | 'OR') {
-  console.log('addLogicalOperator called with:', op);
-  console.log('searchTagInputRef.value:', searchTagInputRef.value);
   if (searchTagInputRef.value) {
     searchTagInputRef.value.addLogicalOperator(op);
-  } else {
-    console.error('searchTagInputRef is not available');
   }
 }
 
@@ -486,6 +537,10 @@ function handleConfirmCopy() {
 }
 
 function toggleFieldDisplay(field: string) {
+  // Debug: Check if field is translatable
+  const isTranslatable = props.isFieldTranslatable ? props.isFieldTranslatable(field) : false;
+  logger.debug('Field translatable check', { field, isTranslatable });
+  
   const index = displayFields.value.indexOf(field);
   if (index > -1) {
     displayFields.value.splice(index, 1);
@@ -528,6 +583,16 @@ function getTotalUsageCount(itemId: string | number): number {
   return relations.reduce((total, usage) => total + usage.count, 0);
 }
 
+function getTranslatedValue(item: any, field: string): string {
+  // Use provided translation function if available
+  if (props.getTranslatedFieldValue) {
+    return props.getTranslatedFieldValue(item, field);
+  }
+  
+  // Fallback to direct field value
+  return getFieldValue(item[field]);
+}
+
 // Reset when drawer opens/closes
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
@@ -550,3 +615,29 @@ watch(() => props.collection, (collection) => {
   }
 }, {immediate: true});
 </script>
+
+<style scoped>
+.field-selector-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-name {
+  flex: 1;
+}
+
+.translation-icon {
+  color: var(--primary);
+  opacity: 0.7;
+}
+
+.translation-icon:hover {
+  opacity: 1;
+}
+
+/* Language selector */
+.v-select {
+  min-height: 36px;
+}
+</style>
