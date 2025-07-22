@@ -128,6 +128,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
+import { createScopedLogger } from '../utils/logger-wrapper';
+
+// Create scoped logger for this component
+const logger = createScopedLogger('SearchTagInput');
 
 interface SearchTag {
   type: 'search' | 'logical';
@@ -714,8 +718,7 @@ function addFieldToSearch(field: string) {
 const defaultLogicalOp = ref<'AND' | 'OR' | null>(null);
 
 function addLogicalOperator(op: 'AND' | 'OR') {
-  console.log('SearchTagInput.addLogicalOperator called with:', op);
-  console.log('Current searchTags:', searchTags.value);
+  logger.debug('addLogicalOperator called', { op, currentTags: searchTags.value });
   
   // If no tags yet, set as default for next operation
   if (searchTags.value.length === 0) {
@@ -725,7 +728,7 @@ function addLogicalOperator(op: 'AND' | 'OR') {
     } else {
       defaultLogicalOp.value = op;
     }
-    console.log('Set default logical operator to:', defaultLogicalOp.value);
+    logger.debug('Set default logical operator', { defaultLogicalOp: defaultLogicalOp.value });
     
     // Clear input and focus
     currentInput.value = '';
@@ -750,7 +753,7 @@ function addLogicalOperator(op: 'AND' | 'OR') {
     raw: op
   };
   
-  console.log('Adding logical tag:', tag);
+  logger.debug('Adding logical tag', { tag });
   searchTags.value.push(tag);
   updateModelValue();
   focusInput();
