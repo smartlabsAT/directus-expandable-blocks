@@ -445,6 +445,182 @@ export class PathBuilderService {
   }
 
   /**
+   * Build a simple path array with complete relation information
+   * This is the new simplified method for the API response
+   * @param usage The usage location to build path for
+   * @returns Array of path elements with full relation details
+   */
+  async buildSimplePathWithRelations(usage: UsageLocation): Promise<any[]> {
+    const path: any[] = [];
+    let current = usage;
+    
+    try {
+      while (current) {
+        // Get collection display name
+        const collectionDisplay = await this.getCollectionDisplay(current.collection);
+        
+        // Get field display name
+        const fieldDisplay = current.field ? 
+          await this.getFieldDisplay(current.collection, current.field) : 
+          null;
+        
+        const pathElement = {
+          id: current.item_id,
+          collection: current.collection,
+          collection_display: collectionDisplay,
+          title: current.item_name || await this.getItemDisplayName(current.collection, current.item_id),
+          status: current.status,
+          linked_via_field: current.field,
+          linked_via_field_display: fieldDisplay
+        };
+        
+        // Add to beginning of array for correct order
+        path.unshift(pathElement);
+        
+        // Try to load parent
+        try {
+          current = await this.loadParent(current);
+        } catch (error) {
+          // Parent could not be loaded - end hierarchy here (graceful degradation)
+          console.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}`, error);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('[PathBuilder] Error building path with relations:', error);
+    }
+    
+    return path;
+  }
+
+  /**
+   * Load parent item for a usage location
+   * @param usage Current usage location
+   * @returns Parent usage location or null
+   */
+  private async loadParent(usage: UsageLocation): Promise<UsageLocation | null> {
+    try {
+      // The usage location contains the item that uses our content
+      // We need to check if this item has a parent
+      const item = await this.database(usage.collection)
+        .where('id', String(usage.item_id))
+        .first();
+      
+      if (!item) return null;
+      
+      // Look for parent relationship fields in this collection
+      const parentRelations = await this.database
+        .select('*')
+        .from('directus_relations')
+        .where('many_collection', usage.collection)
+        .andWhere(function() {
+          this.where('many_field', 'parent')
+            .orWhere('many_field', 'parent_id')
+            .orWhere('many_field', 'parent_page')
+            .orWhere('many_field', 'parent_item')
+            .orWhere('many_field', 'parent_collection');
+        })
+        .first();
+      
+      if (!parentRelations || !item[parentRelations.many_field]) {
+        return null;
+      }
+      
+      // Load the parent item
+      const parentId = item[parentRelations.many_field];
+      const parentCollection = parentRelations.one_collection;
+      
+      if (!parentCollection || !parentId) return null;
+      
+      const parentItem = await this.database(parentCollection)
+        .where('id', String(parentId))
+        .first();
+      
+      if (!parentItem) return null;
+      
+      // Create usage location for parent
+      return {
+        collection: parentCollection,
+        collection_name: await this.getCollectionDisplay(parentCollection),
+        item_id: parentItem.id,
+        item_name: await this.getItemDisplayName(parentCollection, parentItem.id),
+        field: parentRelations.many_field,
+        field_name: await this.getFieldDisplay(usage.collection, parentRelations.many_field),
+        relation_type: 'M2O',
+        status: parentItem.status,
+        depth: 0
+      };
+    } catch (error) {
+      console.error('[PathBuilder] Error loading parent:', error);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get collection display name
+   */
+  private async getCollectionDisplay(collection: string): Promise<string> {
+    const cacheKey = `collection_display:${collection}`;
+    
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        try {
+          const collectionMeta = await this.database('directus_collections')
+            .where('collection', collection)
+            .first();
+          
+          if (collectionMeta?.collection_display) {
+            return collectionMeta.collection_display;
+          }
+          
+          // Fallback to formatted collection name
+          return collection
+            .split('_')
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+        } catch (error) {
+          return collection;
+        }
+      },
+      { ttl: CacheTTL.LONG }
+    );
+  }
+
+  /**
+   * Get field display name
+   */
+  private async getFieldDisplay(collection: string, field: string): Promise<string> {
+    const cacheKey = `field_display:${collection}:${field}`;
+    
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        try {
+          const fieldMeta = await this.database('directus_fields')
+            .where('collection', collection)
+            .andWhere('field', field)
+            .first();
+          
+          if (fieldMeta?.field_display) {
+            return fieldMeta.field_display;
+          }
+          
+          // Fallback to formatted field name
+          return field
+            .split('_')
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+        } catch (error) {
+          return field;
+        }
+      },
+      { ttl: CacheTTL.LONG }
+    );
+  }
+
+  /**
    * Get display name for an item
    */
   private async getItemDisplayName(

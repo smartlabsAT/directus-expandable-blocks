@@ -266,83 +266,34 @@ export default defineEndpoint({
                             itemCacheKey,
                             async () => {
                                 try {
-                            // Find all usages for this item (cached)
-                            const usageTreeCacheKey = CacheKeys.itemUsage(collection, item.id);
-                            const usageTree = await cache.getOrSet(
-                                usageTreeCacheKey,
-                                async () => usageFinder.findAllUsages(collection, item.id, {
-                                    maxDepth: 3,
-                                    includeItemDetails: true,
-                                    includeFieldMetadata: true
-                                }),
-                                {ttl: CacheTTL.SHORT}
-                            );
+                                    // Find direct usages only, excluding translations
+                                    const directUsages = await usageFinder.findDirectUsages(collection, item.id, {
+                                        includeItemDetails: true,
+                                        includeFieldMetadata: true,
+                                        excludeTranslations: true,
+                                        groupDuplicates: false
+                                    });
 
-                            // Get usage statistics (cached separately)
-                            const usageStatsCacheKey = CacheKeys.itemUsageStats(collection, item.id);
-                            const usageStats = await cache.getOrSet(
-                                usageStatsCacheKey,
-                                async () => usageFinder.getUsageStatistics(collection, item.id, usageTree),
-                                { ttl: CacheTTL.SHORT }
-                            );
-
-                            // Build paths for direct usages (cached)
-                            const usagePathsCacheKey = CacheKeys.itemUsagePaths(collection, item.id);
-                            const usagePaths = await cache.getOrSet(
-                                usagePathsCacheKey,
-                                async () => {
-                                    return Promise.all(
-                                        usageTree.direct_usages.map(async (usage) => {
-                                            const path = await pathBuilder.buildPath(usage, {
-                                                includeCollections: true,
-                                                includeFields: true,
-                                                includeIds: false,
-                                                includeAdminUrls: true,
-                                                adminBaseUrl: '/admin'
-                                            });
-
-                                            const breadcrumbs = await pathBuilder.buildBreadcrumbs(usage, {
-                                                includeAdminUrls: true,
-                                                adminBaseUrl: '/admin'
-                                            });
-
-                                            return {
-                                                ...usage,
-                                                path: path.formatted,
-                                                short_path: path.short_formatted,
-                                                breadcrumbs,
-                                                admin_url: path.to.admin_url
-                                            };
-                                        })
-                                    );
-                                },
-                                { ttl: CacheTTL.SHORT }
-                            );
-
-                            // Build all paths collection
-                            const allPaths = await pathBuilder.buildAllPaths(collection, item.id, {
-                                includeAdminUrls: true,
-                                adminBaseUrl: '/admin'
-                            });
+                                    // Build usage locations with full path information
+                                    const usageLocations = await buildUsageLocations(directUsages, pathBuilder);
+                                    
+                                    // Calculate simple summary
+                                    const summary = calculateSimpleSummary(usageLocations);
 
                                     return {
                                         ...item,
-                                        _usage: {
-                                            direct_usages: usagePaths,
-                                            total_usage_count: usageTree.total_usage_count,
-                                            usage_tree: usageTree,
-                                            usage_stats: usageStats,
-                                            paths_by_collection: allPaths.by_collection,
-                                            shortest_paths: allPaths.shortest_paths,
-                                            has_circular_reference: usageTree.has_circular_reference
-                                        }
+                                        usage_locations: usageLocations,
+                                        usage_summary: summary
                                     };
                                 } catch (error) {
                                     console.error(`[Usage] Error processing usage for item ${item.id}:`, error);
                                     return {
                                         ...item,
-                                        _usage: {
-                                            error: error.message || 'Failed to load usage information'
+                                        usage_locations: [],
+                                        usage_summary: {
+                                            total_count: 0,
+                                            by_collection: {},
+                                            by_status: {}
                                         }
                                     };
                                 }
@@ -369,6 +320,66 @@ export default defineEndpoint({
             }
         });
 
+        /**
+         * Build usage locations with full path information
+         * @param directUsages Array of direct usage locations
+         * @param pathBuilder PathBuilderService instance
+         * @returns Array of usage locations with path information
+         */
+        async function buildUsageLocations(directUsages: any[], pathBuilder: PathBuilderService): Promise<any[]> {
+            const locations = [];
+            
+            for (const usage of directUsages) {
+                // Build path with full relation information
+                const path = await pathBuilder.buildSimplePathWithRelations(usage);
+                
+                locations.push({
+                    id: usage.item_id,
+                    collection: usage.collection,
+                    collection_display: usage.collection_name,
+                    title: usage.item_name,
+                    status: usage.status,
+                    field: usage.field,
+                    field_display: usage.field_name,
+                    sort: usage.sort,
+                    path,
+                    edit_url: `/admin/content/${usage.collection}/${usage.item_id}`
+                });
+            }
+            
+            return locations;
+        }
+
+        /**
+         * Calculate simple summary statistics from usage locations
+         * @param usageLocations Array of usage locations
+         * @returns Summary object with counts by collection and status
+         */
+        function calculateSimpleSummary(usageLocations: any[]): any {
+            const summary = {
+                total_count: usageLocations.length,
+                by_collection: {} as Record<string, number>,
+                by_status: {} as Record<string, number>
+            };
+            
+            for (const location of usageLocations) {
+                // Count by collection
+                if (!summary.by_collection[location.collection]) {
+                    summary.by_collection[location.collection] = 0;
+                }
+                summary.by_collection[location.collection]++;
+                
+                // Count by status
+                if (location.status) {
+                    if (!summary.by_status[location.status]) {
+                        summary.by_status[location.status] = 0;
+                    }
+                    summary.by_status[location.status]++;
+                }
+            }
+            
+            return summary;
+        }
 
     }
 });

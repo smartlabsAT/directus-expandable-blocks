@@ -118,6 +118,9 @@ export interface FindUsageOptions {
   
   /** Group duplicate usages from same source (default: true) */
   groupDuplicates?: boolean;
+  
+  /** Exclude translation references (default: false) */
+  excludeTranslations?: boolean;
 }
 
 /**

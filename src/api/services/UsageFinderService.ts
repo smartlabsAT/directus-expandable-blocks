@@ -51,7 +51,8 @@ export class UsageFinderService {
       excludeCollections = [],
       includeItemDetails = false,
       includeFieldMetadata = true,
-      groupDuplicates = true  // New option to group duplicates
+      groupDuplicates = true,  // New option to group duplicates
+      excludeTranslations = false  // New option to exclude translation references
     } = options;
 
     console.log(`[UsageFinder] Finding direct usages for ${collection}/${itemId}`);
@@ -63,6 +64,11 @@ export class UsageFinderService {
 
     for (const relation of relations) {
       if (excludeCollections.includes(relation.many_collection)) continue;
+      
+      // Filter out translation references if requested
+      if (excludeTranslations && relation.many_collection?.endsWith('_translations')) {
+        continue;
+      }
 
       try {
         // Handle M2A relations
@@ -75,7 +81,8 @@ export class UsageFinderService {
             collection,
             itemId,
             includeInactive,
-            limitPerCollection
+            limitPerCollection,
+            groupDuplicates
           );
 
           for (const usage of junctionUsages) {
@@ -328,7 +335,8 @@ export class UsageFinderService {
     collection: string,
     itemId: string | number,
     includeInactive: boolean,
-    limit?: number
+    limit?: number,
+    groupDuplicates: boolean = true
   ): Promise<UsageLocation[]> {
     const junctionTable = relation.many_collection;
     const itemField = relation.many_field;
@@ -378,23 +386,42 @@ export class UsageFinderService {
       // Get field name from relation or junction table
       const fieldName = this.extractFieldName(junctionTable, parentCollection);
       
-      // Use first entry for sort value
-      const firstEntry = entries[0];
-
-      usages.push({
-        collection: parentCollection,
-        collection_name: parentCollection,
-        item_id: parentId,
-        item_name: this.findDisplayNameFromObject(parent, parentCollection),
-        field: fieldName,
-        field_name: fieldName,
-        relation_type: 'M2A',
-        junction_table: junctionTable,
-        sort: firstEntry.sort || null,
-        status: parent.status || null,
-        depth: 0,
-        usage_count: entries.length  // Track how many times used
-      });
+      if (groupDuplicates) {
+        // Group duplicates: one entry per parent with usage count
+        const firstEntry = entries[0];
+        usages.push({
+          collection: parentCollection,
+          collection_name: parentCollection,
+          item_id: parentId,
+          item_name: this.findDisplayNameFromObject(parent, parentCollection),
+          field: fieldName,
+          field_name: fieldName,
+          relation_type: 'M2A',
+          junction_table: junctionTable,
+          sort: firstEntry.sort || null,
+          status: parent.status || null,
+          depth: 0,
+          usage_count: entries.length  // Track how many times used
+        });
+      } else {
+        // Don't group duplicates: one entry per junction entry
+        for (const entry of entries) {
+          usages.push({
+            collection: parentCollection,
+            collection_name: parentCollection,
+            item_id: parentId,
+            item_name: this.findDisplayNameFromObject(parent, parentCollection),
+            field: fieldName,
+            field_name: fieldName,
+            relation_type: 'M2A',
+            junction_table: junctionTable,
+            sort: entry.sort || null,
+            status: parent.status || null,
+            depth: 0,
+            // Don't include usage_count when not grouping
+          });
+        }
+      }
     }
 
     return usages;
