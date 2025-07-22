@@ -42,12 +42,18 @@
         :items-per-page="itemSelector.itemsPerPage.value"
         :total-items="itemSelector.totalItems.value"
         :available-fields="itemSelector.availableFields.value"
+        :translation-info="itemSelector.translationInfo.value"
+        :selected-language="itemSelector.selectedLanguage.value"
+        :available-languages="itemSelector.availableLanguages.value"
+        :get-translated-field-value="itemSelector.getTranslatedFieldValue"
+        :is-field-translatable="itemSelector.isFieldTranslatable"
         :api-error="itemSelector.apiError.value"
         @close="itemSelector.close"
         @confirm="handleItemSelection"
         @confirm-copy="handleItemSelectionAsCopy"
         @search="itemSelector.handleSearch"
         @update:current-page="itemSelector.handlePageChange"
+        @update:selected-language="(lang) => itemSelector.selectedLanguage.value = lang"
     />
 
     <!-- Delete Dialog -->
