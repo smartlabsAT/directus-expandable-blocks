@@ -19,7 +19,7 @@ let cacheInstance: DirectusCacheWrapper | null = null;
 export default defineEndpoint({
     id: 'expandable-blocks-api',
     handler: (router, context) => {
-        const {getSchema, services} = context;
+        const {getSchema} = context;
 
         // Initialize singleton cache instance if not already created
         if (!cacheInstance) {
