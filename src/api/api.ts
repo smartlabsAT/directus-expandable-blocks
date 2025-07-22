@@ -86,7 +86,7 @@ export default defineEndpoint({
 
                 const translationInfo = await cache.getOrSet(
                     CacheKeys.collectionTranslationInfo(collection),
-                    async () => translationAnalyzer.analyzeCollection(collection),
+                    async () => translationAnalyzer.analyzeCollection(collection, { includeLanguages: true }),
                     {ttl: CacheTTL.LONG}
                 );
 
