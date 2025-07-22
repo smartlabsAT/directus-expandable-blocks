@@ -211,9 +211,9 @@ export class ItemLoader {
         .count('* as count')
         .first();
       
-      return parseInt(result?.count || '0');
+      const count = parseInt(result?.count || '0');
+      return count;
     } catch (error: any) {
-      console.error(`Error getting total count for ${collection}:`, error.message);
       return 0;
     }
   }
@@ -226,8 +226,14 @@ export class ItemLoader {
   private async getFilteredCount(options: CountOptions): Promise<number> {
     const { collection, filter, search } = options;
 
+
+
+    // Check for truly empty filter
+    const hasFilter = filter && Object.keys(filter).length > 0;
+    const hasSearch = search && search.trim().length > 0;
+
     // If no filters, return total count
-    if (!filter && !search) {
+    if (!hasFilter && !hasSearch) {
       return this.getTotalCount(collection);
     }
 
@@ -241,18 +247,26 @@ export class ItemLoader {
         accountability: this.accountability
       });
 
-      // Use aggregate to get count with filters
+      // Use readByQuery with aggregate to get count with filters
       const result = await itemsService.readByQuery({
         aggregate: {
-          count: '*'
+          countDistinct: ['id']
         },
         filter,
         search
       });
 
-      return result?.[0]?.count || 0;
+
+      // Extract count from aggregate result
+      // Try different possible response formats
+      const count = result?.[0]?.countDistinct?.id || 
+                   result?.[0]?.count?.id || 
+                   result?.[0]?.count ||
+                   0;
+
+      return count;
+      
     } catch (error: any) {
-      console.error(`Error getting filtered count:`, error.message);
       // Fallback to unfiltered count
       return this.getTotalCount(collection);
     }
