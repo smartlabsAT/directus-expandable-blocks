@@ -159,7 +159,6 @@ export class ItemLoader {
 
       return result.rows?.[0]?.exists || false;
     } catch (error: any) {
-      console.error(`Error checking table existence: ${error.message}`);
       return false;
     }
   }
@@ -326,46 +325,19 @@ export class ItemLoader {
         return fields;
       }
 
-      // Check if translations field is already included
+      // Always add translations.* if not already included
       const hasTranslationsField = fields.some(field => 
         field === 'translations' || 
-        field.startsWith('translations.') ||
-        field === '*'
+        field.startsWith('translations.')
       );
 
-      // If already included or using *, don't modify
-      if (hasTranslationsField || fields.includes('*')) {
-        // For * field, explicitly add translations expansion
-        if (fields.includes('*') && !fields.some(f => f.startsWith('translations.'))) {
-          return [...fields, 'translations.*'];
-        }
-        return fields;
-      }
-
-      // For combined translations, expand specific fields
-      if (translationInfo.translationType === 'combined' && translationInfo.translationFields) {
-        const translationExpansions = translationInfo.translationFields.map(tf => 
-          `translations.${tf.field}`
-        );
-        // Always include the language code
-        translationExpansions.unshift('translations.languages_code');
-        translationExpansions.unshift('translations.id');
-        
-        console.log(`[ItemLoader] Expanding translation fields for ${collection}:`, translationExpansions);
-        
-        return [...fields, ...translationExpansions];
-      }
-
-      // For standard table translations, expand all translation fields
-      if (translationInfo.translationType === 'table') {
-        console.log(`[ItemLoader] Adding translations.* for ${collection}`);
+      // If translations not explicitly included, add them
+      if (!hasTranslationsField) {
         return [...fields, 'translations.*'];
       }
-
-      // Default: return original fields
+      
       return fields;
     } catch (error) {
-      console.error('[ItemLoader] Error expanding translation fields:', error);
       // On error, return original fields
       return fields;
     }
