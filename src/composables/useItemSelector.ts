@@ -21,6 +21,11 @@ export function useItemSelector(api: any) {  // collections entfernt
   const loadingRelations = ref(false);
   const apiError = ref<string | null>(null);
   
+  // Request management
+  const detailsAbortController = ref<AbortController | null>(null);
+  const currentRequestId = ref<number>(0);
+  const loadingDetails = ref(false);
+  
   // Translation state
   const translationInfo = ref<TranslationInfo | null>(null);
   const selectedLanguage = ref<string>('en-US');
@@ -340,7 +345,6 @@ export function useItemSelector(api: any) {  // collections entfernt
 
       availableItems.value = response.data.data || [];
       totalItems.value = response.data.meta?.filter_count || 0;
-      await loadItemRelations();
       
       // Clear any previous API errors
       apiError.value = null;
@@ -352,6 +356,13 @@ export function useItemSelector(api: any) {  // collections entfernt
         itemsOnPage: availableItems.value.length,
         totalCount: totalItems.value
       });
+
+      // Load details for the items (non-blocking)
+      if (availableItems.value.length > 0) {
+        const itemIds = availableItems.value.map(item => item.id);
+        // Fire and forget - don't await
+        loadItemDetails(itemIds);
+      }
     } catch (error) {
       logError('Error loading items', error);
       availableItems.value = [];
@@ -382,6 +393,109 @@ export function useItemSelector(api: any) {  // collections entfernt
       logError('Error loading relations', error);
     } finally {
       loadingRelations.value = false;
+    }
+  }
+
+  /**
+   * Load detailed item information including usage data
+   */
+  async function loadItemDetails(itemIds: (string | number)[]) {
+    if (!selectedCollection.value || itemIds.length === 0) return;
+
+    // Cancel previous request if still running
+    if (detailsAbortController.value) {
+      detailsAbortController.value.abort();
+    }
+
+    // Increment request ID to prevent race conditions
+    const requestId = ++currentRequestId.value;
+
+    // Create new abort controller
+    detailsAbortController.value = new AbortController();
+    loadingDetails.value = true;
+
+    try {
+      const response = await api.post(
+        `/expandable-blocks-api/${selectedCollection.value}/detail`,
+        { ids: itemIds, fields: '*' },
+        { signal: detailsAbortController.value.signal }
+      );
+
+      // Only process if this is still the current request
+      if (requestId !== currentRequestId.value) {
+        logDebug('Ignoring outdated detail response', { requestId, currentRequestId: currentRequestId.value });
+        return;
+      }
+
+      // Transform API data to match UI expectations
+      const transformedRelations: Record<string, any[]> = {};
+
+      response.data.data.forEach((item: any) => {
+        logDebug('Processing item details', {
+          itemId: item.id,
+          hasUsageData: !!item.usage_summary,
+          totalUsageCount: item.usage_summary?.total_count || 0,
+          usageLocationsCount: item.usage_locations?.length || 0
+        });
+
+        if (item.usage_summary?.total_count > 0) {
+          // Group usage locations by collection
+          const byCollection = new Map<string, any>();
+          
+          item.usage_locations.forEach((location: any) => {
+            const collectionKey = location.collection;
+            
+            if (!byCollection.has(collectionKey)) {
+              byCollection.set(collectionKey, {
+                collection: collectionKey,
+                field: location.field || 'unknown',
+                count: 0,
+                items: []
+              });
+            }
+            
+            const group = byCollection.get(collectionKey);
+            group.count++;
+            
+            // Add item details
+            group.items.push({
+              id: location.id,
+              title: location.path || location.title || `ID: ${location.id}`,
+              ...location // Keep all other fields for potential future use
+            });
+          });
+
+          transformedRelations[item.id] = Array.from(byCollection.values());
+          
+          logDebug('Transformed usage data for item', {
+            itemId: item.id,
+            collections: Array.from(byCollection.keys()),
+            totalGroups: byCollection.size
+          });
+        }
+      });
+
+      logDebug('Setting itemRelations', {
+        itemsWithRelations: Object.keys(transformedRelations).length,
+        transformedData: transformedRelations
+      });
+
+      itemRelations.value = transformedRelations;
+      
+      logDebug('Loaded item details', {
+        collection: selectedCollection.value,
+        itemCount: itemIds.length,
+        usageCount: Object.keys(transformedRelations).length
+      });
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        logError('Error loading item details', error);
+        // Don't show error to user - details are supplementary
+      }
+    } finally {
+      if (requestId === currentRequestId.value) {
+        loadingDetails.value = false;
+      }
     }
   }
 
@@ -438,6 +552,16 @@ export function useItemSelector(api: any) {  // collections entfernt
    */
   function close() {
     isOpen.value = false;
+    
+    // Cleanup abort controller
+    if (detailsAbortController.value) {
+      detailsAbortController.value.abort();
+      detailsAbortController.value = null;
+    }
+    
+    // Reset request tracking
+    currentRequestId.value = 0;
+    itemRelations.value = {};
   }
 
   /**
@@ -518,6 +642,7 @@ export function useItemSelector(api: any) {  // collections entfernt
     searchQuery,
     availableItems,
     loading,
+    loadingDetails,
     availableFields,
     itemRelations,
     loadingRelations,

@@ -391,6 +391,7 @@ interface Props {
   collectionIcon?: string;
   items: any[];
   loading?: boolean;
+  loadingDetails?: boolean;
   currentPage?: number;
   itemsPerPage?: number;
   totalItems?: number;
@@ -446,6 +447,14 @@ watch(() => props.translationInfo, (info) => {
 watch(() => props.isFieldTranslatable, (fn) => {
   logger.debug('isFieldTranslatable function changed', { exists: !!fn });
 });
+
+watch(() => props.itemRelations, (relations) => {
+  logger.debug('itemRelations changed', { 
+    relations,
+    hasRelations: !!relations,
+    itemsWithRelations: relations ? Object.keys(relations).length : 0
+  });
+}, { immediate: true });
 
 // Search operators configuration
 const searchOperators = [
