@@ -38,6 +38,16 @@
         <v-list-item-content>Discard Changes</v-list-item-content>
       </v-list-item>
 
+      <v-list-item
+        clickable
+        @click="$emit('unlink')"
+      >
+        <v-list-item-icon>
+          <v-icon name="link_off" />
+        </v-list-item-icon>
+        <v-list-item-content>Unlink</v-list-item-content>
+      </v-list-item>
+
       <v-divider v-if="allowDelete" />
 
       <v-list-item
@@ -67,6 +77,7 @@ defineProps<Props>();
 defineEmits<{
   'duplicate': [];
   'discard-changes': [];
+  'unlink': [];
   'delete': [];
 }>();
 </script>

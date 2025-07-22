@@ -53,6 +53,7 @@
                   :is-dirty="isBlockDirty(getItemId(item), item.item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
+                  @unlink="$emit('unlink', item, index)"
                   @delete="$emit('delete', item, index)"
                 />
               </template>
@@ -120,6 +121,7 @@ const emit = defineEmits<{
   'update-status': [item: JunctionRecord, index: number, status: string];
   'duplicate': [item: JunctionRecord, index: number];
   'discard-changes': [item: JunctionRecord, index: number];
+  'unlink': [item: JunctionRecord, index: number];
   'delete': [item: JunctionRecord, index: number];
   'sort': [];
 }>();

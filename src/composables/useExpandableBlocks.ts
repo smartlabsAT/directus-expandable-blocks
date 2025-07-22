@@ -284,6 +284,7 @@ export function useExpandableBlocks(
     addExistingItems: blockActions.addExistingItems,
     addAsNewItems: blockActions.addAsNewItems,
     updateItem: blockActions.updateItem,
+    unlinkItem: blockActions.unlinkItem,
     confirmDeleteItem: blockActions.confirmDeleteItem,
     duplicateItem: blockActions.duplicateItem,
     discardChanges: blockActions.discardChanges,

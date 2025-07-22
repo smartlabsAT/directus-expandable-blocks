@@ -17,6 +17,7 @@
         @update-status="updateItemStatus"
         @duplicate="duplicateItem"
         @discard-changes="discardChanges"
+        @unlink="unlinkItem"
         @delete="showDeleteDialog"
         @sort="onSort"
     />
@@ -41,6 +42,7 @@
         :items-per-page="itemSelector.itemsPerPage.value"
         :total-items="itemSelector.totalItems.value"
         :available-fields="itemSelector.availableFields.value"
+        :api-error="itemSelector.apiError.value"
         @close="itemSelector.close"
         @confirm="handleItemSelection"
         @confirm-copy="handleItemSelectionAsCopy"
@@ -127,6 +129,7 @@ const {
   addExistingItems,
   addAsNewItems,
   showDeleteDialog,
+  unlinkItem,
   confirmDeleteItem,
   duplicateItem,
   discardChanges,

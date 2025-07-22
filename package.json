@@ -90,6 +90,7 @@
     "vue": "^3.3.11"
   },
   "dependencies": {
+    "lodash-es": "^4.17.21",
     "vuedraggable": "^4.1.0"
   }
 }

@@ -271,6 +271,51 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   }
 
   /**
+   * Unlink item without deleting the actual content
+   * Only removes the junction record from the list
+   */
+  function unlinkItem(item: JunctionRecord, index: number): void {
+    const itemId = getItemId(item);
+    
+    // Remove from expanded items
+    expandedItems.value = expandedItems.value.filter(id => id !== itemId);
+    
+    // Remove from block states
+    removeBlockState(String(itemId));
+    
+    // Remove from items array
+    const updatedItems = [...items.value];
+    updatedItems.splice(index, 1);
+    
+    // Update sort values
+    updateSortValues(updatedItems);
+    
+    items.value = updatedItems;
+    
+    // Emit changes to activate save button
+    emitHelper({
+      items: updatedItems,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source: 'unlinkItem',
+      sortField: getSortField(),
+      debugData: {
+        function: 'unlinkItem',
+        unlinkedItem: {
+          id: item.id,
+          collection: item.collection,
+          itemId: itemId
+        },
+        remainingItemsCount: updatedItems.length
+      }
+    });
+    
+    logDebug('Item unlinked', { itemId, remainingItems: updatedItems.length });
+    notifySuccess('Unlinked', 'Block unlinked successfully');
+  }
+
+  /**
    * Confirm and execute deletion
    */
   async function confirmDeleteItem(): Promise<void> {
@@ -758,6 +803,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     addExistingItems,
     addAsNewItems,
     updateItem,
+    unlinkItem,
     confirmDeleteItem,
     duplicateItem,
     discardChanges,
