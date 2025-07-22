@@ -22,14 +22,12 @@ export class TranslationFieldAnalyzer {
   private services: any;
   private schema?: any;
   private accountability?: any;
-  private assumeCombinedPattern: boolean;
 
   constructor(config: TranslationFieldAnalyzerConfig) {
     this.database = config.database;
     this.services = config.services;
     this.schema = config.schema;
     this.accountability = config.accountability;
-    this.assumeCombinedPattern = config.assumeCombinedPattern ?? true; // Default to true
   }
 
   /**
@@ -42,11 +40,8 @@ export class TranslationFieldAnalyzer {
     collection: string,
     options: TranslationAnalysisOptions = {}
   ): Promise<TranslationInfo> {
-    console.log(`[TranslationAnalyzer] Analyzing collection: ${collection}`);
-
     // Detect translation pattern
     const pattern = await this.detectTranslationPattern(collection, options);
-    console.log(`[TranslationAnalyzer] Detected pattern:`, pattern);
 
     // Basic info
     const info: TranslationInfo = {
@@ -56,9 +51,13 @@ export class TranslationFieldAnalyzer {
 
     // Check for table-based translations
     if (pattern.type === 'standard' || pattern.type === 'custom' || pattern.type === 'combined') {
+      if (!pattern.details?.tableName) {
+        return info;
+      }
+      
       const tableInfo = await this.analyzeTranslationTable(
         collection,
-        pattern.details.tableName!
+        pattern.details.tableName
       );
       
       if (tableInfo) {
@@ -68,8 +67,8 @@ export class TranslationFieldAnalyzer {
         info.languageField = tableInfo.languageField;
         info.translationFields = tableInfo.fields;
 
-        // If assumeCombinedPattern is true or pattern detected as combined
-        if (this.assumeCombinedPattern || pattern.type === 'combined') {
+        // Always use combined pattern for now
+        if (pattern.type === 'combined') {
           info.translationType = 'combined';
           info.isCombinedTranslation = true;
           
@@ -129,9 +128,6 @@ export class TranslationFieldAnalyzer {
           }
         }
 
-        if (options.includeFieldMapping) {
-          info.fieldMapping = await this.createFieldMapping(collection, tableInfo.tableName);
-        }
       }
     }
 
@@ -187,100 +183,42 @@ export class TranslationFieldAnalyzer {
    * @returns Array of translatable fields
    */
   async getTranslatableFields(collection: string): Promise<TranslationField[]> {
-    console.log(`[TranslationAnalyzer] Getting translatable fields for: ${collection}`);
+    const info = await this.analyzeCollection(collection);
 
-    const info = await this.analyzeCollection(collection, {
-      includeFieldMapping: true
-    });
-
-    if (!info.hasTranslations) {
+    if (!info.hasTranslations || !info.translationFields) {
       return [];
     }
 
     const fields: TranslationField[] = [];
 
-    // Get main collection fields
-    const mainFields = await this.getCollectionFields(collection);
-
-    if (info.translationType === 'table' || info.translationType === 'hybrid' || info.translationType === 'combined') {
-      // Check if it's a combined translation pattern
-      const translationFieldNames = new Set(info.translationFields?.map(f => f.field) || []);
-      const mainFieldNames = new Set(mainFields.map(f => f.field));
-      
-      // Find translation fields that don't have corresponding main fields
-      const nonMatchingTransFields = info.translationFields?.filter(tf => 
-        !mainFieldNames.has(tf.field) &&
-        !EXCLUDED_TRANSLATION_FIELDS.includes(tf.field as any) &&
-        !tf.field.endsWith('_id') &&
-        !LANGUAGE_FIELD_NAMES.includes(tf.field as any)
-      ) || [];
-      
-      console.log(`[TranslationAnalyzer] Non-matching translation fields:`, nonMatchingTransFields.map(f => f.field));
-      
-      // For combined pattern (our primary use case)
-      if (info.translationType === 'combined' || this.assumeCombinedPattern) {
-        // Return the translation fields themselves, not the source fields
-        const translationContentFields = info.translationFields?.filter(tf => 
-          !EXCLUDED_TRANSLATION_FIELDS.includes(tf.field as any) &&
-          !LANGUAGE_FIELD_NAMES.includes(tf.field as any) &&
-          !tf.field.endsWith('_id')
-        ) || [];
+    // For combined pattern - return translation fields directly
+    if (info.translationType === 'combined') {
+      const mainFields = await this.getCollectionFields(collection);
+      const sourceFields = mainFields
+        .filter(f => ['string', 'text'].includes(f.type) && !EXCLUDED_TRANSLATION_FIELDS.includes(f.field as any))
+        .map(f => f.field);
         
-        console.log(`[TranslationAnalyzer] Combined pattern - translation content fields:`, translationContentFields.map(f => f.field));
-        
-        translationContentFields.forEach(tf => {
+      info.translationFields.forEach(tf => {
+        if (!EXCLUDED_TRANSLATION_FIELDS.includes(tf.field as any) &&
+            !LANGUAGE_FIELD_NAMES.includes(tf.field as any) &&
+            !tf.field.endsWith('_id')) {
           fields.push({
-            field: tf.field,
-            type: tf.type,
-            name: tf.name || `${collection} Translation`,
-            translatable: true,
+            ...tf,
             translationMethod: 'combined',
             isContentField: true,
-            coversFields: info.sourceFields || mainFields
-              .filter(f => ['string', 'text'].includes(f.type) && !EXCLUDED_TRANSLATION_FIELDS.includes(f.field as any))
-              .map(f => f.field)
-          });
-        });
-      } else {
-        // Standard 1:1 mapping (fallback)
-        console.log(`[TranslationAnalyzer] Standard 1:1 pattern`);
-        
-        // Check if we have non-matching fields anyway
-        if (nonMatchingTransFields.length > 0 && translationFieldNames.size > 0) {
-          // Combined pattern detected
-          nonMatchingTransFields.forEach(tf => {
-            fields.push({
-              field: tf.field,
-              type: tf.type,
-              name: tf.name || tf.field,
-              translatable: true,
-              translationMethod: 'table',
-              isContentField: true,
-              coversFields: mainFields
-                .filter(f => ['string', 'text'].includes(f.type) && !EXCLUDED_TRANSLATION_FIELDS.includes(f.field as any))
-                .map(f => f.field)
-            });
-          });
-        } else {
-          // True 1:1 field mapping
-          mainFields.forEach(field => {
-            if (translationFieldNames.has(field.field)) {
-              fields.push({
-                field: field.field,
-                type: field.type,
-                name: field.meta?.display || field.meta?.name || field.field,
-                translatable: true,
-                translationMethod: 'table',
-                translationTableFields: [field.field]
-              });
-            }
+            coversFields: tf.coversFields || sourceFields
           });
         }
-      }
+      });
     }
-
-    // Add JSON translation fields
-    if (info.translationType === 'json' || info.translationType === 'hybrid') {
+    
+    // For table pattern - return matching fields
+    else if (info.translationType === 'table') {
+      fields.push(...info.translationFields);
+    }
+    
+    // For JSON pattern
+    else if (info.translationType === 'json') {
       const jsonFields = await this.detectJSONTranslationFields(collection);
       jsonFields.forEach(field => {
         fields.push({
@@ -313,29 +251,23 @@ export class TranslationFieldAnalyzer {
 
     for (const pattern of patterns) {
       const tableName = pattern.replace('{collection}', collection);
+      
       if (await this.checkTableExists(tableName)) {
-        // If assumeCombinedPattern is true, always return combined type
-        if (this.assumeCombinedPattern) {
-          return {
-            type: 'combined',
-            confidence: 1.0,
-            details: { 
-              tableName,
-              isCombined: true
-            }
-          };
-        }
-        
         return {
-          type: 'standard',
+          type: 'combined',
           confidence: 1.0,
-          details: { tableName }
+          details: { 
+            tableName,
+            isCombined: true
+          }
         };
       }
     }
 
+    
     // Check for JSON fields
     const jsonFields = await this.detectJSONTranslationFields(collection);
+    
     if (jsonFields.length > 0) {
       return {
         type: 'json',
@@ -347,7 +279,7 @@ export class TranslationFieldAnalyzer {
     }
 
     return {
-      type: 'standard',
+      type: 'none',
       confidence: 0,
       details: {}
     };
@@ -400,7 +332,6 @@ export class TranslationFieldAnalyzer {
         languageField
       };
     } catch (error) {
-      console.error(`[TranslationAnalyzer] Error analyzing translation table:`, error);
       return null;
     }
   }
@@ -415,16 +346,6 @@ export class TranslationFieldAnalyzer {
     // Try exact match first
     const exactMatch = fields.find(f => f.field === `${collection}_id`);
     if (exactMatch) return exactMatch.field;
-
-    // Try singular form
-    const singular = collection.endsWith('s') ? collection.slice(0, -1) : collection;
-    const singularMatch = fields.find(f => f.field === `${singular}_id`);
-    if (singularMatch) return singularMatch.field;
-
-    // Try common patterns
-    const patterns = ['parent_id', 'item_id', 'reference_id'];
-    const patternMatch = fields.find(f => patterns.includes(f.field));
-    if (patternMatch) return patternMatch.field;
 
     // Fallback
     return `${collection}_id`;
@@ -462,69 +383,6 @@ export class TranslationFieldAnalyzer {
     });
   }
 
-  /**
-   * Create field mapping between main and translation tables
-   * @param collection The main collection
-   * @param translationTable The translation table
-   * @returns Field mappings
-   */
-  private async createFieldMapping(
-    collection: string,
-    translationTable: string
-  ): Promise<TranslationFieldMapping[]> {
-    const mainFields = await this.getCollectionFields(collection);
-    const translationFields = await this.getCollectionFields(translationTable);
-    
-    const mappings: TranslationFieldMapping[] = [];
-    
-    // Filter to only content fields
-    const mainContentFields = mainFields.filter(f => 
-      ['string', 'text'].includes(f.type) &&
-      !EXCLUDED_TRANSLATION_FIELDS.includes(f.field as any)
-    );
-    
-    const transContentFields = translationFields.filter(f =>
-      !EXCLUDED_TRANSLATION_FIELDS.includes(f.field as any) &&
-      !LANGUAGE_FIELD_NAMES.includes(f.field as any) &&
-      !f.field.endsWith('_id')
-    );
-
-    // First pass: Look for exact matches
-    const matchedTransFields = new Set<string>();
-    
-    mainContentFields.forEach(mainField => {
-      const exactMatch = transContentFields.find(tf => tf.field === mainField.field);
-      if (exactMatch) {
-        mappings.push({
-          sourceField: mainField.field,
-          translationField: exactMatch.field,
-          isDirectMatch: true,
-          confidence: 1.0
-        });
-        matchedTransFields.add(exactMatch.field);
-      }
-    });
-
-    // Second pass: Handle unmatched translation fields (combined translation pattern)
-    const unmatchedTransFields = transContentFields.filter(tf => !matchedTransFields.has(tf.field));
-    
-    if (unmatchedTransFields.length > 0) {
-      // This indicates a combined translation pattern
-      // Don't create mappings for every field to every translation field
-      // Instead, create a special mapping indicating this is a combined field
-      unmatchedTransFields.forEach(transField => {
-        // Only create one mapping per translation field indicating it's a combined field
-        mappings.push({
-          sourceField: '*', // Special marker for combined fields
-          translationField: transField.field,
-          isDirectMatch: false,
-          confidence: 0.3 // Lower confidence for combined fields
-        });
-      });
-    }
-
-    return mappings;
-  }
 
   /**
    * Get available languages from Directus
@@ -545,32 +403,10 @@ export class TranslationFieldAnalyzer {
         direction: lang.direction || 'ltr'
       }));
     } catch (error) {
-      console.error('[TranslationAnalyzer] Error getting languages:', error);
       return [];
     }
   }
 
-  /**
-   * Get translation coverage for a collection
-   * @param collection The collection to analyze
-   * @returns Coverage information
-   */
-  async getTranslationCoverage(collection: string): Promise<TranslationCoverage> {
-    const translatableFields = await this.getTranslatableFields(collection);
-    const languages = await this.getAvailableLanguages();
-    
-    // This is a simplified implementation
-    // In a real scenario, you'd check actual translated content
-    const totalFields = translatableFields.length;
-    const translatedFields = translatableFields.filter(f => f.translatable).length;
-    
-    return {
-      totalFields,
-      translatedFields,
-      coveragePercent: totalFields > 0 ? (translatedFields / totalFields) * 100 : 0,
-      missingTranslations: []
-    };
-  }
 
   /**
    * Get fields from a collection
@@ -587,9 +423,13 @@ export class TranslationFieldAnalyzer {
         knex: this.database
       });
 
-      return await fieldsService.readAll(collection);
+      const fields = await fieldsService.readAll(collection);
+      
+      // Filter to only fields from the requested collection
+      const collectionFields = fields.filter(f => !f.collection || f.collection === collection);
+      
+      return collectionFields;
     } catch (error) {
-      console.error(`[TranslationAnalyzer] Error getting fields for ${collection}:`, error);
       return [];
     }
   }
@@ -605,15 +445,8 @@ export class TranslationFieldAnalyzer {
         return false;
       }
 
-      const result = await this.database.raw(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = ?
-        );
-      `, [tableName]);
-
-      return result.rows?.[0]?.exists || false;
+      // Use Knex schema API as primary method
+      return await this.database.schema.hasTable(tableName);
     } catch (error) {
       return false;
     }

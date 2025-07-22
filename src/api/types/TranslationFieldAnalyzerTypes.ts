@@ -15,9 +15,6 @@ export interface TranslationFieldAnalyzerConfig {
   
   /** Optional accountability for permissions */
   accountability?: any;
-  
-  /** Assume combined translation pattern by default (default: true) */
-  assumeCombinedPattern?: boolean;
 }
 
 /**
@@ -44,9 +41,6 @@ export interface TranslationInfo {
   
   /** Available languages in the system */
   availableLanguages?: Language[];
-  
-  /** Mapping between main fields and translation fields */
-  fieldMapping?: TranslationFieldMapping[];
   
   /** Indicates if this is a combined translation (multiple fields → one translation field) */
   isCombinedTranslation?: boolean;
@@ -87,22 +81,6 @@ export interface TranslationField {
   coversFields?: string[];
 }
 
-/**
- * Mapping between main collection field and translation
- */
-export interface TranslationFieldMapping {
-  /** Field in main collection */
-  sourceField: string;
-  
-  /** Field in translation table */
-  translationField: string;
-  
-  /** Whether they match by name */
-  isDirectMatch: boolean;
-  
-  /** Confidence score for the mapping (0-1) */
-  confidence: number;
-}
 
 /**
  * Language information
@@ -122,8 +100,6 @@ export interface Language {
  * Options for translation analysis
  */
 export interface TranslationAnalysisOptions {
-  /** Include field mapping analysis */
-  includeFieldMapping?: boolean;
   
   /** Include available languages */
   includeLanguages?: boolean;
@@ -158,25 +134,6 @@ export interface TranslationPattern {
   };
 }
 
-/**
- * Translation coverage information
- */
-export interface TranslationCoverage {
-  /** Total translatable fields */
-  totalFields: number;
-  
-  /** Fields with translations */
-  translatedFields: number;
-  
-  /** Coverage percentage */
-  coveragePercent: number;
-  
-  /** Missing translations by field */
-  missingTranslations: {
-    field: string;
-    languages: string[];
-  }[];
-}
 
 /**
  * Common translation table patterns
