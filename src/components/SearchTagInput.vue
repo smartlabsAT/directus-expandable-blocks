@@ -1,20 +1,77 @@
 <template>
   <div class="search-tag-input">
-    <div class="tag-input-container" @click="focusInput">
-      <!-- Search Tags -->
+    <div class="tag-input-container" @click="handleContainerClick">
+      <!-- Default logical operator indicator -->
       <v-chip
-          v-for="(tag, index) in searchTags"
-          :key="index"
+          v-if="defaultLogicalOp && searchTags.length === 0"
           x-small
           label
-          close
-          class="search-tag"
-          @close="removeTag(index)"
+          class="default-logical-op"
+          :class="defaultLogicalOp === 'AND' ? 'and-op' : 'or-op'"
       >
-        <span class="tag-field">{{ tag.field }}</span>
-        <span class="tag-operator">{{ tag.operatorDisplay }}</span>
-        <span class="tag-value">{{ tag.value }}</span>
+        {{ defaultLogicalOp }}
       </v-chip>
+      
+      <!-- Search Tags -->
+      <v-menu
+          v-for="(tag, index) in searchTags"
+          :key="index"
+          :model-value="editingTagIndex === index"
+          @update:model-value="(val) => editingTagIndex = val ? index : null"
+          :close-on-content-click="false"
+          placement="bottom"
+      >
+        <template #activator="{ toggle }">
+          <v-chip
+              x-small
+              label
+              :close="tag.type === 'search'"
+              :class="['search-tag', tag.type === 'logical' ? 'logical-tag' : '']"
+              @close="removeTag(index)"
+              @dblclick="tag.type === 'search' && startEditTag(index)"
+              v-tooltip="tag.type === 'search' ? 'Double-click to edit' : ''"
+          >
+            <template v-if="tag.type === 'search'">
+              <span class="tag-field">{{ tag.field }}</span>
+              <span class="tag-operator">{{ tag.operatorDisplay }}</span>
+              <span class="tag-value">{{ tag.value }}</span>
+            </template>
+            <template v-else-if="tag.type === 'logical'">
+              <strong>{{ tag.logicalOp }}</strong>
+            </template>
+          </v-chip>
+        </template>
+        
+        <div v-if="tag.type === 'search'" class="tag-edit-popover" @click.stop>
+          <div class="edit-section">
+            <label>Field:</label>
+            <v-select
+                v-model="editField"
+                :items="availableFieldItems"
+                placeholder="Select field"
+            />
+          </div>
+          <div class="edit-section">
+            <label>Operator:</label>
+            <v-select
+                v-model="editOperator"
+                :items="operatorItems"
+                placeholder="Select operator"
+            />
+          </div>
+          <div class="edit-section">
+            <label>Value:</label>
+            <v-input
+                v-model="editValue"
+                placeholder="Enter value"
+            />
+          </div>
+          <div class="edit-actions">
+            <v-button x-small secondary @click="cancelEdit">Cancel</v-button>
+            <v-button x-small @click="saveEdit(index)">Save</v-button>
+          </div>
+        </div>
+      </v-menu>
 
       <!-- Input Field -->
       <input
@@ -22,7 +79,7 @@
           v-model="currentInput"
           type="text"
           class="tag-input"
-          :placeholder="searchTags.length === 0 ? placeholder : ''"
+          :placeholder="getPlaceholder()"
           @keydown="handleKeydown"
           @input="handleInput"
           @focus="emit('focus')"
@@ -73,10 +130,12 @@
 import { ref, computed, watch, nextTick } from 'vue';
 
 interface SearchTag {
-  field: string;
-  operator: string;
-  operatorDisplay: string;
-  value: string;
+  type: 'search' | 'logical';
+  field?: string;
+  operator?: string;
+  operatorDisplay?: string;
+  value?: string;
+  logicalOp?: 'AND' | 'OR';
   raw: string;
 }
 
@@ -116,6 +175,12 @@ const searchTags = ref<SearchTag[]>([]);
 const showAutocomplete = ref(false);
 const selectedSuggestionIndex = ref(-1);
 
+// Edit popover state
+const editingTagIndex = ref<number | null>(null);
+const editField = ref('');
+const editOperator = ref('');
+const editValue = ref('');
+
 // Operator mappings
 const operators = {
   '=%': { display: ' contains ', filter: '_contains' },
@@ -154,13 +219,56 @@ const suggestions = computed((): Suggestion[] => {
       .slice(0, 5);
 });
 
-const searchQuery = computed(() => {
-  const tagQueries = searchTags.value.map(tag => tag.raw);
-  if (currentInput.value) {
-    tagQueries.push(currentInput.value);
-  }
-  return tagQueries.join(' ');
+const availableFieldItems = computed(() => {
+  return props.availableFields.map(field => ({
+    text: field.name || field.field,
+    value: field.field
+  }));
 });
+
+const operatorItems = computed(() => {
+  return Object.entries(operators).map(([key, config]) => ({
+    text: `${key} - ${config.display.trim()}`,
+    value: key
+  }));
+});
+
+const searchQuery = computed(() => {
+  const parts: string[] = [];
+  
+  searchTags.value.forEach(tag => {
+    if (tag.type === 'search') {
+      parts.push(tag.raw);
+    } else if (tag.type === 'logical') {
+      parts.push(tag.logicalOp || '');
+    }
+  });
+  
+  if (currentInput.value) {
+    parts.push(currentInput.value);
+  }
+  
+  return parts.join(' ');
+});
+
+// Helper to show hints
+const showHint = computed(() => {
+  return searchTags.value.length === 0 && currentInput.value.includes('~');
+});
+
+// Get dynamic placeholder
+function getPlaceholder(): string {
+  if (searchTags.value.length === 0) {
+    if (defaultLogicalOp.value) {
+      return `Next items will be combined with ${defaultLogicalOp.value}`;
+    }
+    if (showHint.value) {
+      return 'Press Enter to create tag';
+    }
+    return props.placeholder;
+  }
+  return '';
+}
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
@@ -172,6 +280,14 @@ watch(() => props.modelValue, (newValue) => {
 // Methods
 function focusInput() {
   inputRef.value?.focus();
+}
+
+function handleContainerClick(event: MouseEvent) {
+  // Don't focus input if clicking inside the popover
+  if (editingTagIndex.value !== null) {
+    return;
+  }
+  focusInput();
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -216,6 +332,27 @@ function parseAndAddTag() {
   const input = currentInput.value.trim();
   if (!input) return;
 
+  // Check if input is a logical operator
+  if (input === 'AND' || input === 'OR') {
+    addLogicalOperator(input as 'AND' | 'OR');
+    currentInput.value = '';
+    return;
+  }
+  
+  // If we have a default logical operator and this is not the first tag,
+  // add the logical operator before the new tag
+  if (defaultLogicalOp.value && searchTags.value.length > 0) {
+    const lastTag = searchTags.value[searchTags.value.length - 1];
+    if (lastTag.type !== 'logical') {
+      const logicalTag: SearchTag = {
+        type: 'logical',
+        logicalOp: defaultLogicalOp.value,
+        raw: defaultLogicalOp.value
+      };
+      searchTags.value.push(logicalTag);
+    }
+  }
+
   // Check for operator patterns (longest first)
   for (const op of sortedOperators) {
     const config = operators[op];
@@ -225,6 +362,7 @@ function parseAndAddTag() {
     if (match) {
       const [, field, value] = match;
       const tag: SearchTag = {
+        type: 'search',
         field: field.trim(),
         operator: op,
         operatorDisplay: config.display,
@@ -242,6 +380,7 @@ function parseAndAddTag() {
 
   // If no operator found, treat as general search
   const tag: SearchTag = {
+    type: 'search',
     field: '',
     operator: '',
     operatorDisplay: '',
@@ -264,7 +403,44 @@ function removeTag(index: number) {
 function clearAll() {
   searchTags.value = [];
   currentInput.value = '';
+  defaultLogicalOp.value = null;
   updateModelValue();
+}
+
+function startEditTag(index: number) {
+  const tag = searchTags.value[index];
+  if (tag.type === 'search') {
+    editField.value = tag.field || '';
+    editOperator.value = tag.operator || '';
+    editValue.value = tag.value || '';
+    editingTagIndex.value = index;
+    
+    // Blur the main input to allow focus in popover
+    if (inputRef.value) {
+      inputRef.value.blur();
+    }
+  }
+}
+
+function saveEdit(index: number) {
+  const tag = searchTags.value[index];
+  if (tag.type === 'search' && editField.value && editOperator.value) {
+    tag.field = editField.value;
+    tag.operator = editOperator.value;
+    tag.operatorDisplay = operators[editOperator.value]?.display || editOperator.value;
+    tag.value = editValue.value;
+    tag.raw = `${editField.value}${editOperator.value}${editValue.value}`;
+    
+    updateModelValue();
+    editingTagIndex.value = null;
+  }
+}
+
+function cancelEdit() {
+  editingTagIndex.value = null;
+  editField.value = '';
+  editOperator.value = '';
+  editValue.value = '';
 }
 
 function updateModelValue() {
@@ -273,9 +449,42 @@ function updateModelValue() {
 
 function parseExistingQuery(query: string) {
   // Parse existing query into tags
-  // This is a simplified version - you might need more complex parsing
   searchTags.value = [];
-  currentInput.value = query;
+  
+  if (!query) {
+    currentInput.value = '';
+    return;
+  }
+  
+  // Split by spaces but keep AND/OR as separate tokens
+  const tokens = query.split(/\s+/);
+  let pendingInput = '';
+  
+  for (const token of tokens) {
+    if (token === 'AND' || token === 'OR') {
+      // First add any pending input as a search tag
+      if (pendingInput.trim()) {
+        parseAndAddTag();
+      }
+      // Then add the logical operator
+      if (searchTags.value.length > 0) {
+        const lastTag = searchTags.value[searchTags.value.length - 1];
+        if (lastTag.type !== 'logical') {
+          searchTags.value.push({
+            type: 'logical',
+            logicalOp: token as 'AND' | 'OR',
+            raw: token
+          });
+        }
+      }
+      pendingInput = '';
+    } else {
+      pendingInput += (pendingInput ? ' ' : '') + token;
+    }
+  }
+  
+  // Set any remaining input
+  currentInput.value = pendingInput;
 }
 
 // Helper functions for intelligent replacement
@@ -501,6 +710,52 @@ function addFieldToSearch(field: string) {
   focusInput();
 }
 
+// Track default logical operator
+const defaultLogicalOp = ref<'AND' | 'OR' | null>(null);
+
+function addLogicalOperator(op: 'AND' | 'OR') {
+  console.log('SearchTagInput.addLogicalOperator called with:', op);
+  console.log('Current searchTags:', searchTags.value);
+  
+  // If no tags yet, set as default for next operation
+  if (searchTags.value.length === 0) {
+    if (defaultLogicalOp.value === op) {
+      // Toggle off if clicking the same operator
+      defaultLogicalOp.value = null;
+    } else {
+      defaultLogicalOp.value = op;
+    }
+    console.log('Set default logical operator to:', defaultLogicalOp.value);
+    
+    // Clear input and focus
+    currentInput.value = '';
+    focusInput();
+    updateModelValue();
+    return;
+  }
+  
+  const lastTag = searchTags.value[searchTags.value.length - 1];
+  if (lastTag.type === 'logical') {
+    // Replace existing logical operator
+    lastTag.logicalOp = op;
+    lastTag.raw = op;
+    updateModelValue();
+    return;
+  }
+  
+  // Add logical operator tag
+  const tag: SearchTag = {
+    type: 'logical',
+    logicalOp: op,
+    raw: op
+  };
+  
+  console.log('Adding logical tag:', tag);
+  searchTags.value.push(tag);
+  updateModelValue();
+  focusInput();
+}
+
 function addOperatorToSearch(operator: string) {
   // First check if cursor is within a field
   const fieldInfo = getFieldAtCursor();
@@ -579,7 +834,9 @@ function addOperatorToSearch(operator: string) {
 defineExpose({
   addFieldToSearch,
   addOperatorToSearch,
-  focusInput
+  addLogicalOperator,
+  focusInput,
+  defaultLogicalOp
 });
 </script>
 
@@ -638,6 +895,39 @@ defineExpose({
     &:hover {
       color: var(--theme--danger);
     }
+  }
+}
+
+.logical-tag {
+  background-color: var(--theme--form--field--input--background-subdued);
+  border: 1px solid var(--theme--border-color);
+  font-weight: 600;
+  
+  strong {
+    color: var(--theme--primary);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+}
+
+.default-logical-op {
+  margin-right: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  
+  &.and-op {
+    background-color: var(--theme--success-background);
+    color: var(--theme--success);
+    border: 1px solid var(--theme--success);
+  }
+  
+  &.or-op {
+    background-color: var(--theme--info-background);
+    color: var(--theme--info);
+    border: 1px solid var(--theme--info);
   }
 }
 
@@ -728,5 +1018,39 @@ defineExpose({
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Tag edit popover styles */
+.tag-edit-popover {
+  padding: 16px;
+  min-width: 280px;
+  background: var(--theme--background);
+  border-radius: var(--theme--border-radius);
+  
+  .edit-section {
+    margin-bottom: 12px;
+    
+    &:last-child {
+      margin-bottom: 16px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+  
+  .edit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid var(--theme--border-subdued);
+  }
 }
 </style>

@@ -80,8 +80,44 @@
                 </div>
               </div>
 
+              <!-- Logical Operators Section -->
+              <div class="search-help-section">
+                <h4>Logical Operators</h4>
+                <div class="logical-operators-grid">
+                  <button
+                      type="button"
+                      class="logical-operator-button and-button"
+                      :class="{ active: searchTagInputRef?.defaultLogicalOp?.value === 'AND' }"
+                      @click="addLogicalOperator('AND')"
+                  >
+                    AND
+                  </button>
+                  <button
+                      type="button"
+                      class="logical-operator-button or-button"
+                      :class="{ active: searchTagInputRef?.defaultLogicalOp?.value === 'OR' }"
+                      @click="addLogicalOperator('OR')"
+                  >
+                    OR
+                  </button>
+                </div>
+                <div class="logical-examples">
+                  <p>Combine multiple search criteria:</p>
+                  <ul>
+                    <li><code>title=Book AND status=published</code></li>
+                    <li><code>category=tech OR category=news</code></li>
+                    <li>Press <strong>Enter</strong> after a search to create a tag</li>
+                    <li>Click AND/OR before adding tags to set default combination</li>
+                    <li>Double-click tags to edit them</li>
+                    <li v-if="!searchTagInputRef?.defaultLogicalOp?.value" class="info-note">
+                      <v-icon name="info" x-small /> Default combination is AND
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
               <div class="search-help-tips">
-                <strong>Tips:</strong> Click a field to start searching • Click an operator to add it • Combine multiple criteria
+                <strong>Tips:</strong> Click a field to start searching • Click an operator to add it • Use AND/OR to combine criteria
               </div>
             </div>
           </div>
@@ -395,6 +431,16 @@ function addFieldToSearch(field: string) {
 
 function addOperatorToSearch(operator: string) {
   searchTagInputRef.value?.addOperatorToSearch(operator);
+}
+
+function addLogicalOperator(op: 'AND' | 'OR') {
+  console.log('addLogicalOperator called with:', op);
+  console.log('searchTagInputRef.value:', searchTagInputRef.value);
+  if (searchTagInputRef.value) {
+    searchTagInputRef.value.addLogicalOperator(op);
+  } else {
+    console.error('searchTagInputRef is not available');
+  }
 }
 
 function deselectAll() {

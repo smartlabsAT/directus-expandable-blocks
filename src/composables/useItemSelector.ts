@@ -83,10 +83,10 @@ export function useItemSelector(api: any) {  // collections entfernt
   }
 
   /**
-   * Parse multiple search queries from a single string
-   * Example: "title=product status=active" -> [{field: 'title', operator: '_eq', value: 'product'}, ...]
+   * Parse multiple search queries from a single string with logical operators
+   * Example: "title=product OR status=active" -> {_or: [{field: 'title'...}, {field: 'status'...}]}
    */
-  function parseMultipleQueries(query: string): Array<{field: string, operator: string, value: string}> {
+  function parseMultipleQueries(query: string): any {
     const operators = {
       '=%': '_contains',
       '!~': '_ncontains',
@@ -105,27 +105,67 @@ export function useItemSelector(api: any) {  // collections entfernt
       '!null': '_nnull'
     };
 
-    const results = [];
-    const operatorPattern = Object.keys(operators)
-        .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .join('|');
+    // Split by AND/OR while preserving the operators
+    const parts = query.split(/\s+(AND|OR)\s+/i);
     
-    // Match pattern: field operator value (with support for quoted values)
-    const regex = new RegExp(`(\\w+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
-    
-    let match;
-    while ((match = regex.exec(query)) !== null) {
-      const [, field, operator, quotedValue, unquotedValue] = match;
-      const value = quotedValue || unquotedValue;
+    if (parts.length === 1) {
+      // No logical operators, parse as before
+      const results = [];
+      const operatorPattern = Object.keys(operators)
+          .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('|');
       
-      results.push({
-        field,
-        operator: operators[operator] || '_eq',
-        value
-      });
+      // Match pattern: field operator value (with support for quoted values)
+      const regex = new RegExp(`(\\w+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
+      
+      let match;
+      while ((match = regex.exec(query)) !== null) {
+        const [, field, operator, quotedValue, unquotedValue] = match;
+        const value = quotedValue || unquotedValue;
+        
+        results.push({
+          field,
+          operator: operators[operator] || '_eq',
+          value
+        });
+      }
+      
+      return results;
     }
     
-    return results;
+    // Parse with logical operators
+    const filters = [];
+    let currentLogicalOp = 'AND'; // Default
+    
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      
+      if (part === 'AND' || part === 'OR') {
+        currentLogicalOp = part;
+        continue;
+      }
+      
+      // Parse individual query
+      const operatorPattern = Object.keys(operators)
+          .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('|');
+      const regex = new RegExp(`^(\\w+)(${operatorPattern})(?:"([^"]+)"|(.+))$`);
+      const match = part.match(regex);
+      
+      if (match) {
+        const [, field, operator, quotedValue, unquotedValue] = match;
+        const value = (quotedValue || unquotedValue || '').trim();
+        
+        filters.push({
+          field,
+          operator: operators[operator] || '_eq',
+          value,
+          logicalOp: i > 0 ? currentLogicalOp : null
+        });
+      }
+    }
+    
+    return filters;
   }
 
 
@@ -163,14 +203,37 @@ export function useItemSelector(api: any) {  // collections entfernt
         const queries = parseMultipleQueries(searchQuery.value);
         if (queries.length > 0) {
           // Build complex filter from multiple queries
-          const filters = queries.map(q => ({
-            [q.field]: {
-              [q.operator]: q.value
+          let currentGroup = [];
+          const orGroups = [];
+          let hasOr = false;
+          
+          queries.forEach((q, index) => {
+            const filter = {
+              [q.field]: {
+                [q.operator]: q.value
+              }
+            };
+            
+            if (q.logicalOp === 'OR' || (index > 0 && queries[index - 1].logicalOp === 'OR')) {
+              hasOr = true;
+              if (currentGroup.length > 0) {
+                orGroups.push(currentGroup.length === 1 ? currentGroup[0] : { _and: currentGroup });
+                currentGroup = [];
+              }
             }
-          }));
-          params.filter = {
-            _and: filters
-          };
+            
+            currentGroup.push(filter);
+          });
+          
+          if (currentGroup.length > 0) {
+            orGroups.push(currentGroup.length === 1 ? currentGroup[0] : { _and: currentGroup });
+          }
+          
+          if (hasOr) {
+            params.filter = { _or: orGroups };
+          } else {
+            params.filter = { _and: queries.map(q => ({ [q.field]: { [q.operator]: q.value } })) };
+          }
         } else {
           // Normale Volltextsuche
           params.search = searchQuery.value;
