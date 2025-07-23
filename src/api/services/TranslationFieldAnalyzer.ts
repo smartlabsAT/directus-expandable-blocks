@@ -86,7 +86,7 @@ export class TranslationFieldAnalyzer {
               ...tf,
               translationMethod: 'combined' as const,
               isContentField: true,
-              coversFields: sourceFields
+              //coversFields: sourceFields
             }));
           }
         } else {
@@ -113,7 +113,7 @@ export class TranslationFieldAnalyzer {
                 ...tf,
                 translationMethod: 'combined' as const,
                 isContentField: true,
-                coversFields: sourceFields
+                //coversFields: sourceFields
               }));
             }
           } else {
@@ -206,7 +206,7 @@ export class TranslationFieldAnalyzer {
             ...tf,
             translationMethod: 'combined',
             isContentField: true,
-            coversFields: tf.coversFields || sourceFields
+            //coversFields: tf.coversFields || sourceFields
           });
         }
       });
