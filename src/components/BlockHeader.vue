@@ -35,6 +35,17 @@
       <span v-if="showItemId && !isNew" class="item-id">
         ID: {{ itemId }}
       </span>
+      
+      <!-- Usage Indicator -->
+      <v-chip
+        v-if="usageCount && usageCount > 0"
+        x-small
+        class="usage-indicator"
+        v-tooltip="usageTooltip"
+      >
+        <v-icon name="link" x-small />
+        {{ usageCount }}
+      </v-chip>
     </div>
 
     <!-- Status Display -->
@@ -59,6 +70,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+
 interface Props {
   sortable: boolean;
   disabled: boolean;
@@ -70,11 +83,47 @@ interface Props {
   showItemId: boolean;
   itemId: string | number;
   isExpanded: boolean;
+  usageCount?: number;
+  usageData?: {
+    usageCount: number;
+    externalCount: number;
+    internalCount: number;
+  };
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 defineEmits<{
   'toggle-expand': [];
 }>();
+
+const usageTooltip = computed(() => {
+  if (!props.usageData) {
+    return `This item is used in ${props.usageCount} ${props.usageCount === 1 ? 'place' : 'places'}`;
+  }
+  
+  const { externalCount, internalCount } = props.usageData;
+  
+  if (externalCount > 0 && internalCount > 0) {
+    return `Used in ${externalCount} other ${externalCount === 1 ? 'place' : 'places'} and ${internalCount} more ${internalCount === 1 ? 'time' : 'times'} in this page`;
+  } else if (externalCount > 0) {
+    return `Used in ${externalCount} other ${externalCount === 1 ? 'place' : 'places'}`;
+  } else {
+    return `Used ${internalCount} more ${internalCount === 1 ? 'time' : 'times'} in this page`;
+  }
+});
 </script>
+
+<style scoped>
+.usage-indicator {
+  background-color: var(--warning-10);
+  color: var(--warning);
+  border-color: var(--warning-25);
+  margin-left: 8px;
+  
+  :deep(.v-icon) {
+    margin-right: 4px;
+    color: var(--warning);
+  }
+}
+</style>

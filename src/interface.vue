@@ -38,10 +38,12 @@
         :collection-icon="itemSelector.selectedCollectionIcon.value"
         :items="itemSelector.availableItems.value"
         :loading="itemSelector.loading.value"
+        :loading-details="itemSelector.loadingDetails.value"
         :current-page="itemSelector.currentPage.value"
         :items-per-page="itemSelector.itemsPerPage.value"
         :total-items="itemSelector.totalItems.value"
         :available-fields="itemSelector.availableFields.value"
+        :item-relations="itemSelector.itemRelations.value"
         :translation-info="itemSelector.translationInfo.value"
         :selected-language="itemSelector.selectedLanguage.value"
         :available-languages="itemSelector.availableLanguages.value"
@@ -73,7 +75,8 @@
 </template>
 
 <script setup lang="ts">
-import {toRefs, inject, ref, onMounted, computed} from 'vue';
+import {toRefs, inject, ref, onMounted, computed, watch} from 'vue';
+import { debounce } from 'lodash-es';
 import {useExpandableBlocks} from './composables/useExpandableBlocks';
 import {useItemSelector} from './composables/useItemSelector';
 import {useApi} from '@directus/extensions-sdk';
@@ -146,7 +149,8 @@ const {
   getStatusLabel,
   hasNestedM2A,
   getM2AFields,
-  formatFieldName
+  formatFieldName,
+  loadBlockUsageData
 } = expandableBlocks;
 
 // Initialize API
@@ -173,9 +177,19 @@ function handleItemSelectionAsCopy(selectedItems: any[]) {
   itemSelector.close();
 }
 
+// Watch for changes in items to reload usage data
+watch(items, debounce(async (newItems, oldItems) => {
+  // Only reload if there are actual items and the count changed
+  if (newItems && oldItems && newItems.length !== oldItems.length) {
+    await loadBlockUsageData();
+  }
+}, 1000));
+
 // Initialize on mount
-onMounted(() => {
-  initialize();
+onMounted(async () => {
+  await initialize();
+  // Load usage data for existing blocks
+  await loadBlockUsageData();
 });
 </script>
 

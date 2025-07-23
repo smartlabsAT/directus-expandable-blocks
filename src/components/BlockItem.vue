@@ -22,18 +22,41 @@
           <v-progress-circular indeterminate />
         </div>
 
-        <v-form
-          v-else
-          :initial-values="itemData"
-          :fields="fields"
-          :model-value="itemData"
-          :primary-key="itemData.id"
-          :disabled="disabled"
-          :badge="null"
-          :autofocus="false"
-          :show-validation-errors="false"
-          @update:model-value="$emit('update-item', $event)"
-        />
+        <template v-else>
+          <!-- Usage Warning -->
+          <v-notice
+            v-if="usageData && usageData.usageCount > 0"
+            type="warning"
+            icon="warning"
+            class="usage-warning"
+          >
+            <div>
+              <template v-if="usageData.externalCount > 0 && usageData.internalCount > 0">
+                Used in {{ usageData.externalCount }} other {{ usageData.externalCount === 1 ? 'place' : 'places' }}
+                and {{ usageData.internalCount }} more {{ usageData.internalCount === 1 ? 'time' : 'times' }} in this page
+              </template>
+              <template v-else-if="usageData.externalCount > 0">
+                Used in {{ usageData.externalCount }} other {{ usageData.externalCount === 1 ? 'place' : 'places' }}
+              </template>
+              <template v-else>
+                Used {{ usageData.internalCount }} more {{ usageData.internalCount === 1 ? 'time' : 'times' }} in this page
+              </template>
+              - changes will affect all references
+            </div>
+          </v-notice>
+
+          <v-form
+            :initial-values="itemData"
+            :fields="fields"
+            :model-value="itemData"
+            :primary-key="itemData.id"
+            :disabled="disabled"
+            :badge="null"
+            :autofocus="false"
+            :show-validation-errors="false"
+            @update:model-value="$emit('update-item', $event)"
+          />
+        </template>
 
         <!-- Show nested M2A blocks if present -->
         <slot name="nested-blocks" />
@@ -53,6 +76,13 @@ interface Props {
   fields: any[];
   disabled: boolean;
   compactMode?: boolean;
+  usageData?: {
+    usageCount: number;
+    externalCount: number;
+    internalCount: number;
+    usageLocations?: any[];
+    usageSummary?: any;
+  } | null;
 }
 
 const props = defineProps<Props>();
@@ -64,4 +94,10 @@ defineEmits<{
   'update-item': [newData: any];
 }>();
 </script>
+
+<style scoped>
+.usage-warning {
+  margin-bottom: 20px;
+}
+</style>
 

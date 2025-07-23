@@ -1,7 +1,7 @@
 import { ref, computed, nextTick, type Ref } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
-import { deepClone, deepEqual } from '../utils/helpers';
+import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
 import { logDebug, logError } from '../utils/logger-wrapper';
 import { isItemObject } from '../utils/validation';
 import { useBlockState } from './useBlockState';
@@ -63,6 +63,9 @@ export function useExpandableBlocks(
     { value: 'draft', label: 'Draft' },
     { value: 'archived', label: 'Archived' }
   ];
+  
+  // Usage data state
+  const blockUsageData = ref<Record<string, any>>({});
 
   // Computed properties
   const sortable = computed(() => mergedOptions.value?.enableSorting !== false);
@@ -247,6 +250,122 @@ export function useExpandableBlocks(
     }
   }
 
+  /**
+   * Load usage data for existing blocks
+   */
+  async function loadBlockUsageData() {
+    try {
+      // Get all existing item IDs grouped by collection
+      const itemsByCollection = new Map<string, (string | number)[]>();
+      
+      items.value.forEach(item => {
+        if (!isNewItem(item)) {
+          const collection = item.collection;
+          const itemId = getActualItemId(item);
+          
+          if (collection && itemId) {
+            if (!itemsByCollection.has(collection)) {
+              itemsByCollection.set(collection, []);
+            }
+            itemsByCollection.get(collection)!.push(itemId);
+          }
+        }
+      });
+      
+      // Load usage data for each collection
+      const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
+        try {
+          const response = await api.post(
+            `/expandable-blocks-api/${collection}/detail`,
+            { ids, fields: '*' }
+          );
+          
+          // Store usage data by item ID
+          const currentParentId = props.primaryKey;
+          
+          response.data.data.forEach((item: any) => {
+            if (item.usage_summary?.total_count > 0) {
+              // Group locations by parent entity
+              const locationsByParent = new Map<string, any>();
+              
+              item.usage_locations.forEach((location: any) => {
+                const parentKey = `${location.collection}:${location.id}`;
+                if (!locationsByParent.has(parentKey)) {
+                  locationsByParent.set(parentKey, {
+                    collection: location.collection,
+                    id: location.id,
+                    count: 0,
+                    locations: []
+                  });
+                }
+                const parent = locationsByParent.get(parentKey);
+                parent.count++;
+                parent.locations.push(location);
+              });
+              
+              // Calculate usage counts
+              let externalCount = 0;
+              let internalCount = 0;
+              const externalLocations: any[] = [];
+              
+              locationsByParent.forEach((parent) => {
+                if (parent.id === currentParentId) {
+                  // Internal usages: count - 1 (for current instance)
+                  internalCount = Math.max(0, parent.count - 1);
+                } else {
+                  // External usages: full count
+                  externalCount += parent.count;
+                  externalLocations.push(...parent.locations);
+                }
+              });
+              
+              const totalCount = externalCount + internalCount;
+              
+              // Only store if there are other usages
+              if (totalCount > 0) {
+                blockUsageData.value[`${collection}:${item.id}`] = {
+                  usageCount: totalCount,
+                  externalCount,
+                  internalCount,
+                  externalLocations,
+                  usageSummary: {
+                    ...item.usage_summary,
+                    total_count: totalCount
+                  }
+                };
+              }
+            }
+          });
+        } catch (error) {
+          logError(`Error loading usage data for ${collection}`, error);
+        }
+      });
+      
+      await Promise.all(usagePromises);
+      
+      logDebug('Loaded block usage data', {
+        totalBlocksWithUsage: Object.keys(blockUsageData.value).length,
+        data: blockUsageData.value
+      });
+    } catch (error) {
+      logError('Error loading block usage data', error);
+    }
+  }
+  
+  /**
+   * Get usage data for a specific block
+   */
+  function getBlockUsageData(item: JunctionRecord) {
+    const collection = item.collection;
+    const itemId = getActualItemId(item);
+    
+    if (!collection || !itemId || isNewItem(item)) {
+      return null;
+    }
+    
+    return blockUsageData.value[`${collection}:${itemId}`] || null;
+  }
+
   // Return consolidated API
   return {
     // State
@@ -263,6 +382,7 @@ export function useExpandableBlocks(
     blockOriginalStates,
     originalItemOrder,
     availableStatuses,
+    blockUsageData,
     
     // Computed
     sortable,
@@ -276,6 +396,8 @@ export function useExpandableBlocks(
     getItemId,
     isNewItem,
     isBlockDirty,
+    loadBlockUsageData,
+    getBlockUsageData,
     
     // Actions from blockActions
     toggleExpand: blockActions.toggleExpand,

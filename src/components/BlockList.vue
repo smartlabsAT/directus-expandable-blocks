@@ -17,6 +17,7 @@
           :fields="getFieldsForItem(item)"
           :disabled="disabled"
           :compact-mode="compactMode"
+          :usage-data="getBlockUsageData(item)"
           @toggle-expand="$emit('toggle-expand', getItemId(item))"
           @update-item="$emit('update-item', index, $event)"
         >
@@ -32,6 +33,8 @@
               :show-item-id="showItemId"
               :item-id="getActualItemId(item)"
               :is-expanded="expandedItems.includes(getItemId(item))"
+              :usage-count="getBlockUsageData(item)?.usageCount || 0"
+              :usage-data="getBlockUsageData(item)"
               @toggle-expand="$emit('toggle-expand', getItemId(item))"
             >
               <template #status>
@@ -141,5 +144,6 @@ const getStatusLabel = (status: string) => props.expandableBlocks.getStatusLabel
 const hasNestedM2A = (item: JunctionRecord) => props.expandableBlocks.hasNestedM2A(item);
 const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFields(item);
 const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
+const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBlockUsageData(item);
 </script>
 
