@@ -256,51 +256,12 @@
               </v-chip>
 
               <!-- Relations/Usage Indicator -->
-              <div v-if="itemRelations && itemRelations[item.id]" class="usage-indicator">
-                <v-menu placement="bottom" show-arrow>
-                  <template #activator="{ toggle }">
-                    <v-chip
-                        x-small
-                        class="usage-chip"
-                        @click.stop="toggle"
-                    >
-                      <v-icon name="link" x-small/>
-                      {{ getTotalUsageCount(item.id) }}
-                    </v-chip>
-                  </template>
-
-                  <div class="usage-details">
-                    <div class="usage-header">
-                      <v-icon name="info"/>
-                      <span>This item is used in:</span>
-                    </div>
-                    <v-divider/>
-                    <div
-                        v-for="usage in itemRelations[item.id]"
-                        :key="`${usage.collection}-${usage.field}`"
-                        class="usage-item"
-                    >
-                      <div class="usage-collection">
-                        <v-icon name="box" x-small/>
-                        <strong>{{ capitalizeField(usage.collection) }}</strong>
-                        <span class="usage-count">({{ usage.count }})</span>
-                      </div>
-                      <div class="usage-list">
-                        <div
-                            v-for="usedIn in usage.items.slice(0, 5)"
-                            :key="usedIn.id"
-                            class="usage-entry"
-                        >
-                          • {{ extractItemTitle(usedIn) || `ID: ${usedIn.id}` }}
-                        </div>
-                        <div v-if="usage.count > 5" class="usage-more">
-                          ... and {{ usage.count - 5 }} more
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </v-menu>
-              </div>
+              <UsagePopover
+                v-if="itemRelations && itemRelations[item.id]"
+                :item-relations="itemRelations[item.id]"
+                :item-id="item.id"
+                @item-click="handleUsageItemClick"
+              />
             </div>
 
             <!-- Usage Warning -->
@@ -379,6 +340,7 @@ import {ref, computed, watch} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import SearchTagInput from './SearchTagInput.vue';
 import FieldDisplay from './FieldDisplay.vue';
+import UsagePopover from './UsagePopover.vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 
 // Create scoped logger for this component
@@ -609,6 +571,11 @@ function getTranslatedValue(item: any, field: string): string {
   return getFieldValue(item[field]);
 }
 
+function handleUsageItemClick(payload: { collection: string; item: any }) {
+  // For now, just log it. In the future, this could navigate to the item
+  logger.debug('Usage item clicked', payload);
+}
+
 // Reset when drawer opens/closes
 watch(() => props.open, (isOpen) => {
   if (isOpen) {
@@ -672,5 +639,19 @@ watch(() => props.collection, (collection) => {
 .field-label {
   display: inline-flex;
   align-items: center;
+}
+
+.item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .item-title {
+    flex: 0 1 auto;
+  }
+  
+  :deep(.usage-popover) {
+    margin-left: auto;
+  }
 }
 </style>
