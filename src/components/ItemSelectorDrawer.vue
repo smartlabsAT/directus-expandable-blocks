@@ -150,79 +150,17 @@
           />
 
           <!-- Settings Button -->
-          <v-menu placement="bottom-end" show-arrow :close-on-content-click="false">
-            <template #activator="{ toggle }">
-              <v-button
-                  v-tooltip.bottom="'Display Settings'"
-                  icon
-                  secondary
-                  @click="toggle"
-              >
-                <v-icon name="settings"/>
-              </v-button>
-            </template>
-
-            <v-list>
-              <!-- Language Selector (if translations available) -->
-              <template v-if="props.translationInfo?.hasTranslations">
-                <v-list-item disabled>
-                  <v-list-item-content>
-                    <div class="field-selector-header">Language</div>
-                  </v-list-item-content>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-content>
-                    <v-select
-                        :model-value="selectedLanguageLocal"
-                        :items="props.availableLanguages || []"
-                        item-text="name"
-                        item-value="code"
-                        @update:model-value="handleLanguageChange"
-                    />
-                  </v-list-item-content>
-                </v-list-item>
-                <v-divider/>
-              </template>
-              
-              <v-list-item disabled>
-                <v-list-item-content>
-                  <div class="field-selector-header">
-                    Select fields to display
-                    <v-progress-circular v-if="userPresets.loading.value" indeterminate x-small />
-                  </div>
-                </v-list-item-content>
-              </v-list-item>
-              <v-divider/>
-              <v-list-item
-                  v-for="field in availableFields"
-                  :key="field.field"
-                  clickable
-                  @click="toggleFieldDisplay(field.field)"
-              >
-                <v-list-item-icon>
-                  <v-checkbox
-                      :model-value="displayFields.includes(field.field)"
-                      @update:model-value="toggleFieldDisplay(field.field)"
-                      @click.stop
-                  />
-                </v-list-item-icon>
-                <v-list-item-content>
-                  <v-list-item-title class="field-selector-title">
-                    <span class="field-name">
-                      {{ capitalizeField(field.name || field.field) }}
-                    </span>
-                    <v-icon 
-                        v-if="isFieldTranslatable ? isFieldTranslatable(field.field) : field.translatable" 
-                        name="translate" 
-                        small
-                        v-tooltip.top="'This field is translatable'"
-                        class="translation-icon"
-                    />
-                  </v-list-item-title>
-                </v-list-item-content>
-              </v-list-item>
-            </v-list>
-          </v-menu>
+          <FieldSettingsMenu
+              :available-fields="availableFields"
+              :display-fields="displayFields"
+              :selected-language="selectedLanguageLocal"
+              :available-languages="availableLanguages"
+              :translation-info="translationInfo"
+              :loading="userPresets.loading.value"
+              :is-field-translatable="isFieldTranslatable"
+              @toggle-field="toggleFieldDisplay"
+              @change-language="handleLanguageChange"
+          />
         </div>
       </div>
 
@@ -344,6 +282,7 @@ import {extractItemTitle} from '../utils/helpers';
 import SearchTagInput from './SearchTagInput.vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
+import FieldSettingsMenu from './FieldSettingsMenu.vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { useUserPresets } from '../composables/useUserPresets';
 
@@ -705,30 +644,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.field-selector-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.field-name {
-  flex: 1;
-}
-
-.translation-icon {
-  color: var(--primary);
-  opacity: 0.7;
-}
-
-.translation-icon:hover {
-  opacity: 1;
-}
-
-/* Language selector */
-.v-select {
-  min-height: 36px;
-}
-
 /* Translation icon in field labels */
 .field-translation-icon {
   color: var(--primary);
@@ -744,13 +659,6 @@ onMounted(async () => {
 .field-label {
   display: inline-flex;
   align-items: center;
-}
-
-.field-selector-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: space-between;
 }
 
 .item-title-row {
