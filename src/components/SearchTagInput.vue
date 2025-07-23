@@ -88,6 +88,11 @@
 
       <!-- Icons -->
       <div class="input-icons">
+        <!-- Result count when help is shown -->
+        <div v-if="showHelp && totalItems !== null && totalItems !== undefined" class="result-count">
+          <span>{{ totalItems }}</span>
+        </div>
+        
         <v-progress-circular v-if="loading" indeterminate x-small />
         <v-icon v-else name="search" />
         
@@ -154,6 +159,7 @@ interface Props {
   loading?: boolean;
   showHelp?: boolean;
   availableFields?: any[];
+  totalItems?: number | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -954,6 +960,17 @@ defineExpose({
   gap: 8px;
   margin-left: auto;
   flex-shrink: 0;
+  
+  .result-count {
+    font-size: 12px;
+    color: var(--theme--foreground-subdued);
+    background-color: var(--background-subdued);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    min-width: 20px;
+    text-align: center;
+  }
   
   .v-icon {
     color: var(--theme--foreground-subdued);

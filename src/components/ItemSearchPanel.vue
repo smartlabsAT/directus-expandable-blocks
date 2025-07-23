@@ -7,6 +7,7 @@
         :loading="loading"
         :show-help="showHelp"
         :available-fields="availableFields"
+        :total-items="totalItems"
         placeholder="Search items..."
         @update:model-value="handleSearchUpdate"
         @toggle-help="$emit('update:show-help', !showHelp)"
@@ -137,6 +138,7 @@ interface Props {
   showHelp?: boolean;
   availableFields?: FieldInfo[];
   translationInfo?: any;
+  totalItems?: number | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {

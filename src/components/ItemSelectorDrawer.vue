@@ -28,6 +28,7 @@
           :loading="loading"
           :available-fields="availableFields"
           :translation-info="translationInfo"
+          :total-items="totalItems"
           @search="$emit('search', $event)"
       />
 
