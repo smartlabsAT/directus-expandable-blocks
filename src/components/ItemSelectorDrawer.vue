@@ -21,108 +21,14 @@
 
     <!-- Main Content -->
     <div class="drawer-collection-body">
-      <!-- Search Bar -->
-      <div class="search-container">
-        <SearchTagInput
-            ref="searchTagInputRef"
-            class="search-input"
-            v-model="searchQuery"
-            :loading="loading"
-            :show-help="showSearchHelp"
-            :available-fields="availableFields"
-            placeholder="Search items..."
-            @update:model-value="$emit('search', $event)"
-            @toggle-help="showSearchHelp = !showSearchHelp"
-        />
-
-        <!-- Collapsible Search Help -->
-        <transition name="expand">
-          <div v-if="showSearchHelp" class="search-help-panel">
-            <div class="search-help-content">
-              <!-- Available Fields Section -->
-              <div class="search-help-section" v-if="availableFields.length > 0">
-                <h4>Available Fields</h4>
-                <div class="field-chips">
-                  <v-chip
-                      v-for="field in availableFields"
-                      :key="field.field"
-                      x-small
-                      label
-                      clickable
-                      class="field-chip"
-                      @click="addFieldToSearch(field.field)"
-                  >
-                    <v-icon name="text_fields" x-small />
-                    {{ field.field }}
-                    <span class="field-type">{{ field.type }}</span>
-                  </v-chip>
-                </div>
-              </div>
-
-              <!-- Search Operators Section -->
-              <div class="search-help-section">
-                <h4>Search Operators</h4>
-                <div class="operators-grid">
-                  <div 
-                      v-for="(op, index) in searchOperators" 
-                      :key="index"
-                      class="operator-item"
-                      @click="addOperatorToSearch(op.symbol)"
-                  >
-                    <v-button x-small secondary class="operator-button">
-                      {{ op.symbol }}
-                    </v-button>
-                    <div class="operator-info">
-                      <div class="operator-name">{{ op.name }}</div>
-                      <div class="operator-example">{{ op.example }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Logical Operators Section -->
-              <div class="search-help-section">
-                <h4>Logical Operators</h4>
-                <div class="logical-operators-grid">
-                  <button
-                      type="button"
-                      class="logical-operator-button and-button"
-                      :class="{ active: searchTagInputRef?.defaultLogicalOp?.value === 'AND' }"
-                      @click="addLogicalOperator('AND')"
-                  >
-                    AND
-                  </button>
-                  <button
-                      type="button"
-                      class="logical-operator-button or-button"
-                      :class="{ active: searchTagInputRef?.defaultLogicalOp?.value === 'OR' }"
-                      @click="addLogicalOperator('OR')"
-                  >
-                    OR
-                  </button>
-                </div>
-                <div class="logical-examples">
-                  <p>Combine multiple search criteria:</p>
-                  <ul>
-                    <li><code>title=Book AND status=published</code></li>
-                    <li><code>category=tech OR category=news</code></li>
-                    <li>Press <strong>Enter</strong> after a search to create a tag</li>
-                    <li>Click AND/OR before adding tags to set default combination</li>
-                    <li>Double-click tags to edit them</li>
-                    <li v-if="!searchTagInputRef?.defaultLogicalOp?.value" class="info-note">
-                      <v-icon name="info" x-small /> Default combination is AND
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="search-help-tips">
-                <strong>Tips:</strong> Click a field to start searching • Click an operator to add it • Use AND/OR to combine criteria
-              </div>
-            </div>
-          </div>
-        </transition>
-      </div>
+      <!-- Search Panel -->
+      <ItemSearchPanel
+          v-model:search-query="searchQuery"
+          v-model:show-help="showSearchHelp"
+          :loading="loading"
+          :available-fields="availableFields"
+          @search="$emit('search', $event)"
+      />
 
       <!-- Search Info Bar with Pagination -->
       <div class="search-info-bar">
@@ -279,7 +185,7 @@
 <script setup lang="ts">
 import {ref, computed, watch, onMounted} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
-import SearchTagInput from './SearchTagInput.vue';
+import ItemSearchPanel from './ItemSearchPanel.vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import FieldSettingsMenu from './FieldSettingsMenu.vue';
@@ -342,7 +248,6 @@ const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
 const selectedLanguageLocal = ref<string>('');
 const showSearchHelp = ref(false);
-const searchTagInputRef = ref<InstanceType<typeof SearchTagInput>>();
 const preferencesInitialized = ref(false);
 
 // Debug watchers
@@ -366,24 +271,6 @@ watch(() => props.itemRelations, (relations) => {
   });
 }, { immediate: true });
 
-// Search operators configuration
-const searchOperators = [
-  { symbol: '=', name: 'Exact match', example: 'status=published' },
-  { symbol: '~', name: 'Contains', example: 'title~product' },
-  { symbol: '!~', name: 'Not contains', example: 'title!~draft' },
-  { symbol: '!=', name: 'Not equals', example: 'status!=archived' },
-  { symbol: '>', name: 'Greater than', example: 'sort>10' },
-  { symbol: '<', name: 'Less than', example: 'price<100' },
-  { symbol: '>=', name: 'Greater or equal', example: 'quantity>=5' },
-  { symbol: '<=', name: 'Less or equal', example: 'stock<=20' },
-  { symbol: '^', name: 'Starts with', example: 'name^John' },
-  { symbol: '$', name: 'Ends with', example: 'email$@gmail.com' },
-  { symbol: '=%', name: 'Contains (alt)', example: 'name=%john%' },
-  { symbol: 'empty', name: 'Is empty', example: 'description=empty' },
-  { symbol: '!empty', name: 'Not empty', example: 'image!empty' },
-  { symbol: 'null', name: 'Is null', example: 'deleted_at=null' },
-  { symbol: '!null', name: 'Not null', example: 'image!null' }
-];
 
 // Computed
 const collectionIcon = computed(() => props.collectionIcon || 'box');
@@ -406,20 +293,6 @@ function handleClose() {
 function clearSearch() {
   searchQuery.value = '';
   emit('search', '');
-}
-
-function addFieldToSearch(field: string) {
-  searchTagInputRef.value?.addFieldToSearch(field);
-}
-
-function addOperatorToSearch(operator: string) {
-  searchTagInputRef.value?.addOperatorToSearch(operator);
-}
-
-function addLogicalOperator(op: 'AND' | 'OR') {
-  if (searchTagInputRef.value) {
-    searchTagInputRef.value.addLogicalOperator(op);
-  }
 }
 
 function deselectAll() {
