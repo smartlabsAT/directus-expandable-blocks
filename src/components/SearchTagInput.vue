@@ -1,5 +1,5 @@
 <template>
-  <div class="search-tag-input">
+  <div class="search-tag-input" @click.self="focusedTagIndex = null">
     <div class="tag-input-container" @click="handleContainerClick">
       <!-- Default logical operator indicator -->
       <v-chip
@@ -26,10 +26,15 @@
               x-small
               label
               :close="tag.type === 'search'"
-              :class="['search-tag', tag.type === 'logical' ? 'logical-tag' : '']"
+              :class="[
+                'search-tag', 
+                tag.type === 'logical' ? 'logical-tag' : '',
+                focusedTagIndex === index ? 'focused' : ''
+              ]"
               @close="removeTag(index)"
+              @click="handleTagClick(index)"
               @dblclick="tag.type === 'search' && startEditTag(index)"
-              v-tooltip="tag.type === 'search' ? 'Double-click to edit' : ''"
+              v-tooltip="tag.type === 'search' ? 'Click to focus, double-click to edit' : ''"
           >
             <template v-if="tag.type === 'search'">
               <span class="tag-field">{{ tag.field }}</span>
@@ -194,6 +199,9 @@ const editField = ref('');
 const editOperator = ref('');
 const editValue = ref('');
 
+// Focus state
+const focusedTagIndex = ref<number | null>(null);
+
 // Operator mappings
 const operators = {
   '=%': { display: ' contains ', filter: '_contains' },
@@ -306,13 +314,44 @@ function handleContainerClick(event: MouseEvent) {
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault();
-    if (selectedSuggestionIndex.value >= 0) {
+    if (focusedTagIndex.value !== null) {
+      // Enter on focused tag opens edit popup
+      startEditTag(focusedTagIndex.value);
+    } else if (selectedSuggestionIndex.value >= 0) {
       selectSuggestion(suggestions.value[selectedSuggestionIndex.value]);
     } else {
       parseAndAddTag();
     }
   } else if (event.key === 'Backspace' && !currentInput.value && searchTags.value.length > 0) {
-    removeTag(searchTags.value.length - 1);
+    if (focusedTagIndex.value !== null) {
+      // Delete focused tag
+      removeTag(focusedTagIndex.value);
+    } else {
+      removeTag(searchTags.value.length - 1);
+    }
+  } else if (event.key === 'Delete' && focusedTagIndex.value !== null) {
+    // Delete key removes focused tag
+    removeTag(focusedTagIndex.value);
+  } else if (event.key === 'Tab') {
+    // Tab navigation through tags
+    if (searchTags.value.length > 0) {
+      event.preventDefault();
+      if (event.shiftKey) {
+        // Shift+Tab - go backwards
+        if (focusedTagIndex.value === null || focusedTagIndex.value === 0) {
+          focusedTagIndex.value = searchTags.value.length - 1;
+        } else {
+          focusedTagIndex.value--;
+        }
+      } else {
+        // Tab - go forwards
+        if (focusedTagIndex.value === null || focusedTagIndex.value === searchTags.value.length - 1) {
+          focusedTagIndex.value = 0;
+        } else {
+          focusedTagIndex.value++;
+        }
+      }
+    }
   } else if (event.key === 'ArrowDown') {
     event.preventDefault();
     selectedSuggestionIndex.value = Math.min(
@@ -325,6 +364,7 @@ function handleKeydown(event: KeyboardEvent) {
   } else if (event.key === 'Escape') {
     showAutocomplete.value = false;
     selectedSuggestionIndex.value = -1;
+    focusedTagIndex.value = null;
   }
 }
 
@@ -410,6 +450,16 @@ function parseAndAddTag() {
 function removeTag(index: number) {
   const removed = searchTags.value.splice(index, 1)[0];
   emit('tag-removed', removed, index);
+  
+  // Adjust focused index if needed
+  if (focusedTagIndex.value !== null) {
+    if (focusedTagIndex.value === index) {
+      focusedTagIndex.value = null;
+    } else if (focusedTagIndex.value > index) {
+      focusedTagIndex.value--;
+    }
+  }
+  
   updateModelValue();
 }
 
@@ -611,6 +661,29 @@ function getFieldBeforeOperator(operatorStart: number): { field: string; start: 
   return null;
 }
 
+// Handle tag click for focusing
+function handleTagClick(index: number) {
+  if (searchTags.value[index].type === 'search') {
+    focusedTagIndex.value = focusedTagIndex.value === index ? null : index;
+  }
+}
+
+// Handle field replacement when a tag is focused
+function replaceFieldInFocusedTag(newField: string) {
+  if (focusedTagIndex.value !== null && searchTags.value[focusedTagIndex.value]) {
+    const tag = searchTags.value[focusedTagIndex.value];
+    if (tag.type === 'search') {
+      // Update the tag with new field
+      tag.field = newField;
+      tag.raw = `${newField}${tag.operator}${tag.value}`;
+      
+      // Keep focus on the same tag
+      // Optionally move to next tag
+      // focusedTagIndex.value = null;
+    }
+  }
+}
+
 function getOperatorAtCursor(): { operator: string; start: number; end: number } | null {
   if (!inputRef.value) return null;
   
@@ -655,6 +728,13 @@ function getOperatorAtCursor(): { operator: string; start: number; end: number }
 
 // Public methods
 function addFieldToSearch(field: string) {
+  // If a tag is focused, replace its field
+  if (focusedTagIndex.value !== null) {
+    replaceFieldInFocusedTag(field);
+    updateModelValue();
+    return;
+  }
+  
   // First check if cursor is right after an operator
   const operatorBeforeCursor = getOperatorBeforeCursor();
   if (operatorBeforeCursor) {
@@ -885,6 +965,19 @@ defineExpose({
   height: 24px;
   background-color: var(--theme--primary-background);
   border: 1px solid var(--theme--primary-subdued);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &.focused {
+    border-color: var(--theme--primary);
+    box-shadow: 0 0 0 2px var(--theme--primary-background), 0 0 0 4px var(--theme--primary);
+    background-color: var(--theme--primary-subdued);
+  }
+  
+  &:hover:not(.focused) {
+    border-color: var(--theme--primary-alt);
+    background-color: var(--theme--primary-subdued);
+  }
   
   .tag-field {
     font-weight: 600;
