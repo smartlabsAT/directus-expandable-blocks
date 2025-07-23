@@ -88,13 +88,16 @@
 
       <!-- Icons -->
       <div class="input-icons">
-        <!-- Result count when help is shown -->
-        <div v-if="showHelp && totalItems !== null && totalItems !== undefined" class="result-count">
-          <span>{{ totalItems }}</span>
+        <!-- Search icon with result count badge -->
+        <div class="search-icon-wrapper">
+          <v-progress-circular v-if="loading" indeterminate x-small />
+          <v-icon v-else name="search" />
+          
+          <!-- Result count badge -->
+          <div v-if="showHelp && totalItems !== null && totalItems !== undefined && totalItems > 0" class="result-count-badge">
+            {{ totalItems > 999 ? '999+' : totalItems }}
+          </div>
         </div>
-        
-        <v-progress-circular v-if="loading" indeterminate x-small />
-        <v-icon v-else name="search" />
         
         <v-icon
             v-if="searchTags.length > 0 || currentInput"
@@ -961,15 +964,30 @@ defineExpose({
   margin-left: auto;
   flex-shrink: 0;
   
-  .result-count {
-    font-size: 12px;
-    color: var(--theme--foreground-subdued);
-    background-color: var(--background-subdued);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 500;
-    min-width: 20px;
-    text-align: center;
+  .search-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    
+    .result-count-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background-color: var(--danger);
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 4px;
+      border-radius: 10px;
+      min-width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      z-index: 1;
+    }
   }
   
   .v-icon {
