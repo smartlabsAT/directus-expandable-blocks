@@ -71,11 +71,6 @@ export function useItemSelector(api: any) {  // collections entfernt
       if (metadata?.translationInfo) {
         translationInfo.value = metadata.translationInfo;
         
-        logDebug('Translation info loaded', {
-          hasTranslations: metadata.translationInfo.hasTranslations,
-          translationType: metadata.translationInfo.translationType,
-          translationFields: metadata.translationInfo.translationFields
-        });
         
         // Update available languages if provided
         if (metadata.translationInfo.availableLanguages) {
@@ -103,17 +98,9 @@ export function useItemSelector(api: any) {  // collections entfernt
             }
           });
           
-          logDebug('Added translation fields to availableFields', {
-            addedFields: metadata.translationInfo.translationFields.map((tf: any) => tf.field)
-          });
         }
       }
       
-      logDebug('Loaded collection metadata', {
-        collection: selectedCollection.value,
-        fieldsCount: availableFields.value.length,
-        hasTranslations: translationInfo.value?.hasTranslations || false
-      });
     } catch (error) {
       logError('Error loading collection metadata', error);
       apiError.value = 'Fehler beim Laden der Metadaten. Bitte versuchen Sie es später erneut.';
@@ -349,13 +336,6 @@ export function useItemSelector(api: any) {  // collections entfernt
       // Clear any previous API errors
       apiError.value = null;
 
-      logDebug('Loaded items', {
-        collection: selectedCollection.value,
-        searchQuery: searchQuery.value,
-        isFieldSearch: searchParsed.isFieldSearch,
-        itemsOnPage: availableItems.value.length,
-        totalCount: totalItems.value
-      });
 
       // Load details for the items (non-blocking)
       if (availableItems.value.length > 0) {
@@ -388,7 +368,6 @@ export function useItemSelector(api: any) {  // collections entfernt
       // TODO: Implement relation loading when needed
       // This would load usage information for each item
       
-      logDebug('Loaded item relations', itemRelations.value);
     } catch (error) {
       logError('Error loading relations', error);
     } finally {
@@ -423,20 +402,13 @@ export function useItemSelector(api: any) {  // collections entfernt
 
       // Only process if this is still the current request
       if (requestId !== currentRequestId.value) {
-        logDebug('Ignoring outdated detail response', { requestId, currentRequestId: currentRequestId.value });
-        return;
+          return;
       }
 
       // Transform API data to match UI expectations
       const transformedRelations: Record<string, any[]> = {};
 
       response.data.data.forEach((item: any) => {
-        logDebug('Processing item details', {
-          itemId: item.id,
-          hasUsageData: !!item.usage_summary,
-          totalUsageCount: item.usage_summary?.total_count || 0,
-          usageLocationsCount: item.usage_locations?.length || 0
-        });
 
         if (item.usage_summary?.total_count > 0) {
           // Group usage locations by collection
@@ -467,26 +439,12 @@ export function useItemSelector(api: any) {  // collections entfernt
 
           transformedRelations[item.id] = Array.from(byCollection.values());
           
-          logDebug('Transformed usage data for item', {
-            itemId: item.id,
-            collections: Array.from(byCollection.keys()),
-            totalGroups: byCollection.size
-          });
         }
       });
 
-      logDebug('Setting itemRelations', {
-        itemsWithRelations: Object.keys(transformedRelations).length,
-        transformedData: transformedRelations
-      });
 
       itemRelations.value = transformedRelations;
       
-      logDebug('Loaded item details', {
-        collection: selectedCollection.value,
-        itemCount: itemIds.length,
-        usageCount: Object.keys(transformedRelations).length
-      });
     } catch (error: any) {
       if (error.name !== 'AbortError') {
         logError('Error loading item details', error);
@@ -506,7 +464,6 @@ export function useItemSelector(api: any) {  // collections entfernt
    * Open the selector for a specific collection
    */
   async function open(collection: string) {
-    logDebug('Opening item selector', { collection });
 
     selectedCollection.value = collection;
 
