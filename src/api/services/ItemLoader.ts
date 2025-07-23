@@ -68,16 +68,12 @@ export class ItemLoader {
         fields: expandedFields,
         filter: normalizedQuery.filter,
         search: normalizedQuery.search,
-        sort: normalizedQuery.sort
+        sort: normalizedQuery.sort && normalizedQuery.sort.length > 0 ? normalizedQuery.sort : ['id']
       };
       
-      // Add deep parameter if translations are included
-      if (expandedFields.some(f => f.includes('translations'))) {
-        queryOptions.deep = {
-          translations: {
-            _filter: {}
-          }
-        };
+      // Add deep parameter if provided
+      if (normalizedQuery.deep) {
+        queryOptions.deep = normalizedQuery.deep;
       }
       
       // Load items

@@ -17,9 +17,10 @@
       <div v-if="showHelp" class="search-help-panel">
         <div class="search-help-content">
           <!-- Available Fields Section -->
-          <div class="search-help-section" v-if="availableFields.length > 0">
+          <div class="search-help-section" v-if="availableFields.length > 0 || translationInfo?.translationFields?.length > 0">
             <h4>Available Fields</h4>
             <div class="field-chips">
+              <!-- Regular fields -->
               <v-chip
                   v-for="field in availableFields"
                   :key="field.field"
@@ -31,6 +32,21 @@
               >
                 <v-icon name="text_fields" x-small />
                 {{ field.field }}
+                <span class="field-type">{{ field.type }}</span>
+              </v-chip>
+              
+              <!-- Translation fields -->
+              <v-chip
+                  v-for="field in translationInfo?.translationFields || []"
+                  :key="`translations.${field.field}`"
+                  x-small
+                  label
+                  clickable
+                  class="field-chip translation-field-chip"
+                  @click="addFieldToSearch(`translations.${field.field}`)"
+              >
+                <v-icon name="translate" x-small />
+                translations.{{ field.field }}
                 <span class="field-type">{{ field.type }}</span>
               </v-chip>
             </div>
@@ -120,6 +136,7 @@ interface Props {
   loading?: boolean;
   showHelp?: boolean;
   availableFields?: FieldInfo[];
+  translationInfo?: any;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -254,6 +271,16 @@ function addLogicalOperator(op: 'AND' | 'OR') {
   margin-left: 4px;
   opacity: 0.7;
   font-size: 10px;
+}
+
+.translation-field-chip {
+  background-color: var(--primary-10) !important;
+  border-color: var(--primary-25) !important;
+}
+
+.translation-field-chip:hover {
+  background-color: var(--primary-25) !important;
+  border-color: var(--primary) !important;
 }
 
 /* Operators Grid */

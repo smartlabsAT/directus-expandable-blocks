@@ -251,6 +251,56 @@ export function useItemSelector(api: any) {  // collections entfernt
     return filters;
   }
 
+  /**
+   * Check if a field is translatable
+   */
+  function isFieldTranslatable(field: string): boolean {
+    if (!translationInfo.value?.translationFields) return false;
+    return translationInfo.value.translationFields.some(tf => tf.field === field);
+  }
+
+  /**
+   * Transform field search to translation search if needed
+   */
+  function transformFieldForTranslation(field: string, operator: string, value: any) {
+    const languageCode = selectedLanguage.value || 'en-US';
+    
+    // Check if field is already a translation field (translations.xxx)
+    if (field.startsWith('translations.')) {
+      const actualField = field.replace('translations.', '');
+      return {
+        filter: {
+          _and: [
+            { translations: { languages_code: { _eq: languageCode } } },
+            { translations: { [actualField]: { [operator]: value } } }
+          ]
+        },
+        isTranslationSearch: true,
+        needsAnd: false
+      };
+    }
+    
+    // Check if field is translatable
+    if (isFieldTranslatable(field)) {
+      return {
+        filter: {
+          _and: [
+            { translations: { languages_code: { _eq: languageCode } } },
+            { translations: { [field]: { [operator]: value } } }
+          ]
+        },
+        isTranslationSearch: true,
+        needsAnd: false
+      };
+    }
+    
+    // Regular field
+    return {
+      filter: { [field]: { [operator]: value } },
+      isTranslationSearch: false,
+      needsAnd: false
+    };
+  }
 
   /**
    * Load items from the selected collection
@@ -276,16 +326,32 @@ export function useItemSelector(api: any) {  // collections entfernt
       // Include translations if collection has them
       if (translationInfo.value?.hasTranslations) {
         params.fields.push('translations.*');
+        
+        // Add deep parameter to filter translations by language
+        const languageCode = selectedLanguage.value || 'en-US';
+        params.deep = {
+          translations: {
+            _filter: {
+              languages_code: { _eq: languageCode }
+            }
+          }
+        };
       }
 
       // Apply search or filter
       if (searchParsed.isFieldSearch) {
-        // Field-specific search als Filter
-        params.filter = {
-          [searchParsed.field]: {
-            [searchParsed.operator]: searchParsed.value
-          }
-        };
+        // Field-specific search with translation support
+        const transformed = transformFieldForTranslation(
+          searchParsed.field,
+          searchParsed.operator,
+          searchParsed.value
+        );
+        
+        if (transformed.needsAnd) {
+          params.filter = { _and: [transformed.filter] };
+        } else {
+          params.filter = transformed.filter;
+        }
       } else if (searchQuery.value) {
         // Check if query contains multiple search terms
         const queries = parseMultipleQueries(searchQuery.value);
@@ -296,11 +362,13 @@ export function useItemSelector(api: any) {  // collections entfernt
           let hasOr = false;
           
           queries.forEach((q, index) => {
-            const filter = {
-              [q.field]: {
-                [q.operator]: q.value
-              }
-            };
+            const transformed = transformFieldForTranslation(
+              q.field,
+              q.operator,
+              q.value
+            );
+            
+            const filterToAdd = transformed.needsAnd ? { _and: [transformed.filter] } : transformed.filter;
             
             if (q.logicalOp === 'OR' || (index > 0 && queries[index - 1].logicalOp === 'OR')) {
               hasOr = true;
@@ -310,7 +378,7 @@ export function useItemSelector(api: any) {  // collections entfernt
               }
             }
             
-            currentGroup.push(filter);
+            currentGroup.push(filterToAdd);
           });
           
           if (currentGroup.length > 0) {
@@ -320,14 +388,76 @@ export function useItemSelector(api: any) {  // collections entfernt
           if (hasOr) {
             params.filter = { _or: orGroups };
           } else {
-            params.filter = { _and: queries.map(q => ({ [q.field]: { [q.operator]: q.value } })) };
+            // Build filters with translation support
+            const filters = queries.map(q => {
+              const transformed = transformFieldForTranslation(q.field, q.operator, q.value);
+              return transformed.filter;
+            });
+            
+            params.filter = filters.length === 1 ? filters[0] : { _and: filters };
           }
         } else {
-          // Normale Volltextsuche
-          params.search = searchQuery.value;
+          // Fulltext search with translation support
+          if (translationInfo.value?.hasTranslations && translationInfo.value.translationFields?.length > 0) {
+            // Create OR conditions for all searchable fields including translations
+            const searchConditions = [];
+            const languageCode = selectedLanguage.value || 'en-US';
+            
+            // Build conditions for translation fields
+            const translationConditions = [];
+            translationInfo.value.translationFields.forEach(field => {
+              if (['string', 'text'].includes(field.type)) {
+                translationConditions.push({
+                  [field.field]: { _contains: searchQuery.value }
+                });
+              }
+            });
+            
+            // Add translation condition if we have translatable fields
+            if (translationConditions.length > 0) {
+              // For each translation field, add a condition with language filter
+              translationConditions.forEach(condition => {
+                searchConditions.push({
+                  _and: [
+                    { translations: { languages_code: { _eq: languageCode } } },
+                    { translations: condition }
+                  ]
+                });
+              });
+            }
+            
+            // Also search in main fields
+            if (availableFields.value?.length > 0) {
+              availableFields.value.forEach(field => {
+                if (['string', 'text'].includes(field.type) && !isFieldTranslatable(field.field)) {
+                  searchConditions.push({
+                    [field.field]: { _contains: searchQuery.value }
+                  });
+                }
+              });
+            }
+            
+            if (searchConditions.length > 0) {
+              params.filter = { _or: searchConditions };
+            } else {
+              // Fallback to normal search if no conditions
+              params.search = searchQuery.value;
+            }
+          } else {
+            // Normal fulltext search
+            params.search = searchQuery.value;
+          }
         }
       }
 
+      // Convert filter and deep to JSON strings if they exist
+      if (params.filter) {
+        params.filter = JSON.stringify(params.filter);
+      }
+      if (params.deep) {
+        params.deep = JSON.stringify(params.deep);
+      }
+      
       const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { params });
 
       availableItems.value = response.data.data || [];
@@ -566,28 +696,6 @@ export function useItemSelector(api: any) {  // collections entfernt
     
     // Fallback to main value
     return item[field] || '';
-  }
-  
-  /**
-   * Check if a field is translatable
-   */
-  function isFieldTranslatable(field: string): boolean {
-
-    
-    if (!translationInfo.value?.hasTranslations) return false;
-    
-    // Check if field is in translationFields (only direct matches, not coversFields)
-    const isTranslatable = translationInfo.value.translationFields?.some(
-      tf => tf.field === field
-    );
-    
-
-    
-    if (isTranslatable) return true;
-    
-    // Also check availableFields as fallback
-    const fieldInfo = availableFields.value.find(f => f.field === field);
-    return fieldInfo?.translatable || false;
   }
 
   return {

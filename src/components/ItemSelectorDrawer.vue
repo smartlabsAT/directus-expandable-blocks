@@ -27,6 +27,7 @@
           v-model:show-help="showSearchHelp"
           :loading="loading"
           :available-fields="availableFields"
+          :translation-info="translationInfo"
           @search="$emit('search', $event)"
       />
 
