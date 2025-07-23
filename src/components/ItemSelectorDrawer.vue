@@ -173,11 +173,11 @@
                 <v-list-item>
                   <v-list-item-content>
                     <v-select
-                        :model-value="props.selectedLanguage"
+                        :model-value="selectedLanguageLocal"
                         :items="props.availableLanguages || []"
                         item-text="name"
                         item-value="code"
-                        @update:model-value="$emit('update:selected-language', $event)"
+                        @update:model-value="handleLanguageChange"
                     />
                   </v-list-item-content>
                 </v-list-item>
@@ -186,7 +186,10 @@
               
               <v-list-item disabled>
                 <v-list-item-content>
-                  <div class="field-selector-header">Select fields to display</div>
+                  <div class="field-selector-header">
+                    Select fields to display
+                    <v-progress-circular v-if="userPresets.loading.value" indeterminate x-small />
+                  </div>
                 </v-list-item-content>
               </v-list-item>
               <v-divider/>
@@ -336,15 +339,19 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch} from 'vue';
+import {ref, computed, watch, onMounted} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import SearchTagInput from './SearchTagInput.vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
+import { useUserPresets } from '../composables/useUserPresets';
 
 // Create scoped logger for this component
 const logger = createScopedLogger('ItemSelectorDrawer');
+
+// Initialize user presets
+const userPresets = useUserPresets();
 
 interface Props {
   open: boolean;
@@ -394,8 +401,10 @@ const emit = defineEmits<{
 const selectedItems = ref<(string | number)[]>([]);
 const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
+const selectedLanguageLocal = ref<string>('');
 const showSearchHelp = ref(false);
 const searchTagInputRef = ref<InstanceType<typeof SearchTagInput>>();
+const preferencesInitialized = ref(false);
 
 // Debug watchers
 watch(() => props.availableFields, (fields) => {
@@ -510,7 +519,7 @@ function handleConfirmCopy() {
   emit('confirmCopy', selectedFullItems);
 }
 
-function toggleFieldDisplay(field: string) {
+async function toggleFieldDisplay(field: string) {
   // Debug: Check if field is translatable
   const isTranslatable = props.isFieldTranslatable ? props.isFieldTranslatable(field) : false;
   logger.debug('Field translatable check', { field, isTranslatable });
@@ -521,7 +530,16 @@ function toggleFieldDisplay(field: string) {
   } else {
     displayFields.value.push(field);
   }
-  localStorage.setItem(`displayFields_${props.collection}`, JSON.stringify(displayFields.value));
+  
+  // Save to user presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.setDisplayFields(props.collection, displayFields.value);
+    } catch (err) {
+      // Error is already logged in the composable
+      // Continue with local state even if save fails
+    }
+  }
 }
 
 function getFieldLabel(field: string): string {
@@ -576,27 +594,114 @@ function handleUsageItemClick(payload: { collection: string; item: any }) {
   logger.debug('Usage item clicked', payload);
 }
 
+async function handleLanguageChange(language: string) {
+  selectedLanguageLocal.value = language;
+  emit('update:selected-language', language);
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveSelectedLanguage(props.collection, language);
+      logger.debug('Saved language preference', { collection: props.collection, language });
+    } catch (err) {
+      logger.error('Failed to save language preference', err);
+    }
+  }
+}
+
 // Reset when drawer opens/closes
-watch(() => props.open, (isOpen) => {
+watch(() => props.open, async (isOpen) => {
   if (isOpen) {
     selectedItems.value = [];
     searchQuery.value = '';
     showSearchHelp.value = false;
+    
+    // Load presets if not already initialized
+    if (!preferencesInitialized.value) {
+      try {
+        logger.debug('Initializing presets on drawer open');
+        await userPresets.initialize();
+        preferencesInitialized.value = true;
+      } catch (err) {
+        logger.error('Failed to initialize presets on drawer open', err);
+      }
+    }
+    
+    // Always load display fields and language for current collection when drawer opens
+    if (props.collection && preferencesInitialized.value) {
+      const fields = userPresets.getDisplayFields(props.collection);
+      displayFields.value = fields;
+      
+      const savedLanguage = userPresets.getSelectedLanguage(props.collection);
+      if (savedLanguage) {
+        selectedLanguageLocal.value = savedLanguage;
+      } else if (props.selectedLanguage) {
+        selectedLanguageLocal.value = props.selectedLanguage;
+      }
+      
+      logger.debug('Loaded preferences on drawer open', { 
+        collection: props.collection, 
+        fields,
+        language: selectedLanguageLocal.value
+      });
+    }
   }
 });
 
 // Reset when collection changes
-watch(() => props.collection, (collection) => {
+watch(() => props.collection, async (collection) => {
   selectedItems.value = [];
   searchQuery.value = '';
   showSearchHelp.value = false;
-  if (collection) {
-    const saved = localStorage.getItem(`displayFields_${collection}`);
-    if (saved) {
-      displayFields.value = JSON.parse(saved);
+  
+  if (collection && preferencesInitialized.value) {
+    const fields = userPresets.getDisplayFields(collection);
+    displayFields.value = fields;
+    
+    const savedLanguage = userPresets.getSelectedLanguage(collection);
+    if (savedLanguage) {
+      selectedLanguageLocal.value = savedLanguage;
+    } else if (props.selectedLanguage) {
+      selectedLanguageLocal.value = props.selectedLanguage;
     }
+    
+    logger.debug('Loaded preferences on collection change', { 
+      collection, 
+      fields,
+      language: selectedLanguageLocal.value
+    });
   }
-}, {immediate: true});
+});
+
+// Watch for external language changes
+watch(() => props.selectedLanguage, (newLanguage) => {
+  if (newLanguage && newLanguage !== selectedLanguageLocal.value && !preferencesInitialized.value) {
+    selectedLanguageLocal.value = newLanguage;
+  }
+});
+
+// Initialize presets on mount
+onMounted(async () => {
+  try {
+    await userPresets.initialize();
+    preferencesInitialized.value = true;
+    
+    // Load display fields and language for current collection
+    if (props.collection) {
+      displayFields.value = userPresets.getDisplayFields(props.collection);
+      
+      const savedLanguage = userPresets.getSelectedLanguage(props.collection);
+      if (savedLanguage) {
+        selectedLanguageLocal.value = savedLanguage;
+      } else if (props.selectedLanguage) {
+        selectedLanguageLocal.value = props.selectedLanguage;
+      }
+    }
+  } catch (err) {
+    logger.error('Failed to initialize user presets', err);
+    // Continue with empty display fields
+  }
+});
 </script>
 
 <style scoped>
@@ -639,6 +744,13 @@ watch(() => props.collection, (collection) => {
 .field-label {
   display: inline-flex;
   align-items: center;
+}
+
+.field-selector-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
 }
 
 .item-title-row {
