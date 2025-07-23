@@ -17,12 +17,12 @@
       <div v-if="showHelp" class="search-help-panel">
         <div class="search-help-content">
           <!-- Available Fields Section -->
-          <div class="search-help-section" v-if="availableFields.length > 0 || translationInfo?.translationFields?.length > 0">
+          <div class="search-help-section" v-if="nonTranslatableFields.length > 0 || translationInfo?.translationFields?.length > 0">
             <h4>Available Fields</h4>
             <div class="field-chips">
-              <!-- Regular fields -->
+              <!-- Non-translatable fields -->
               <v-chip
-                  v-for="field in availableFields"
+                  v-for="field in nonTranslatableFields"
                   :key="field.field"
                   x-small
                   label
@@ -35,7 +35,7 @@
                 <span class="field-type">{{ field.type }}</span>
               </v-chip>
               
-              <!-- Translation fields -->
+              <!-- Translatable fields (shown with translation icon) -->
               <v-chip
                   v-for="field in translationInfo?.translationFields || []"
                   :key="`translations.${field.field}`"
@@ -46,7 +46,7 @@
                   @click="addFieldToSearch(`translations.${field.field}`)"
               >
                 <v-icon name="translate" x-small />
-                translations.{{ field.field }}
+                {{ field.field }}
                 <span class="field-type">{{ field.type }}</span>
               </v-chip>
             </div>
@@ -119,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type ComponentPublicInstance } from 'vue';
+import { ref, computed, type ComponentPublicInstance } from 'vue';
 import SearchTagInput from './SearchTagInput.vue';
 
 interface FieldInfo {
@@ -150,6 +150,16 @@ const emit = defineEmits<{
   'update:show-help': [value: boolean];
   'search': [query: string];
 }>();
+
+// Computed: Filter out fields that are translatable (they should only appear in translation section)
+const nonTranslatableFields = computed(() => {
+  if (!props.translationInfo?.translationFields) {
+    return props.availableFields;
+  }
+  
+  const translatableFieldNames = props.translationInfo.translationFields.map((tf: any) => tf.field);
+  return props.availableFields.filter(field => !translatableFieldNames.includes(field.field));
+});
 
 // Refs
 const searchTagInputRef = ref<ComponentPublicInstance>();
