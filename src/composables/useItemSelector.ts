@@ -199,7 +199,8 @@ export function useItemSelector(api: any) {  // collections entfernt
           .join('|');
       
       // Match pattern: field operator value (with support for quoted values)
-      const regex = new RegExp(`(\\w+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
+      // Allow dots in field names for translations.field syntax
+      const regex = new RegExp(`([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
       
       let match;
       while ((match = regex.exec(query)) !== null) {
@@ -232,7 +233,8 @@ export function useItemSelector(api: any) {  // collections entfernt
       const operatorPattern = Object.keys(operators)
           .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
           .join('|');
-      const regex = new RegExp(`^(\\w+)(${operatorPattern})(?:"([^"]+)"|(.+))$`);
+      // Allow dots in field names for translations.field syntax
+      const regex = new RegExp(`^([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|(.+))$`);
       const match = part.match(regex);
       
       if (match) {
@@ -312,9 +314,6 @@ export function useItemSelector(api: any) {  // collections entfernt
     try {
       const offset = (currentPage.value - 1) * itemsPerPage.value;
 
-      // Parse search query
-      const searchParsed = parseSearchQuery(searchQuery.value);
-
       // Build params
       const params: any = {
         limit: itemsPerPage.value,
@@ -339,20 +338,7 @@ export function useItemSelector(api: any) {  // collections entfernt
       }
 
       // Apply search or filter
-      if (searchParsed.isFieldSearch) {
-        // Field-specific search with translation support
-        const transformed = transformFieldForTranslation(
-          searchParsed.field,
-          searchParsed.operator,
-          searchParsed.value
-        );
-        
-        if (transformed.needsAnd) {
-          params.filter = { _and: [transformed.filter] };
-        } else {
-          params.filter = transformed.filter;
-        }
-      } else if (searchQuery.value) {
+      if (searchQuery.value) {
         // Check if query contains multiple search terms
         const queries = parseMultipleQueries(searchQuery.value);
         if (queries.length > 0) {
