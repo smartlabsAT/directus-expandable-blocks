@@ -1,88 +1,22 @@
 <template>
   <div class="search-tag-input" @click.self="focusedTagIndex = null">
-    <div class="tag-input-container" @click="handleContainerClick">
-      <!-- Default logical operator indicator -->
-      <v-chip
-          v-if="defaultLogicalOp && searchTags.length === 0"
-          x-small
-          label
-          class="default-logical-op"
-          :class="defaultLogicalOp === 'AND' ? 'and-op' : 'or-op'"
-      >
-        {{ defaultLogicalOp }}
-      </v-chip>
+    <div 
+        ref="editableContainer"
+        class="tag-input-container"
+        contenteditable="true"
+        @input="handleContentEditableInput"
+        @keydown="handleContentEditableKeydown"
+        @paste="handlePaste"
+        @focus="handleContentEditableFocus"
+        @blur="handleContentEditableBlur"
+        @click="handleContentEditableClick"
+        :data-placeholder="getPlaceholder()"
+    >
+      <!-- Content will be rendered programmatically -->
+    </div>
 
-      <!-- Search Tags with Drag & Drop -->
-      <draggable
-          v-model="searchTags"
-          item-key="raw"
-          :animation="150"
-          :delay="50"
-          :delay-on-touch-only="true"
-          handle=".drag-handle"
-          @change="handleDragChange"
-          class="tags-draggable"
-      >
-        <template #item="{ element: tag, index }">
-          <v-chip
-              x-small
-              label
-              :close="tag.type === 'search'"
-              :class="[
-                'search-tag', 
-                tag.type === 'logical' ? 'logical-tag' : '',
-                focusedTagIndex === index ? 'focused' : '',
-                'draggable-tag'
-              ]"
-              @close="removeTag(index)"
-              @click="handleTagClick(index)"
-              @dblclick="tag.type === 'search' && startEditValue(index)"
-              v-tooltip="tag.type === 'search' ? 'Click to focus • Double-click to edit value • Drag to reorder' : ''"
-          >
-            <v-icon
-                name="drag_indicator"
-                x-small
-                class="drag-handle"
-                @click.stop
-            />
-            <template v-if="tag.type === 'search'">
-              <span class="tag-field">{{ tag.field }}</span>
-              <span class="tag-operator">{{ tag.operatorDisplay }}</span>
-              <span v-if="editingValueIndex === index" class="tag-value-edit">
-                <input
-                    :ref="el => { if (el) editValueInputs[index] = el as HTMLInputElement }"
-                    v-model="editValue"
-                    @keyup.enter="saveEditValue(index)"
-                    @keyup.esc="cancelEditValue"
-                    @blur="saveEditValue(index)"
-                    @click.stop
-                    class="inline-edit-input"
-                />
-              </span>
-              <span v-else class="tag-value">{{ tag.value }}</span>
-            </template>
-            <template v-else-if="tag.type === 'logical'">
-              <strong>{{ tag.logicalOp }}</strong>
-            </template>
-          </v-chip>
-        </template>
-      </draggable>
-
-      <!-- Input Field -->
-      <input
-          ref="inputRef"
-          v-model="currentInput"
-          type="text"
-          class="tag-input"
-          :placeholder="getPlaceholder()"
-          @keydown="handleKeydown"
-          @input="handleInput"
-          @focus="emit('focus')"
-          @blur="emit('blur')"
-      />
-
-      <!-- Icons -->
-      <div class="input-icons">
+    <!-- Icons -->
+    <div class="input-icons">
         <!-- Search icon with result count badge -->
         <div class="search-icon-wrapper">
           <v-progress-circular v-if="loading" indeterminate x-small/>
@@ -108,7 +42,6 @@
             :class="{ 'rotated': showHelp }"
         />
       </div>
-    </div>
 
     <!-- Autocomplete Dropdown -->
     <transition name="fade">
@@ -130,9 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
-import draggable from 'vuedraggable';
 
 // Create scoped logger for this component
 const logger = createScopedLogger('SearchTagInput');
@@ -192,6 +124,21 @@ const editValueInputs = ref<HTMLInputElement[]>([]);
 
 // Focus state
 const focusedTagIndex = ref<number | null>(null);
+
+// Visual cursor state
+const cursorPosition = ref<number | null>(null);
+const hoveredPosition = ref<number | null>(null);
+
+// Position inputs refs
+const positionInputs = ref<{ [key: number]: HTMLInputElement }>({});
+const positionInput0 = ref<HTMLInputElement>();
+
+// Contenteditable refs
+const editableContainer = ref<HTMLDivElement>();
+const isComposing = ref(false);
+const savedSelection = ref<{ node: Node | null; offset: number } | null>(null);
+const insertPosition = ref<number | null>(null); // Position between tags where to insert
+const textInputs = ref<{ [position: number]: string }>({}); // Text at each position
 
 // Operator mappings
 const operators = {
@@ -268,6 +215,18 @@ function getPlaceholder(): string {
   return '';
 }
 
+// Calculate dynamic input width
+function getInputWidth(): string {
+  if (!currentInput.value) {
+    return '2px'; // Minimal width when empty
+  }
+  
+  // Calculate width based on content (approximately 8px per character)
+  const charWidth = 8;
+  const width = Math.max(20, Math.min(300, currentInput.value.length * charWidth + 20));
+  return `${width}px`;
+}
+
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
   if (newValue !== searchQuery.value) {
@@ -277,7 +236,45 @@ watch(() => props.modelValue, (newValue) => {
 
 // Methods
 function focusInput() {
-  inputRef.value?.focus();
+  // Focus contenteditable container
+  nextTick(() => {
+    editableContainer.value?.focus();
+    setCursorToEnd();
+  });
+}
+
+function calculateClosestPosition(event: MouseEvent): number {
+  const container = event.currentTarget as HTMLElement;
+  const rect = container.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  
+  // Find all tag positions
+  const tagElements = container.querySelectorAll('.tag-with-cursor');
+  const positions: { x: number; index: number }[] = [];
+  
+  // Add position 0 (before all tags)
+  positions.push({ x: 0, index: 0 });
+  
+  // Add positions after each tag
+  tagElements.forEach((tag, i) => {
+    const tagRect = tag.getBoundingClientRect();
+    const tagEndX = tagRect.right - rect.left;
+    positions.push({ x: tagEndX, index: i + 1 });
+  });
+  
+  // Find closest position to mouse
+  let closestIndex = 0;
+  let closestDistance = Infinity;
+  
+  positions.forEach(pos => {
+    const distance = Math.abs(mouseX - pos.x);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = pos.index;
+    }
+  });
+  
+  return closestIndex;
 }
 
 function handleContainerClick(event: MouseEvent) {
@@ -285,7 +282,36 @@ function handleContainerClick(event: MouseEvent) {
   if (editingValueIndex.value !== null) {
     return;
   }
+  
+  // Calculate and set cursor position
+  const closestIndex = calculateClosestPosition(event);
+  cursorPosition.value = closestIndex;
+  logger.debug('Cursor position set', { closestIndex, totalTags: searchTags.value.length });
+  
   focusInput();
+}
+
+function handleMouseMove(event: MouseEvent) {
+  // Don't update hover while editing
+  if (editingValueIndex.value !== null) {
+    return;
+  }
+  
+  // Calculate hover position
+  const closestIndex = calculateClosestPosition(event);
+  hoveredPosition.value = closestIndex;
+}
+
+function handlePositionInputBlur(position: number) {
+  // Only emit blur if we're not switching to another position input
+  setTimeout(() => {
+    const activeElement = document.activeElement;
+    const isPositionInput = activeElement?.classList.contains('position-input') || 
+                           activeElement?.classList.contains('tag-input');
+    if (!isPositionInput) {
+      emit('blur');
+    }
+  }, 100);
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -339,6 +365,40 @@ function handleKeydown(event: KeyboardEvent) {
     showAutocomplete.value = false;
     selectedSuggestionIndex.value = -1;
     focusedTagIndex.value = null;
+    cursorPosition.value = null;
+  } else if (event.key === 'ArrowLeft' && currentInput.value === '') {
+    // Move cursor left through tag positions
+    event.preventDefault();
+    if (cursorPosition.value === null) {
+      // Start from the end
+      cursorPosition.value = searchTags.value.length;
+    } else if (cursorPosition.value > 0) {
+      cursorPosition.value--;
+    }
+    focusedTagIndex.value = null; // Clear tag focus when using cursor
+  } else if (event.key === 'ArrowRight' && currentInput.value === '') {
+    // Move cursor right through tag positions
+    event.preventDefault();
+    if (cursorPosition.value === null) {
+      // Start from the beginning
+      cursorPosition.value = 0;
+    } else if (cursorPosition.value < searchTags.value.length) {
+      cursorPosition.value++;
+    } else {
+      // At the end, clear cursor
+      cursorPosition.value = null;
+    }
+    focusedTagIndex.value = null; // Clear tag focus when using cursor
+  } else if (event.key === 'Home' && currentInput.value === '') {
+    // Jump to beginning
+    event.preventDefault();
+    cursorPosition.value = 0;
+    focusedTagIndex.value = null;
+  } else if (event.key === 'End' && currentInput.value === '') {
+    // Jump to end
+    event.preventDefault();
+    cursorPosition.value = null;
+    focusedTagIndex.value = null;
   }
 }
 
@@ -366,15 +426,18 @@ function parseAndAddTag() {
     return;
   }
 
-  // If we have a default logical operator and this is not the first tag,
-  // add the logical operator before the new tag
-  if (defaultLogicalOp.value && searchTags.value.length > 0) {
-    const lastTag = searchTags.value[searchTags.value.length - 1];
-    if (lastTag.type !== 'logical') {
+  // Determine insert position
+  const insertPositionValue = insertPosition.value !== null ? insertPosition.value : searchTags.value.length;
+  
+  // If we have a default logical operator and need to add one
+  if (defaultLogicalOp.value && insertPositionValue > 0) {
+    // Check if there's already a logical operator at the position
+    const prevTag = searchTags.value[insertPositionValue - 1];
+    if (prevTag && prevTag.type !== 'logical') {
       const logicalTag: SearchTag = {
         type: 'logical', logicalOp: defaultLogicalOp.value, raw: defaultLogicalOp.value,
       };
-      searchTags.value.push(logicalTag);
+      searchTags.value.splice(insertPositionValue, 0, logicalTag);
     }
   }
 
@@ -390,10 +453,20 @@ function parseAndAddTag() {
         type: 'search', field: field.trim(), operator: op, operatorDisplay: config.display, value: value.trim(), raw: input,
       };
 
-      searchTags.value.push(tag);
+      // Insert at saved position or at end
+      const position = insertPositionValue;
+      searchTags.value.splice(position, 0, tag);
+      
       emit('tag-added', tag);
       currentInput.value = '';
+      insertPosition.value = null; // Reset insert position
       updateModelValue();
+      
+      // Re-render and focus
+      nextTick(() => {
+        renderContentEditable();
+        focusInput();
+      });
       return;
     }
   }
@@ -403,10 +476,20 @@ function parseAndAddTag() {
     type: 'search', field: '', operator: '', operatorDisplay: '', value: input, raw: input,
   };
 
-  searchTags.value.push(tag);
+  // Insert at saved position or at end
+  const position = insertPositionValue;
+  searchTags.value.splice(position, 0, tag);
+  
   emit('tag-added', tag);
   currentInput.value = '';
+  insertPosition.value = null; // Reset insert position
   updateModelValue();
+  
+  // Re-render and focus
+  nextTick(() => {
+    renderContentEditable();
+    focusInput();
+  });
 }
 
 function removeTag(index: number) {
@@ -422,6 +505,16 @@ function removeTag(index: number) {
     }
   }
 
+  // Adjust cursor position if needed
+  if (cursorPosition.value !== null) {
+    if (cursorPosition.value > index) {
+      cursorPosition.value--;
+    } else if (cursorPosition.value === searchTags.value.length + 1) {
+      // If cursor was at the very end, keep it there
+      cursorPosition.value = searchTags.value.length;
+    }
+  }
+
   updateModelValue();
 }
 
@@ -429,6 +522,8 @@ function clearAll() {
   searchTags.value = [];
   currentInput.value = '';
   defaultLogicalOp.value = null;
+  cursorPosition.value = null;
+  focusedTagIndex.value = null;
   updateModelValue();
 }
 
@@ -438,12 +533,18 @@ function startEditValue(index: number) {
     editValue.value = tag.value || '';
     editingValueIndex.value = index;
 
-    // Focus the inline input after Vue updates
+    // Re-render to show input field
+    renderContentEditable();
+    
+    // Focus the inline input after render
     nextTick(() => {
-      const input = editValueInputs.value[index];
-      if (input) {
-        input.focus();
-        input.select();
+      const tagElement = editableContainer.value?.querySelector(`[data-tag-index="${index}"]`) as HTMLElement;
+      if (tagElement) {
+        const input = tagElement.querySelector('.inline-edit-input') as HTMLInputElement;
+        if (input) {
+          input.focus();
+          input.select();
+        }
       }
     });
   }
@@ -470,6 +571,8 @@ function handleDragChange() {
   updateModelValue();
   // Reset focused tag index as positions have changed
   focusedTagIndex.value = null;
+  // Reset cursor position as tag positions have changed
+  cursorPosition.value = null;
 }
 
 function updateModelValue() {
@@ -620,6 +723,11 @@ function getFieldBeforeOperator(operatorStart: number): { field: string; start: 
 function handleTagClick(index: number) {
   if (searchTags.value[index].type === 'search') {
     focusedTagIndex.value = focusedTagIndex.value === index ? null : index;
+    
+    // Re-render to show focus state
+    nextTick(() => {
+      renderContentEditable();
+    });
   }
 }
 
@@ -631,10 +739,12 @@ function replaceFieldInFocusedTag(newField: string) {
       // Update the tag with new field
       tag.field = newField;
       tag.raw = `${newField}${tag.operator}${tag.value}`;
-
-      // Keep focus on the same tag
-      // Optionally move to next tag
-      // focusedTagIndex.value = null;
+      
+      // Update model and re-render
+      updateModelValue();
+      nextTick(() => {
+        renderContentEditable();
+      });
     }
   }
 }
@@ -648,8 +758,12 @@ function replaceOperatorInFocusedTag(newOperator: string) {
       tag.operator = newOperator;
       tag.operatorDisplay = operators[newOperator]?.display || newOperator;
       tag.raw = `${tag.field}${newOperator}${tag.value}`;
-
-      // Keep focus on the same tag
+      
+      // Update model and re-render
+      updateModelValue();
+      nextTick(() => {
+        renderContentEditable();
+      });
     }
   }
 }
@@ -701,72 +815,39 @@ function addFieldToSearch(field: string) {
     return;
   }
 
-  // First check if cursor is right after an operator
-  const operatorBeforeCursor = getOperatorBeforeCursor();
-  if (operatorBeforeCursor) {
-    // Find and replace the field before this operator
-    const fieldBeforeOp = getFieldBeforeOperator(operatorBeforeCursor.start);
-    if (fieldBeforeOp) {
-      // Replace the field before the operator
-      const before = currentInput.value.substring(0, fieldBeforeOp.start);
-      const after = currentInput.value.substring(operatorBeforeCursor.end);
-      currentInput.value = before + field + operatorBeforeCursor.operator + after;
-
-      // Set cursor after the operator
-      nextTick(() => {
-        if (inputRef.value) {
-          const newPos = fieldBeforeOp.start + field.length + operatorBeforeCursor.operator.length;
-          inputRef.value.setSelectionRange(newPos, newPos);
-        }
-      });
-      focusInput();
-      return;
-    }
-  }
-
-  // Original logic for other cases
-  const fieldInfo = getFieldAtCursor();
-
-  if (fieldInfo) {
-    // Replace existing field
-    const before = currentInput.value.substring(0, fieldInfo.start);
-    const after = currentInput.value.substring(fieldInfo.end);
-
-    // Only add = if there's no operator already
-    const needsOperator = !fieldInfo.hasOperator;
-    currentInput.value = before + field + (needsOperator ? '=' : '') + after;
-
-    // Set cursor after the field (and = if added)
-    nextTick(() => {
-      if (inputRef.value) {
-        const newPos = fieldInfo.start + field.length + (needsOperator ? 1 : 0);
-        inputRef.value.setSelectionRange(newPos, newPos);
+  // Check if we should replace existing field in current input
+  const currentText = getCurrentTextAtCursor();
+  
+  if (currentText && currentText.includes('=')) {
+    // Replace the field part before =
+    const parts = currentText.split('=');
+    const newText = field + '=' + parts.slice(1).join('=');
+    replaceCurrentText(newText);
+  } else if (currentText && sortedOperators.some(op => currentText.includes(op))) {
+    // Replace field before operator
+    for (const op of sortedOperators) {
+      if (currentText.includes(op)) {
+        const parts = currentText.split(op);
+        const newText = field + op + parts.slice(1).join(op);
+        replaceCurrentText(newText);
+        return;
       }
-    });
-  } else {
-    // Add new field at cursor or end
-    if (inputRef.value) {
-      const cursorPos = inputRef.value.selectionStart || currentInput.value.length;
-      const before = currentInput.value.substring(0, cursorPos);
-      const after = currentInput.value.substring(cursorPos);
-
-      // Add space if needed
-      const prefix = before.length > 0 && !before.endsWith(' ') ? ' ' : '';
-      currentInput.value = before + prefix + field + '=' + after;
-
-      // Set cursor after the =
-      nextTick(() => {
-        if (inputRef.value) {
-          const newPos = cursorPos + prefix.length + field.length + 1;
-          inputRef.value.setSelectionRange(newPos, newPos);
-        }
-      });
-    } else {
-      currentInput.value = field + '=';
     }
+  } else {
+    // Normal insert
+    if (editableContainer.value) {
+      editableContainer.value.focus();
+      if (savedSelection.value) {
+        restoreSelection();
+      }
+    }
+    
+    // Insert text at cursor
+    document.execCommand('insertText', false, field + '=');
   }
-
-  focusInput();
+  
+  // Update current input
+  extractCurrentInput();
 }
 
 // Track default logical operator
@@ -787,29 +868,30 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 
     // Clear input and focus
     currentInput.value = '';
+    renderContentEditable();
     focusInput();
     updateModelValue();
     return;
   }
 
-  const lastTag = searchTags.value[searchTags.value.length - 1];
-  if (lastTag.type === 'logical') {
-    // Replace existing logical operator
-    lastTag.logicalOp = op;
-    lastTag.raw = op;
-    updateModelValue();
-    return;
+  // First check if current input has content that should be converted to a tag
+  if (currentInput.value.trim()) {
+    parseAndAddTag();
   }
 
-  // Add logical operator tag
+  // Add logical operator as the last tag
   const tag: SearchTag = {
     type: 'logical', logicalOp: op, raw: op,
   };
 
-  logger.debug('Adding logical tag', {tag});
   searchTags.value.push(tag);
   updateModelValue();
-  focusInput();
+  
+  // Re-render and focus
+  nextTick(() => {
+    renderContentEditable();
+    focusInput();
+  });
 }
 
 function addOperatorToSearch(operator: string) {
@@ -820,79 +902,402 @@ function addOperatorToSearch(operator: string) {
     return;
   }
 
-  // First check if cursor is within a field
-  const fieldInfo = getFieldAtCursor();
-  if (fieldInfo) {
-    // Cursor is in a field, so we want to add/replace operator after the field
-    const operatorAfterField = getOperatorAfterPosition(fieldInfo.end);
-
-    if (operatorAfterField) {
-      // Replace existing operator after field
-      const before = currentInput.value.substring(0, operatorAfterField.start);
-      const after = currentInput.value.substring(operatorAfterField.end);
-      currentInput.value = before + operator + after;
-
-      // Set cursor after the operator
-      nextTick(() => {
-        if (inputRef.value) {
-          const newPos = operatorAfterField.start + operator.length;
-          inputRef.value.setSelectionRange(newPos, newPos);
-        }
-      });
-    } else {
-      // Add operator after field
-      const before = currentInput.value.substring(0, fieldInfo.end);
-      const after = currentInput.value.substring(fieldInfo.end);
-      currentInput.value = before + operator + after;
-
-      // Set cursor after the operator
-      nextTick(() => {
-        if (inputRef.value) {
-          const newPos = fieldInfo.end + operator.length;
-          inputRef.value.setSelectionRange(newPos, newPos);
-        }
-      });
+  // Check if we should replace existing operator in current input
+  const currentText = getCurrentTextAtCursor();
+  
+  // Check if there's already an operator to replace
+  let replaced = false;
+  for (const existingOp of sortedOperators) {
+    if (currentText.includes(existingOp)) {
+      const parts = currentText.split(existingOp);
+      const newText = parts[0] + operator + parts.slice(1).join(existingOp);
+      replaceCurrentText(newText);
+      replaced = true;
+      break;
     }
-  } else {
-    // Not in a field, check if cursor is at an operator
-    const operatorInfo = getOperatorAtCursor();
+  }
+  
+  if (!replaced) {
+    // Normal insert
+    if (editableContainer.value) {
+      editableContainer.value.focus();
+      if (savedSelection.value) {
+        restoreSelection();
+      }
+    }
+    
+    // Insert text at cursor
+    document.execCommand('insertText', false, operator);
+  }
+  
+  // Update current input
+  extractCurrentInput();
+}
 
-    if (operatorInfo) {
-      // Replace existing operator
-      const before = currentInput.value.substring(0, operatorInfo.start);
-      const after = currentInput.value.substring(operatorInfo.end);
-      currentInput.value = before + operator + after;
-
-      // Set cursor after the operator
-      nextTick(() => {
-        if (inputRef.value) {
-          const newPos = operatorInfo.start + operator.length;
-          inputRef.value.setSelectionRange(newPos, newPos);
-        }
-      });
-    } else {
-      // Add operator at cursor position
-      if (inputRef.value) {
-        const cursorPos = inputRef.value.selectionStart || currentInput.value.length;
-        const before = currentInput.value.substring(0, cursorPos);
-        const after = currentInput.value.substring(cursorPos);
-        currentInput.value = before + operator + after;
-
-        // Set cursor after the operator
+// Contenteditable functions
+function renderContentEditable() {
+  if (!editableContainer.value) return;
+  
+  // Only render tags, preserve existing text nodes
+  const existingTextNodes: { [key: string]: string } = {};
+  let textNodeIndex = 0;
+  
+  // Extract existing text before clearing
+  editableContainer.value.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+      existingTextNodes[`text-${textNodeIndex++}`] = node.textContent;
+    }
+  });
+  
+  // Clear container
+  editableContainer.value.innerHTML = '';
+  
+  // Add default logical op if needed
+  if (defaultLogicalOp.value && searchTags.value.length === 0) {
+    const defaultOpSpan = document.createElement('span');
+    defaultOpSpan.className = 'default-logical-op-inline';
+    defaultOpSpan.textContent = defaultLogicalOp.value;
+    defaultOpSpan.contentEditable = 'false';
+    editableContainer.value.appendChild(defaultOpSpan);
+    editableContainer.value.appendChild(document.createTextNode(' '));
+  }
+  
+  // Render tags only
+  searchTags.value.forEach((tag, index) => {
+    // Create tag element
+    const tagSpan = document.createElement('span');
+    tagSpan.className = tag.type === 'search' ? 'editable-tag' : 'editable-logical-tag';
+    tagSpan.contentEditable = 'false';
+    tagSpan.dataset.tagIndex = index.toString();
+    
+    if (tag.type === 'search') {
+      // Add focused class if needed
+      if (focusedTagIndex.value === index) {
+        tagSpan.classList.add('focused');
+      }
+      
+      if (editingValueIndex.value === index) {
+        // Show inline edit input
+        tagSpan.innerHTML = `
+          <span class="tag-content">
+            <span class="tag-field">${tag.field}</span>
+            <span class="tag-operator">${tag.operatorDisplay}</span>
+            <input class="inline-edit-input" value="${editValue.value}" />
+          </span>
+          <span class="tag-close" data-index="${index}">×</span>
+        `;
+        
+        // Add event listeners after DOM update
         nextTick(() => {
-          if (inputRef.value) {
-            const newPos = cursorPos + operator.length;
-            inputRef.value.setSelectionRange(newPos, newPos);
+          const input = tagSpan.querySelector('.inline-edit-input') as HTMLInputElement;
+          if (input) {
+            input.addEventListener('input', (e) => {
+              editValue.value = (e.target as HTMLInputElement).value;
+            });
+            input.addEventListener('keyup', (e) => {
+              if (e.key === 'Enter') {
+                saveEditValue(index);
+              } else if (e.key === 'Escape') {
+                cancelEditValue();
+              }
+            });
+            input.addEventListener('blur', () => {
+              saveEditValue(index);
+            });
           }
         });
       } else {
-        currentInput.value += operator;
+        tagSpan.innerHTML = `
+          <span class="tag-content">
+            <span class="tag-field">${tag.field}</span>
+            <span class="tag-operator">${tag.operatorDisplay}</span>
+            <span class="tag-value">${tag.value}</span>
+          </span>
+          <span class="tag-close" data-index="${index}">×</span>
+        `;
+      }
+    } else {
+      tagSpan.innerHTML = `<strong>${tag.logicalOp}</strong>`;
+    }
+    
+    editableContainer.value.appendChild(tagSpan);
+    editableContainer.value.appendChild(document.createTextNode(' '));
+  });
+}
+
+function setCursorToEnd() {
+  if (!editableContainer.value) return;
+  
+  const range = document.createRange();
+  const selection = window.getSelection();
+  range.selectNodeContents(editableContainer.value);
+  range.collapse(false);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function saveSelection() {
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    savedSelection.value = {
+      node: range.startContainer,
+      offset: range.startOffset
+    };
+    
+    // Also determine insert position between tags
+    determineInsertPosition();
+  }
+}
+
+function extractCurrentInput() {
+  if (!editableContainer.value) return;
+  
+  // Find all text nodes and combine them
+  let textContent = '';
+  editableContainer.value.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      textContent += node.textContent || '';
+    }
+  });
+  
+  currentInput.value = textContent.trim();
+}
+
+function getCurrentTextAtCursor(): string {
+  if (!editableContainer.value) return '';
+  
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return currentInput.value;
+  
+  const range = selection.getRangeAt(0);
+  const node = range.startContainer;
+  
+  // If we're in a text node, return its content
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent || '';
+  }
+  
+  return currentInput.value;
+}
+
+function replaceCurrentText(newText: string) {
+  if (!editableContainer.value) return;
+  
+  // Clear current text and insert new
+  editableContainer.value.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      node.textContent = '';
+    }
+  });
+  
+  // Insert new text
+  editableContainer.value.focus();
+  document.execCommand('insertText', false, newText);
+}
+
+function determineInsertPosition() {
+  if (!editableContainer.value) return;
+  
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    insertPosition.value = null;
+    return;
+  }
+  
+  const range = selection.getRangeAt(0);
+  const cursorNode = range.startContainer;
+  
+  // Find which position we're at by checking nodes before cursor
+  let position = 0;
+  let foundPosition = false;
+  
+  editableContainer.value.childNodes.forEach((node, index) => {
+    if (foundPosition) return;
+    
+    // Check if node is an element node (nodeType === 1)
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as HTMLElement;
+      
+      // If we found the cursor node
+      if (element === cursorNode || element.contains(cursorNode)) {
+        insertPosition.value = position;
+        foundPosition = true;
+      } else if (element.classList && (element.classList.contains('editable-tag') || element.classList.contains('editable-logical-tag'))) {
+        // Count tags before cursor
+        position++;
+      }
+    } else if (node === cursorNode) {
+      // Cursor is in a text node
+      insertPosition.value = position;
+      foundPosition = true;
+    }
+  });
+  
+  if (!foundPosition) {
+    // Cursor is at the end
+    insertPosition.value = searchTags.value.length;
+  }
+  
+  logger.debug('Determined insert position', { insertPosition: insertPosition.value, totalTags: searchTags.value.length });
+}
+
+function restoreSelection() {
+  if (!savedSelection.value || !editableContainer.value) return;
+  
+  try {
+    const range = document.createRange();
+    range.setStart(savedSelection.value.node!, savedSelection.value.offset);
+    range.collapse(true);
+    
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  } catch (e) {
+    // If restore fails, set cursor to end
+    setCursorToEnd();
+  }
+}
+
+function insertTextAtCursor(text: string) {
+  editableContainer.value?.focus();
+  
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    // No selection, append to end
+    currentInput.value += text;
+    renderContentEditable();
+    setCursorToEnd();
+    return;
+  }
+  
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  
+  // Insert text node
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  
+  // Move cursor after inserted text
+  range.setStartAfter(textNode);
+  range.setEndAfter(textNode);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  
+  // Update currentInput
+  let textContent = '';
+  editableContainer.value?.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      textContent += node.textContent || '';
+    }
+  });
+  currentInput.value = textContent.trim();
+}
+
+function handleContentEditableInput(event: Event) {
+  if (isComposing.value) return;
+  
+  const container = event.target as HTMLDivElement;
+  
+  // Always update position while typing
+  saveSelection();
+  
+  // Extract text content from all positions
+  extractCurrentInput();
+}
+
+function handleContentEditableKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (currentInput.value.trim()) {
+      parseAndAddTag();
+    }
+  } else if (event.key === 'Backspace') {
+    const selection = window.getSelection();
+    if (selection && selection.isCollapsed && selection.anchorOffset === 0) {
+      // At beginning of text, remove last tag
+      if (searchTags.value.length > 0) {
+        event.preventDefault();
+        removeTag(searchTags.value.length - 1);
       }
     }
   }
-
-  focusInput();
 }
+
+function handlePaste(event: ClipboardEvent) {
+  event.preventDefault();
+  const text = event.clipboardData?.getData('text/plain') || '';
+  
+  // Insert plain text at cursor
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(text));
+    range.collapse(false);
+  }
+  
+  currentInput.value = text;
+  handleContentEditableInput(event);
+}
+
+function handleContentEditableFocus() {
+  emit('focus');
+  renderContentEditable();
+}
+
+function handleContentEditableBlur() {
+  saveSelection();
+  emit('blur');
+}
+
+function handleContentEditableClick(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  
+  // Handle tag close button
+  if (target.classList.contains('tag-close')) {
+    const index = parseInt(target.dataset.index || '0');
+    removeTag(index);
+    return;
+  }
+  
+  // Handle double click on tag value
+  if (event.detail === 2) { // Double click
+    const valueElement = target.closest('.tag-value') as HTMLElement;
+    if (valueElement) {
+      const tagElement = valueElement.closest('.editable-tag') as HTMLElement;
+      if (tagElement) {
+        const index = parseInt(tagElement.dataset.tagIndex || '0');
+        startEditValue(index);
+        return;
+      }
+    }
+  }
+  
+  // Handle tag click
+  const tagElement = target.closest('.editable-tag, .editable-logical-tag') as HTMLElement;
+  if (tagElement) {
+    const index = parseInt(tagElement.dataset.tagIndex || '0');
+    handleTagClick(index);
+  }
+}
+
+// Watch for changes and re-render (only tags, not currentInput)
+watch(searchTags, () => {
+  nextTick(() => {
+    renderContentEditable();
+  });
+}, { deep: true });
+
+// Initial render
+onMounted(() => {
+  renderContentEditable();
+  // Set initial focus
+  if (editableContainer.value) {
+    editableContainer.value.focus();
+    setCursorToEnd();
+  }
+});
 
 defineExpose({
   addFieldToSearch, addOperatorToSearch, addLogicalOperator, focusInput, defaultLogicalOp,
@@ -903,35 +1308,52 @@ defineExpose({
 .search-tag-input {
   position: relative;
   width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .tag-input-container {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px 8px;
+  flex: 1;
+  display: block;
+  padding: 6px 8px;
   min-height: 44px;
   background-color: var(--theme--form--field--input--background);
   border: 1px solid var(--theme--form--field--input--border-color);
   border-radius: var(--theme--border-radius);
   cursor: text;
   transition: border-color 0.2s;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--theme--foreground);
+  outline: none;
 
   &:hover {
     border-color: var(--theme--form--field--input--border-color-hover);
   }
 
-  &:focus-within {
+  &:focus {
     border-color: var(--theme--primary);
+    outline: none;
+  }
+  
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: var(--theme--foreground-subdued);
+    pointer-events: none;
+    position: absolute;
   }
 }
 
 .tags-draggable {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 0; /* No gap, margins handled by individual elements */
   flex-wrap: wrap;
+}
+
+.tag-with-cursor {
+  display: inline-flex;
+  align-items: center;
 }
 
 .tag-input-container :deep(.search-tag) {
@@ -944,6 +1366,7 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   padding: 15px 10px;
+  margin: 0 4px;
 
 
 
@@ -1052,6 +1475,7 @@ defineExpose({
   background-color: var(--theme--form--field--input--background-subdued);
   border: 1px solid var(--theme--border-color);
   font-weight: 600;
+  margin: 0 4px;
 
   strong {
     color: var(--theme--primary);
@@ -1062,7 +1486,7 @@ defineExpose({
 }
 
 .default-logical-op {
-  margin-right: 4px;
+  margin: 0 4px;
   font-weight: 600;
   font-size: 11px;
   letter-spacing: 0.05em;
@@ -1095,11 +1519,133 @@ defineExpose({
   }
 }
 
+.position-input {
+  border: none !important;
+  background: none !important;
+  outline: none !important;
+  font-size: 14px;
+  color: var(--theme--foreground);
+  padding: 0;
+  margin: 0 4px;
+  box-shadow: none !important;
+  transition: width 0.15s ease;
+  
+  &::placeholder {
+    color: var(--theme--foreground-subdued);
+    opacity: 0.7;
+  }
+  
+  &:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Contenteditable tag styles */
+.tag-input-container {
+  :deep(.editable-tag),
+  :deep(.editable-logical-tag) {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    margin: 2px 6px;
+    border-radius: var(--theme--border-radius);
+    font-size: 13px;
+    line-height: 20px;
+    vertical-align: middle;
+    user-select: none;
+    white-space: nowrap;
+  }
+}
+
+  :deep(.editable-tag) {
+    background-color: var(--theme--primary-background);
+    border: 1px solid var(--theme--primary-subdued);
+    color: var(--theme--foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      border-color: var(--theme--primary);
+      background-color: var(--theme--primary-subdued);
+    }
+    
+    &.focused {
+      border-color: var(--theme--primary);
+      box-shadow: 0 0 0 2px var(--theme--primary-background), 0 0 0 4px var(--theme--primary);
+      background-color: var(--theme--primary-subdued);
+    }
+    
+    .tag-content {
+      display: inline-flex;
+      align-items: center;
+    }
+    
+    .tag-field {
+      font-weight: 600;
+      color: var(--theme--primary);
+    }
+    
+    .tag-operator {
+      color: var(--theme--foreground-subdued);
+      margin: 0 4px;
+    }
+    
+    .tag-value {
+      color: var(--theme--foreground);
+    }
+    
+    .tag-close {
+      margin-left: 8px;
+      padding: 0 4px;
+      cursor: pointer;
+      color: var(--theme--foreground-subdued);
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 1;
+      opacity: 0.6;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        color: var(--theme--danger);
+        opacity: 1;
+      }
+    }
+  }
+
+  :deep(.editable-logical-tag) {
+    background-color: var(--theme--form--field--input--background-subdued);
+    border: 1px solid var(--theme--border-color);
+    
+    strong {
+      color: var(--theme--primary);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+  }
+
+  :deep(.default-logical-op-inline) {
+    display: inline-block;
+    padding: 2px 6px;
+    margin: 2px 6px 2px 0;
+    background-color: var(--theme--info-background);
+    color: var(--theme--info);
+    border: 1px solid var(--theme--info);
+    border-radius: var(--theme--border-radius);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    vertical-align: middle;
+  }
+
 .input-icons {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
+  margin-left: 8px;
   flex-shrink: 0;
 
   .search-icon-wrapper {
@@ -1214,6 +1760,45 @@ defineExpose({
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Visual cursor styles */
+.cursor-indicator {
+  display: inline-block;
+  width: 2px;
+  height: 20px;
+  background-color: var(--theme--primary);
+  margin: 0 4px;
+  border-radius: 1px;
+  animation: cursor-blink 1s infinite;
+  transition: all 0.2s ease;
+
+  &.cursor-hovering {
+    opacity: 0.3;
+    animation: none;
+    background-color: var(--theme--primary-subdued);
+    transform: scaleY(0.8);
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% { 
+      opacity: 1;
+      transform: scaleY(1);
+    }
+    50% { 
+      opacity: 0.3;
+      transform: scaleY(0.95);
+    }
+  }
+}
+
+/* Adjust tag container for better cursor visibility */
+.tag-input-container {
+  cursor: text;
+  
+  &:hover .cursor-indicator {
+    animation-duration: 0.8s;
+  }
 }
 
 /* Tag edit popover styles */
