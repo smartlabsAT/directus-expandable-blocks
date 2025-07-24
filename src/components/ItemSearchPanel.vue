@@ -206,7 +206,7 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .search-container {
   padding: 16px;
   border-bottom: 1px solid var(--border-subdued);

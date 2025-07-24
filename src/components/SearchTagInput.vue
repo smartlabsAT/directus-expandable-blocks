@@ -11,17 +11,19 @@
       >
         {{ defaultLogicalOp }}
       </v-chip>
-      
-      <!-- Search Tags -->
-      <v-menu
-          v-for="(tag, index) in searchTags"
-          :key="index"
-          :model-value="editingTagIndex === index"
-          @update:model-value="(val) => editingTagIndex = val ? index : null"
-          :close-on-content-click="false"
-          placement="bottom"
+
+      <!-- Search Tags with Drag & Drop -->
+      <draggable
+          v-model="searchTags"
+          item-key="raw"
+          :animation="150"
+          :delay="50"
+          :delay-on-touch-only="true"
+          handle=".drag-handle"
+          @change="handleDragChange"
+          class="tags-draggable"
       >
-        <template #activator="{ toggle }">
+        <template #item="{ element: tag, index }">
           <v-chip
               x-small
               label
@@ -29,54 +31,42 @@
               :class="[
                 'search-tag', 
                 tag.type === 'logical' ? 'logical-tag' : '',
-                focusedTagIndex === index ? 'focused' : ''
+                focusedTagIndex === index ? 'focused' : '',
+                'draggable-tag'
               ]"
               @close="removeTag(index)"
               @click="handleTagClick(index)"
-              @dblclick="tag.type === 'search' && startEditTag(index)"
-              v-tooltip="tag.type === 'search' ? 'Click to focus, double-click to edit' : ''"
+              @dblclick="tag.type === 'search' && startEditValue(index)"
+              v-tooltip="tag.type === 'search' ? 'Click to focus • Double-click to edit value • Drag to reorder' : ''"
           >
+            <v-icon
+                name="drag_indicator"
+                x-small
+                class="drag-handle"
+                @click.stop
+            />
             <template v-if="tag.type === 'search'">
               <span class="tag-field">{{ tag.field }}</span>
               <span class="tag-operator">{{ tag.operatorDisplay }}</span>
-              <span class="tag-value">{{ tag.value }}</span>
+              <span v-if="editingValueIndex === index" class="tag-value-edit">
+                <input
+                    :ref="el => { if (el) editValueInputs[index] = el as HTMLInputElement }"
+                    v-model="editValue"
+                    @keyup.enter="saveEditValue(index)"
+                    @keyup.esc="cancelEditValue"
+                    @blur="saveEditValue(index)"
+                    @click.stop
+                    class="inline-edit-input"
+                />
+              </span>
+              <span v-else class="tag-value">{{ tag.value }}</span>
             </template>
             <template v-else-if="tag.type === 'logical'">
               <strong>{{ tag.logicalOp }}</strong>
             </template>
           </v-chip>
         </template>
-        
-        <div v-if="tag.type === 'search'" class="tag-edit-popover" @click.stop>
-          <div class="edit-section">
-            <label>Field:</label>
-            <v-select
-                v-model="editField"
-                :items="availableFieldItems"
-                placeholder="Select field"
-            />
-          </div>
-          <div class="edit-section">
-            <label>Operator:</label>
-            <v-select
-                v-model="editOperator"
-                :items="operatorItems"
-                placeholder="Select operator"
-            />
-          </div>
-          <div class="edit-section">
-            <label>Value:</label>
-            <v-input
-                v-model="editValue"
-                placeholder="Enter value"
-            />
-          </div>
-          <div class="edit-actions">
-            <v-button x-small secondary @click="cancelEdit">Cancel</v-button>
-            <v-button x-small @click="saveEdit(index)">Save</v-button>
-          </div>
-        </div>
-      </v-menu>
+      </draggable>
 
       <!-- Input Field -->
       <input
@@ -95,22 +85,22 @@
       <div class="input-icons">
         <!-- Search icon with result count badge -->
         <div class="search-icon-wrapper">
-          <v-progress-circular v-if="loading" indeterminate x-small />
-          <v-icon v-else name="search" />
-          
+          <v-progress-circular v-if="loading" indeterminate x-small/>
+          <v-icon v-else name="search"/>
+
           <!-- Result count badge -->
           <div v-if="showHelp && totalItems !== null && totalItems !== undefined && totalItems > 0" class="result-count-badge">
             {{ totalItems > 999 ? '999+' : totalItems }}
           </div>
         </div>
-        
+
         <v-icon
             v-if="searchTags.length > 0 || currentInput"
             name="close"
             clickable
             @click="clearAll"
         />
-        
+
         <v-icon
             name="help_outline"
             clickable
@@ -130,7 +120,7 @@
             :class="{ active: selectedSuggestionIndex === index }"
             @click="selectSuggestion(suggestion)"
         >
-          <v-icon name="text_fields" x-small />
+          <v-icon name="text_fields" x-small/>
           <span class="suggestion-field">{{ suggestion.field }}</span>
           <span class="suggestion-hint">{{ suggestion.type }}</span>
         </div>
@@ -142,9 +132,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
+import draggable from 'vuedraggable';
 
 // Create scoped logger for this component
 const logger = createScopedLogger('SearchTagInput');
+
 
 interface SearchTag {
   type: 'search' | 'logical';
@@ -156,10 +148,12 @@ interface SearchTag {
   raw: string;
 }
 
+
 interface Suggestion {
   field: string;
   type: string;
 }
+
 
 interface Props {
   modelValue: string;
@@ -170,11 +164,9 @@ interface Props {
   totalItems?: number | null;
 }
 
+
 const props = withDefaults(defineProps<Props>(), {
-  placeholder: 'Search items...',
-  loading: false,
-  showHelp: false,
-  availableFields: () => []
+  placeholder: 'Search items...', loading: false, showHelp: false, availableFields: () => [],
 });
 
 const emit = defineEmits<{
@@ -193,32 +185,31 @@ const searchTags = ref<SearchTag[]>([]);
 const showAutocomplete = ref(false);
 const selectedSuggestionIndex = ref(-1);
 
-// Edit popover state
-const editingTagIndex = ref<number | null>(null);
-const editField = ref('');
-const editOperator = ref('');
+// Edit state
+const editingValueIndex = ref<number | null>(null);
 const editValue = ref('');
+const editValueInputs = ref<HTMLInputElement[]>([]);
 
 // Focus state
 const focusedTagIndex = ref<number | null>(null);
 
 // Operator mappings
 const operators = {
-  '=%': { display: ' contains ', filter: '_contains' },
-  '!~': { display: ' not contains ', filter: '_ncontains' },
-  '=': { display: ' = ', filter: '_eq' },
-  '~': { display: ' ~ ', filter: '_contains' },
-  '!=': { display: ' ≠ ', filter: '_neq' },
-  '>': { display: ' > ', filter: '_gt' },
-  '<': { display: ' < ', filter: '_lt' },
-  '>=': { display: ' ≥ ', filter: '_gte' },
-  '<=': { display: ' ≤ ', filter: '_lte' },
-  '^': { display: ' starts with ', filter: '_starts_with' },
-  '$': { display: ' ends with ', filter: '_ends_with' },
-  'empty': { display: ' is empty ', filter: '_empty' },
-  '!empty': { display: ' not empty ', filter: '_nempty' },
-  'null': { display: ' is null ', filter: '_null' },
-  '!null': { display: ' not null ', filter: '_nnull' }
+  '=%': {display: ' contains ', filter: '_contains'},
+  '!~': {display: ' not contains ', filter: '_ncontains'},
+  '=': {display: ' = ', filter: '_eq'},
+  '~': {display: ' ~ ', filter: '_contains'},
+  '!=': {display: ' ≠ ', filter: '_neq'},
+  '>': {display: ' > ', filter: '_gt'},
+  '<': {display: ' < ', filter: '_lt'},
+  '>=': {display: ' ≥ ', filter: '_gte'},
+  '<=': {display: ' ≤ ', filter: '_lte'},
+  '^': {display: ' starts with ', filter: '_starts_with'},
+  '$': {display: ' ends with ', filter: '_ends_with'},
+  'empty': {display: ' is empty ', filter: '_empty'},
+  '!empty': {display: ' not empty ', filter: '_nempty'},
+  'null': {display: ' is null ', filter: '_null'},
+  '!null': {display: ' not null ', filter: '_nnull'},
 };
 
 // Sort operators by length (longest first) to avoid conflicts
@@ -234,29 +225,15 @@ const suggestions = computed((): Suggestion[] => {
   return props.availableFields
       .filter(field => field.field.toLowerCase().includes(input))
       .map(field => ({
-        field: field.field,
-        type: field.type || 'text'
+        field: field.field, type: field.type || 'text',
       }))
       .slice(0, 5);
 });
 
-const availableFieldItems = computed(() => {
-  return props.availableFields.map(field => ({
-    text: field.name || field.field,
-    value: field.field
-  }));
-});
-
-const operatorItems = computed(() => {
-  return Object.entries(operators).map(([key, config]) => ({
-    text: `${key} - ${config.display.trim()}`,
-    value: key
-  }));
-});
 
 const searchQuery = computed(() => {
   const parts: string[] = [];
-  
+
   searchTags.value.forEach(tag => {
     if (tag.type === 'search') {
       parts.push(tag.raw);
@@ -264,11 +241,11 @@ const searchQuery = computed(() => {
       parts.push(tag.logicalOp || '');
     }
   });
-  
+
   if (currentInput.value) {
     parts.push(currentInput.value);
   }
-  
+
   return parts.join(' ');
 });
 
@@ -304,8 +281,8 @@ function focusInput() {
 }
 
 function handleContainerClick(event: MouseEvent) {
-  // Don't focus input if clicking inside the popover
-  if (editingTagIndex.value !== null) {
+  // Don't focus input if editing value inline
+  if (editingValueIndex.value !== null) {
     return;
   }
   focusInput();
@@ -315,8 +292,8 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault();
     if (focusedTagIndex.value !== null) {
-      // Enter on focused tag opens edit popup
-      startEditTag(focusedTagIndex.value);
+      // Enter on focused tag starts inline value editing
+      startEditValue(focusedTagIndex.value);
     } else if (selectedSuggestionIndex.value >= 0) {
       selectSuggestion(suggestions.value[selectedSuggestionIndex.value]);
     } else {
@@ -354,10 +331,7 @@ function handleKeydown(event: KeyboardEvent) {
     }
   } else if (event.key === 'ArrowDown') {
     event.preventDefault();
-    selectedSuggestionIndex.value = Math.min(
-        selectedSuggestionIndex.value + 1,
-        suggestions.value.length - 1
-    );
+    selectedSuggestionIndex.value = Math.min(selectedSuggestionIndex.value + 1, suggestions.value.length - 1);
   } else if (event.key === 'ArrowUp') {
     event.preventDefault();
     selectedSuggestionIndex.value = Math.max(selectedSuggestionIndex.value - 1, -1);
@@ -391,16 +365,14 @@ function parseAndAddTag() {
     currentInput.value = '';
     return;
   }
-  
+
   // If we have a default logical operator and this is not the first tag,
   // add the logical operator before the new tag
   if (defaultLogicalOp.value && searchTags.value.length > 0) {
     const lastTag = searchTags.value[searchTags.value.length - 1];
     if (lastTag.type !== 'logical') {
       const logicalTag: SearchTag = {
-        type: 'logical',
-        logicalOp: defaultLogicalOp.value,
-        raw: defaultLogicalOp.value
+        type: 'logical', logicalOp: defaultLogicalOp.value, raw: defaultLogicalOp.value,
       };
       searchTags.value.push(logicalTag);
     }
@@ -411,18 +383,13 @@ function parseAndAddTag() {
     const config = operators[op];
     const regex = new RegExp(`^([^${op}]+)${op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(.+)$`);
     const match = input.match(regex);
-    
+
     if (match) {
       const [, field, value] = match;
       const tag: SearchTag = {
-        type: 'search',
-        field: field.trim(),
-        operator: op,
-        operatorDisplay: config.display,
-        value: value.trim(),
-        raw: input
+        type: 'search', field: field.trim(), operator: op, operatorDisplay: config.display, value: value.trim(), raw: input,
       };
-      
+
       searchTags.value.push(tag);
       emit('tag-added', tag);
       currentInput.value = '';
@@ -433,14 +400,9 @@ function parseAndAddTag() {
 
   // If no operator found, treat as general search
   const tag: SearchTag = {
-    type: 'search',
-    field: '',
-    operator: '',
-    operatorDisplay: '',
-    value: input,
-    raw: input
+    type: 'search', field: '', operator: '', operatorDisplay: '', value: input, raw: input,
   };
-  
+
   searchTags.value.push(tag);
   emit('tag-added', tag);
   currentInput.value = '';
@@ -450,7 +412,7 @@ function parseAndAddTag() {
 function removeTag(index: number) {
   const removed = searchTags.value.splice(index, 1)[0];
   emit('tag-removed', removed, index);
-  
+
   // Adjust focused index if needed
   if (focusedTagIndex.value !== null) {
     if (focusedTagIndex.value === index) {
@@ -459,7 +421,7 @@ function removeTag(index: number) {
       focusedTagIndex.value--;
     }
   }
-  
+
   updateModelValue();
 }
 
@@ -470,40 +432,44 @@ function clearAll() {
   updateModelValue();
 }
 
-function startEditTag(index: number) {
+function startEditValue(index: number) {
   const tag = searchTags.value[index];
   if (tag.type === 'search') {
-    editField.value = tag.field || '';
-    editOperator.value = tag.operator || '';
     editValue.value = tag.value || '';
-    editingTagIndex.value = index;
-    
-    // Blur the main input to allow focus in popover
-    if (inputRef.value) {
-      inputRef.value.blur();
-    }
+    editingValueIndex.value = index;
+
+    // Focus the inline input after Vue updates
+    nextTick(() => {
+      const input = editValueInputs.value[index];
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
   }
 }
 
-function saveEdit(index: number) {
+function saveEditValue(index: number) {
   const tag = searchTags.value[index];
-  if (tag.type === 'search' && editField.value && editOperator.value) {
-    tag.field = editField.value;
-    tag.operator = editOperator.value;
-    tag.operatorDisplay = operators[editOperator.value]?.display || editOperator.value;
+  if (tag.type === 'search') {
     tag.value = editValue.value;
-    tag.raw = `${editField.value}${editOperator.value}${editValue.value}`;
-    
+    tag.raw = `${tag.field}${tag.operator}${editValue.value}`;
+
+    editingValueIndex.value = null;
     updateModelValue();
-    editingTagIndex.value = null;
   }
 }
 
-function cancelEdit() {
-  editingTagIndex.value = null;
-  editField.value = '';
-  editOperator.value = '';
+function cancelEditValue() {
+  editingValueIndex.value = null;
   editValue.value = '';
+}
+
+function handleDragChange() {
+  // Update model value after drag reorder
+  updateModelValue();
+  // Reset focused tag index as positions have changed
+  focusedTagIndex.value = null;
 }
 
 function updateModelValue() {
@@ -513,16 +479,16 @@ function updateModelValue() {
 function parseExistingQuery(query: string) {
   // Parse existing query into tags
   searchTags.value = [];
-  
+
   if (!query) {
     currentInput.value = '';
     return;
   }
-  
+
   // Split by spaces but keep AND/OR as separate tokens
   const tokens = query.split(/\s+/);
   let pendingInput = '';
-  
+
   for (const token of tokens) {
     if (token === 'AND' || token === 'OR') {
       // First add any pending input as a search tag
@@ -534,9 +500,7 @@ function parseExistingQuery(query: string) {
         const lastTag = searchTags.value[searchTags.value.length - 1];
         if (lastTag.type !== 'logical') {
           searchTags.value.push({
-            type: 'logical',
-            logicalOp: token as 'AND' | 'OR',
-            raw: token
+            type: 'logical', logicalOp: token as 'AND' | 'OR', raw: token,
           });
         }
       }
@@ -545,7 +509,7 @@ function parseExistingQuery(query: string) {
       pendingInput += (pendingInput ? ' ' : '') + token;
     }
   }
-  
+
   // Set any remaining input
   currentInput.value = pendingInput;
 }
@@ -553,24 +517,24 @@ function parseExistingQuery(query: string) {
 // Helper functions for intelligent replacement
 function getFieldAtCursor(): { field: string; start: number; end: number; hasOperator?: boolean } | null {
   if (!inputRef.value) return null;
-  
+
   const cursorPos = inputRef.value.selectionStart || 0;
   const text = currentInput.value;
-  
+
   // Find word boundaries around cursor
   let start = cursorPos;
   let end = cursorPos;
-  
+
   // Find start of field (go back until we hit space or start)
   while (start > 0 && /\w/.test(text[start - 1])) {
     start--;
   }
-  
+
   // Find end of field (go forward until we hit operator or end)
   while (end < text.length && /\w/.test(text[end])) {
     end++;
   }
-  
+
   // Check if we found a field
   if (start < end) {
     // Check if there's an operator after the field
@@ -581,41 +545,36 @@ function getFieldAtCursor(): { field: string; start: number; end: number; hasOpe
         break;
       }
     }
-    
+
     return {
-      field: text.substring(start, end),
-      start,
-      end,
-      hasOperator
+      field: text.substring(start, end), start, end, hasOperator,
     };
   }
-  
+
   return null;
 }
 
 function getOperatorAfterPosition(position: number): { operator: string; start: number; end: number } | null {
   const text = currentInput.value;
-  
+
   // Check all operators to see if any starts at this position (longest first)
   for (const op of sortedOperators) {
     if (text.substring(position, position + op.length) === op) {
       return {
-        operator: op,
-        start: position,
-        end: position + op.length
+        operator: op, start: position, end: position + op.length,
       };
     }
   }
-  
+
   return null;
 }
 
 function getOperatorBeforeCursor(): { operator: string; start: number; end: number } | null {
   if (!inputRef.value) return null;
-  
+
   const cursorPos = inputRef.value.selectionStart || 0;
   const text = currentInput.value;
-  
+
   // Check if cursor is right after an operator
   for (const op of sortedOperators) {
     const opLength = op.length;
@@ -623,14 +582,12 @@ function getOperatorBeforeCursor(): { operator: string; start: number; end: numb
       const possibleOp = text.substring(cursorPos - opLength, cursorPos);
       if (possibleOp === op) {
         return {
-          operator: op,
-          start: cursorPos - opLength,
-          end: cursorPos
+          operator: op, start: cursorPos - opLength, end: cursorPos,
         };
       }
     }
   }
-  
+
   return null;
 }
 
@@ -638,26 +595,24 @@ function getFieldBeforeOperator(operatorStart: number): { field: string; start: 
   const text = currentInput.value;
   let end = operatorStart;
   let start = end;
-  
+
   // Skip any whitespace before operator
   while (start > 0 && /\s/.test(text[start - 1])) {
     start--;
   }
   end = start;
-  
+
   // Find start of field
   while (start > 0 && /\w/.test(text[start - 1])) {
     start--;
   }
-  
+
   if (start < end) {
     return {
-      field: text.substring(start, end),
-      start,
-      end
+      field: text.substring(start, end), start, end,
     };
   }
-  
+
   return null;
 }
 
@@ -676,7 +631,7 @@ function replaceFieldInFocusedTag(newField: string) {
       // Update the tag with new field
       tag.field = newField;
       tag.raw = `${newField}${tag.operator}${tag.value}`;
-      
+
       // Keep focus on the same tag
       // Optionally move to next tag
       // focusedTagIndex.value = null;
@@ -684,29 +639,42 @@ function replaceFieldInFocusedTag(newField: string) {
   }
 }
 
+// Handle operator replacement when a tag is focused
+function replaceOperatorInFocusedTag(newOperator: string) {
+  if (focusedTagIndex.value !== null && searchTags.value[focusedTagIndex.value]) {
+    const tag = searchTags.value[focusedTagIndex.value];
+    if (tag.type === 'search') {
+      // Update the tag with new operator
+      tag.operator = newOperator;
+      tag.operatorDisplay = operators[newOperator]?.display || newOperator;
+      tag.raw = `${tag.field}${newOperator}${tag.value}`;
+
+      // Keep focus on the same tag
+    }
+  }
+}
+
 function getOperatorAtCursor(): { operator: string; start: number; end: number } | null {
   if (!inputRef.value) return null;
-  
+
   const cursorPos = inputRef.value.selectionStart || 0;
   const text = currentInput.value;
-  
+
   // Check all operators (longest first)
   for (const op of sortedOperators) {
     // Check if operator is at or just before cursor
     const opLength = op.length;
-    
+
     // Check if cursor is right after operator
     if (cursorPos >= opLength) {
       const possibleOp = text.substring(cursorPos - opLength, cursorPos);
       if (possibleOp === op) {
         return {
-          operator: op,
-          start: cursorPos - opLength,
-          end: cursorPos
+          operator: op, start: cursorPos - opLength, end: cursorPos,
         };
       }
     }
-    
+
     // Check if cursor is within operator
     for (let i = 0; i < opLength; i++) {
       const start = cursorPos - i;
@@ -714,15 +682,13 @@ function getOperatorAtCursor(): { operator: string; start: number; end: number }
         const possibleOp = text.substring(start, start + opLength);
         if (possibleOp === op) {
           return {
-            operator: op,
-            start,
-            end: start + opLength
+            operator: op, start, end: start + opLength,
           };
         }
       }
     }
   }
-  
+
   return null;
 }
 
@@ -734,7 +700,7 @@ function addFieldToSearch(field: string) {
     updateModelValue();
     return;
   }
-  
+
   // First check if cursor is right after an operator
   const operatorBeforeCursor = getOperatorBeforeCursor();
   if (operatorBeforeCursor) {
@@ -745,7 +711,7 @@ function addFieldToSearch(field: string) {
       const before = currentInput.value.substring(0, fieldBeforeOp.start);
       const after = currentInput.value.substring(operatorBeforeCursor.end);
       currentInput.value = before + field + operatorBeforeCursor.operator + after;
-      
+
       // Set cursor after the operator
       nextTick(() => {
         if (inputRef.value) {
@@ -757,19 +723,19 @@ function addFieldToSearch(field: string) {
       return;
     }
   }
-  
+
   // Original logic for other cases
   const fieldInfo = getFieldAtCursor();
-  
+
   if (fieldInfo) {
     // Replace existing field
     const before = currentInput.value.substring(0, fieldInfo.start);
     const after = currentInput.value.substring(fieldInfo.end);
-    
+
     // Only add = if there's no operator already
     const needsOperator = !fieldInfo.hasOperator;
     currentInput.value = before + field + (needsOperator ? '=' : '') + after;
-    
+
     // Set cursor after the field (and = if added)
     nextTick(() => {
       if (inputRef.value) {
@@ -783,11 +749,11 @@ function addFieldToSearch(field: string) {
       const cursorPos = inputRef.value.selectionStart || currentInput.value.length;
       const before = currentInput.value.substring(0, cursorPos);
       const after = currentInput.value.substring(cursorPos);
-      
+
       // Add space if needed
       const prefix = before.length > 0 && !before.endsWith(' ') ? ' ' : '';
       currentInput.value = before + prefix + field + '=' + after;
-      
+
       // Set cursor after the =
       nextTick(() => {
         if (inputRef.value) {
@@ -799,7 +765,7 @@ function addFieldToSearch(field: string) {
       currentInput.value = field + '=';
     }
   }
-  
+
   focusInput();
 }
 
@@ -807,8 +773,8 @@ function addFieldToSearch(field: string) {
 const defaultLogicalOp = ref<'AND' | 'OR' | null>(null);
 
 function addLogicalOperator(op: 'AND' | 'OR') {
-  logger.debug('addLogicalOperator called', { op, currentTags: searchTags.value });
-  
+  logger.debug('addLogicalOperator called', {op, currentTags: searchTags.value});
+
   // If no tags yet, set as default for next operation
   if (searchTags.value.length === 0) {
     if (defaultLogicalOp.value === op) {
@@ -817,15 +783,15 @@ function addLogicalOperator(op: 'AND' | 'OR') {
     } else {
       defaultLogicalOp.value = op;
     }
-    logger.debug('Set default logical operator', { defaultLogicalOp: defaultLogicalOp.value });
-    
+    logger.debug('Set default logical operator', {defaultLogicalOp: defaultLogicalOp.value});
+
     // Clear input and focus
     currentInput.value = '';
     focusInput();
     updateModelValue();
     return;
   }
-  
+
   const lastTag = searchTags.value[searchTags.value.length - 1];
   if (lastTag.type === 'logical') {
     // Replace existing logical operator
@@ -834,33 +800,38 @@ function addLogicalOperator(op: 'AND' | 'OR') {
     updateModelValue();
     return;
   }
-  
+
   // Add logical operator tag
   const tag: SearchTag = {
-    type: 'logical',
-    logicalOp: op,
-    raw: op
+    type: 'logical', logicalOp: op, raw: op,
   };
-  
-  logger.debug('Adding logical tag', { tag });
+
+  logger.debug('Adding logical tag', {tag});
   searchTags.value.push(tag);
   updateModelValue();
   focusInput();
 }
 
 function addOperatorToSearch(operator: string) {
+  // If a tag is focused, replace its operator
+  if (focusedTagIndex.value !== null) {
+    replaceOperatorInFocusedTag(operator);
+    updateModelValue();
+    return;
+  }
+
   // First check if cursor is within a field
   const fieldInfo = getFieldAtCursor();
   if (fieldInfo) {
     // Cursor is in a field, so we want to add/replace operator after the field
     const operatorAfterField = getOperatorAfterPosition(fieldInfo.end);
-    
+
     if (operatorAfterField) {
       // Replace existing operator after field
       const before = currentInput.value.substring(0, operatorAfterField.start);
       const after = currentInput.value.substring(operatorAfterField.end);
       currentInput.value = before + operator + after;
-      
+
       // Set cursor after the operator
       nextTick(() => {
         if (inputRef.value) {
@@ -873,7 +844,7 @@ function addOperatorToSearch(operator: string) {
       const before = currentInput.value.substring(0, fieldInfo.end);
       const after = currentInput.value.substring(fieldInfo.end);
       currentInput.value = before + operator + after;
-      
+
       // Set cursor after the operator
       nextTick(() => {
         if (inputRef.value) {
@@ -885,13 +856,13 @@ function addOperatorToSearch(operator: string) {
   } else {
     // Not in a field, check if cursor is at an operator
     const operatorInfo = getOperatorAtCursor();
-    
+
     if (operatorInfo) {
       // Replace existing operator
       const before = currentInput.value.substring(0, operatorInfo.start);
       const after = currentInput.value.substring(operatorInfo.end);
       currentInput.value = before + operator + after;
-      
+
       // Set cursor after the operator
       nextTick(() => {
         if (inputRef.value) {
@@ -906,7 +877,7 @@ function addOperatorToSearch(operator: string) {
         const before = currentInput.value.substring(0, cursorPos);
         const after = currentInput.value.substring(cursorPos);
         currentInput.value = before + operator + after;
-        
+
         // Set cursor after the operator
         nextTick(() => {
           if (inputRef.value) {
@@ -919,16 +890,12 @@ function addOperatorToSearch(operator: string) {
       }
     }
   }
-  
+
   focusInput();
 }
 
 defineExpose({
-  addFieldToSearch,
-  addOperatorToSearch,
-  addLogicalOperator,
-  focusInput,
-  defaultLogicalOp
+  addFieldToSearch, addOperatorToSearch, addLogicalOperator, focusInput, defaultLogicalOp,
 });
 </script>
 
@@ -960,43 +927,121 @@ defineExpose({
   }
 }
 
-.search-tag {
+.tags-draggable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tag-input-container :deep(.search-tag) {
   max-width: 200px;
   height: 24px;
   background-color: var(--theme--primary-background);
   border: 1px solid var(--theme--primary-subdued);
   cursor: pointer;
   transition: all 0.2s ease;
-  
+  display: inline-flex;
+  align-items: center;
+  padding: 15px 10px;
+
+
+
+  &.sortable-ghost {
+    opacity: 0.4;
+  }
+
+  &.sortable-drag {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  .drag-handle {
+    margin-right: 4px;
+    cursor: grab;
+    color: var(--theme--foreground-subdued);
+    opacity: 0.5;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+
+
+  }
+
+
   &.focused {
     border-color: var(--theme--primary);
     box-shadow: 0 0 0 2px var(--theme--primary-background), 0 0 0 4px var(--theme--primary);
     background-color: var(--theme--primary-subdued);
   }
-  
+
   &:hover:not(.focused) {
     border-color: var(--theme--primary-alt);
     background-color: var(--theme--primary-subdued);
+
+    .drag-handle {
+      opacity: 0.8;
+    }
   }
-  
+
+  &:hover {
+    .close-outline {
+      display: block;
+      background: none !important;
+      position: absolute;
+      right: 0;
+      top: -10px;
+      cursor: pointer;
+    }
+
+
+  }
+
+
+  .chip-content {
+    position: relative;
+  }
+
   .tag-field {
     font-weight: 600;
     color: var(--theme--primary);
   }
-  
+
   .tag-operator {
     color: var(--theme--foreground-subdued);
     margin: 0 2px;
   }
-  
+
+
+  .close-outline {
+    background-color: green !important;
+    display: none;
+  }
+
+
+
   .tag-value {
     color: var(--theme--foreground);
+  }
+
+
+  .tag-value-edit {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+    max-width: 100px;
+    overflow: hidden;
   }
 
   :deep(.v-icon) {
     margin-left: 4px;
     color: var(--theme--foreground-subdued);
-    
+
     &:hover {
       color: var(--theme--danger);
     }
@@ -1007,7 +1052,7 @@ defineExpose({
   background-color: var(--theme--form--field--input--background-subdued);
   border: 1px solid var(--theme--border-color);
   font-weight: 600;
-  
+
   strong {
     color: var(--theme--primary);
     text-transform: uppercase;
@@ -1022,13 +1067,13 @@ defineExpose({
   font-size: 11px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  
+
   &.and-op {
     background-color: var(--theme--success-background);
     color: var(--theme--success);
     border: 1px solid var(--theme--success);
   }
-  
+
   &.or-op {
     background-color: var(--theme--info-background);
     color: var(--theme--info);
@@ -1044,7 +1089,7 @@ defineExpose({
   outline: none;
   font-size: 14px;
   color: var(--theme--foreground);
-  
+
   &::placeholder {
     color: var(--theme--foreground-subdued);
   }
@@ -1056,12 +1101,12 @@ defineExpose({
   gap: 8px;
   margin-left: auto;
   flex-shrink: 0;
-  
+
   .search-icon-wrapper {
     position: relative;
     display: flex;
     align-items: center;
-    
+
     .result-count-badge {
       position: absolute;
       top: -8px;
@@ -1082,19 +1127,39 @@ defineExpose({
       z-index: 1;
     }
   }
-  
+
   .v-icon {
     color: var(--theme--foreground-subdued);
     cursor: pointer;
     transition: transform 0.2s;
-    
+
     &:hover {
       color: var(--theme--foreground);
     }
-    
+
     &.rotated {
       transform: rotate(180deg);
     }
+  }
+}
+
+.inline-edit-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--theme--foreground);
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0;
+  margin: 0;
+  min-width: 20px;
+  max-width: 100px;
+  width: auto;
+
+  &:focus {
+    outline: none;
+    border: none;
+    box-shadow: none;
   }
 }
 
@@ -1120,21 +1185,21 @@ defineExpose({
   padding: 8px 12px;
   cursor: pointer;
   transition: background-color 0.2s;
-  
+
   &:hover,
   &.active {
     background-color: var(--theme--form--field--input--background-subdued);
   }
-  
+
   .v-icon {
     color: var(--theme--foreground-subdued);
   }
-  
+
   .suggestion-field {
     flex: 1;
     font-weight: 500;
   }
-  
+
   .suggestion-hint {
     font-size: 12px;
     color: var(--theme--foreground-subdued);
@@ -1157,14 +1222,14 @@ defineExpose({
   min-width: 280px;
   background: var(--theme--background);
   border-radius: var(--theme--border-radius);
-  
+
   .edit-section {
     margin-bottom: 12px;
-    
+
     &:last-child {
       margin-bottom: 16px;
     }
-    
+
     label {
       display: block;
       margin-bottom: 4px;
@@ -1175,7 +1240,7 @@ defineExpose({
       letter-spacing: 0.05em;
     }
   }
-  
+
   .edit-actions {
     display: flex;
     gap: 8px;

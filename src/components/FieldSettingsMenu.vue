@@ -1,5 +1,5 @@
 <template>
-  <v-menu placement="bottom-end" show-arrow :close-on-content-click="false">
+  <v-menu placement="bottom-end" show-arrow :close-on-content-click="false" >
     <template #activator="{ toggle }">
       <v-button
           v-tooltip.bottom="'Display Settings'"

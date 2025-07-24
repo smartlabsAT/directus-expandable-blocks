@@ -1206,3 +1206,11 @@ $expanded-border-width: 5px;
     box-shadow: 0 0 0 2px var(--background-normal);
   }
 }
+
+.close-outline {
+  background: red !important;
+  border-left: 1px dashed gray;
+  padding-left: 1px;
+  border-radius: 0 var(--theme--border-radius) var(--theme--border-radius) 0;
+  right: -10px;
+}
