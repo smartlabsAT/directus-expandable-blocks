@@ -38,7 +38,7 @@
     <v-chip x-small outline class="collection-chip">
       {{ collectionName }}
     </v-chip>
-    <!-- Usage Indicator -->
+    <!-- Usage Indicator or Placeholder -->
     <v-chip
       v-if="usageCount && usageCount > 0"
       x-small
@@ -48,6 +48,10 @@
       <v-icon name="link" x-small />
       {{ usageCount }}
     </v-chip>
+    <div
+      v-else-if="hasAnyUsageIndicator"
+      class="usage-placeholder"
+    />
 
     <!-- Status Display -->
     <slot name="status" />
@@ -95,6 +99,7 @@ interface Props {
     externalCount: number;
     internalCount: number;
   };
+  hasAnyUsageIndicator?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -133,5 +138,10 @@ const usageTooltip = computed(() => {
   }
 }
 
-
+.usage-placeholder {
+  display: inline-block;
+  width: 45px; /* Adjust based on typical usage indicator width */
+  height: 24px; /* Same height as v-chip x-small */
+  margin-left: 0px;
+}
 </style>

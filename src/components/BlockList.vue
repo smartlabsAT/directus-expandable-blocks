@@ -35,6 +35,7 @@
               :is-expanded="expandedItems.includes(getItemId(item))"
               :usage-count="getBlockUsageData(item)?.usageCount || 0"
               :usage-data="getBlockUsageData(item)"
+              :has-any-usage-indicator="hasAnyUsageIndicator"
               @toggle-expand="$emit('toggle-expand', getItemId(item))"
             >
               <template #status>
@@ -145,5 +146,15 @@ const hasNestedM2A = (item: JunctionRecord) => props.expandableBlocks.hasNestedM
 const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFields(item);
 const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
 const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBlockUsageData(item);
+
+// Check if any block has usage indicators
+const hasAnyUsageIndicator = computed(() => {
+  if (!props.modelValue || props.modelValue.length === 0) return false;
+  
+  return props.modelValue.some(item => {
+    const usageData = getBlockUsageData(item);
+    return usageData && usageData.usageCount > 0;
+  });
+});
 </script>
 
