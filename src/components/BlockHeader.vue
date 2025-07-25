@@ -35,18 +35,18 @@
       <span v-if="showItemId && !isNew" class="item-id">
         ID: {{ itemId }}
       </span>
-      
-      <!-- Usage Indicator -->
-      <v-chip
-        v-if="usageCount && usageCount > 0"
-        x-small
-        class="usage-indicator"
-        v-tooltip="usageTooltip"
-      >
-        <v-icon name="link" x-small />
-        {{ usageCount }}
-      </v-chip>
     </div>
+
+    <!-- Usage Indicator -->
+    <v-chip
+      v-if="usageCount && usageCount > 0"
+      x-small
+      class="usage-indicator"
+      v-tooltip="usageTooltip"
+    >
+      <v-icon name="link" x-small />
+      {{ usageCount }}
+    </v-chip>
 
     <!-- Status Display -->
     <slot name="status" />
