@@ -98,6 +98,23 @@ export default defineInterface({
     
     // Base options that are always available
     const baseOptions: any[] = [
+      // Display Options Group
+      {
+        field: 'display_divider',
+        name: 'Display Options',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'visibility',
+            color: '#00C897',
+            title: 'Display Options',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      },
       {
         field: 'enableSorting',
         name: 'Enable Sorting',
@@ -214,6 +231,24 @@ export default defineInterface({
         }
       },
       */
+      
+      // Permissions Group
+      {
+        field: 'permissions_divider',
+        name: 'Permissions',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'lock',
+            color: '#FFA439',
+            title: 'Permissions & Actions',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      },
       {
         field: 'isAllowedDelete',
         name: 'Allow Delete',
@@ -246,6 +281,24 @@ export default defineInterface({
           default_value: true
         }
       },
+      
+      // Limits & Restrictions Group
+      {
+        field: 'limits_divider',
+        name: 'Limits & Restrictions',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'rule',
+            color: '#E35169',
+            title: 'Limits & Restrictions',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      },
       {
         field: 'maxBlocks',
         name: 'Maximum Blocks',
@@ -267,6 +320,24 @@ export default defineInterface({
 
     // Only show allowed collections option if M2A is already configured
     if (!isNewField) {
+      // Collection Configuration Group
+      baseOptions.push({
+        field: 'collections_divider',
+        name: 'Collection Configuration',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'folder',
+            color: '#6644FF',
+            title: 'Collection Configuration',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
       baseOptions.push({
         field: 'allowedCollections',
         name: 'Allowed Collections',
