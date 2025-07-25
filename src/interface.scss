@@ -212,9 +212,12 @@ $expanded-border-width: 5px;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: absolute;
+  left: 50px;
 }
 
 .block-actions {
+  position: relative;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -920,6 +923,7 @@ $expanded-border-width: 5px;
 
 // Status display with nested styles
 .status-display {
+  width:80px;
   display: inline-flex;
   align-items: center;
   gap: 6px;

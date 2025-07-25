@@ -52,21 +52,26 @@
     <slot name="status" />
   </div>
 
+  <!-- Expand/Collapse Icon or Placeholder -->
+
   <!-- Right Section -->
   <div class="block-actions">
-    <!-- Expand/Collapse Icon or Placeholder -->
-    <div class="expand-icon-container">
-      <v-icon
-        v-if="isExpanded"
-        name="unfold_less"
-        class="expand-indicator"
-        @click.stop="$emit('toggle-expand')"
-      />
-    </div>
+
+
 
     <!-- More Options Menu -->
     <slot name="actions" />
+    <div class="expand-icon-container">
+      <v-icon
+          v-if="isExpanded"
+          name="unfold_less"
+          class="expand-indicator"
+          @click.stop="$emit('toggle-expand')"
+      />
+    </div>
   </div>
+
+
 </template>
 
 <script setup lang="ts">
@@ -126,4 +131,6 @@ const usageTooltip = computed(() => {
     color: var(--warning);
   }
 }
+
+
 </style>
