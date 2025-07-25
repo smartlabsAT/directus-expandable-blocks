@@ -283,6 +283,24 @@ export default defineInterface({
           default_value: null
         }
       });
+      
+      // Add allowed collections for existing blocks option
+      baseOptions.push({
+        field: 'allowedCollectionsForExisting',
+        name: 'Allowed Collections for Existing Blocks',
+        type: 'json',
+        meta: {
+          width: 'full',
+          interface: 'select-multiple-checkbox',
+          options: {
+            choices: allowedChoices
+          } as any,
+          note: 'Collections that can be linked or duplicated from existing items. Leave empty to use the same as "Allowed Collections".'
+        },
+        schema: {
+          default_value: null
+        }
+      });
     }
 
     return baseOptions;

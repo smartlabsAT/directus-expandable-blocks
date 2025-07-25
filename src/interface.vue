@@ -26,6 +26,7 @@
     <add-block-button
         :disabled="disabled"
         :collections="allowedCollections"
+        :collections-for-existing="allowedCollectionsForExisting"
         :can-add="canAddMoreBlocks"
         @add-item="addNewItem"
         @add-existing="itemSelector.open"
@@ -117,6 +118,7 @@ const {
   mergedOptions,
   availableStatuses,
   allowedCollections,
+  allowedCollectionsForExisting,
 
   // Computed
   sortable,

@@ -53,6 +53,7 @@ export function useExpandableBlocks(
   const relationInfo = ref<RelationInfo | null>(null);
   const m2aStructure = ref<M2AFieldInfo | null>(null);
   const allowedCollections = ref<CollectionInfo[]>([]);
+  const allowedCollectionsForExisting = ref<CollectionInfo[]>([]);
   const deleteDialog = ref(false);
   const itemToDelete = ref<{ item: JunctionRecord; index: number } | null>(null);
   const mergedOptions = ref<ExpandableBlocksOptions>({});
@@ -169,6 +170,7 @@ export function useExpandableBlocks(
     data: {
       relationInfo,
       allowedCollections,
+      allowedCollectionsForExisting,
       m2aStructure,
       values,
       initialValues
@@ -382,6 +384,7 @@ export function useExpandableBlocks(
     relationInfo,
     m2aStructure,
     allowedCollections,
+    allowedCollectionsForExisting,
     deleteDialog,
     itemToDelete,
     isInitialLoad,

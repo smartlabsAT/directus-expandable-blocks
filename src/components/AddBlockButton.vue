@@ -49,6 +49,7 @@
 
       <!-- Add Existing Button -->
       <v-menu
+        v-if="showAddExisting"
         placement="bottom"
         show-arrow
       >
@@ -66,7 +67,7 @@
 
         <v-list>
           <v-list-item
-            v-for="collection in collections"
+            v-for="collection in existingCollections"
             :key="collection.collection"
             clickable
             @click="$emit('add-existing', collection.collection)"
@@ -91,6 +92,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+
 interface Props {
   disabled: boolean;
   collections: Array<{
@@ -98,14 +101,29 @@ interface Props {
     name?: string;
     icon?: string;
   }>;
+  collectionsForExisting?: Array<{
+    collection: string;
+    name?: string;
+    icon?: string;
+  }>;
   canAdd: boolean;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 defineEmits<{
   'add-item': [collection: string];
   'add-existing': [collection: string];
 }>();
+
+// Use collectionsForExisting if provided, NO fallback
+const existingCollections = computed(() => {
+  return props.collectionsForExisting || [];
+});
+
+// Only show "Add Existing" button if there are collections available
+const showAddExisting = computed(() => {
+  return existingCollections.value && existingCollections.value.length > 0;
+});
 </script>
 

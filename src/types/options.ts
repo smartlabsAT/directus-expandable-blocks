@@ -15,6 +15,7 @@ export interface ExpandableBlocksOptions {
   // Collection Options
   allowedCollections?: string[];
   includeCollections?: string[];
+  allowedCollectionsForExisting?: string[];
   
   // Permissions
   isAllowedDelete?: boolean;
