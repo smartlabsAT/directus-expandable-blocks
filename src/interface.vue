@@ -28,6 +28,8 @@
         :collections="allowedCollections"
         :collections-for-existing="allowedCollectionsForExisting"
         :can-add="canAddMoreBlocks"
+        :allow-link-existing="mergedOptions?.allowLinkExisting"
+        :allow-duplicate-existing="mergedOptions?.allowDuplicateExisting"
         @add-item="addNewItem"
         @add-existing="itemSelector.open"
     />
@@ -52,6 +54,8 @@
         :get-translated-field-value="itemSelector.getTranslatedFieldValue"
         :is-field-translatable="itemSelector.isFieldTranslatable"
         :api-error="itemSelector.apiError.value"
+        :allow-link="mergedOptions?.allowLinkExisting !== false"
+        :allow-duplicate="mergedOptions?.allowDuplicateExisting !== false"
         @close="itemSelector.close"
         @confirm="handleItemSelection"
         @confirm-copy="handleItemSelectionAsCopy"

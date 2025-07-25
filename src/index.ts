@@ -301,6 +301,41 @@ export default defineInterface({
           default_value: null
         }
       });
+      
+      // Add link/duplicate options for existing blocks
+      baseOptions.push({
+        field: 'allowLinkExisting',
+        name: 'Allow Link Existing',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow linking to existing blocks'
+          },
+          width: 'half',
+          note: 'When enabled, users can add references to existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      baseOptions.push({
+        field: 'allowDuplicateExisting',
+        name: 'Allow Duplicate Existing',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow duplicating existing blocks'
+          },
+          width: 'half',
+          note: 'When enabled, users can create copies of existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
     }
 
     return baseOptions;

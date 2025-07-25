@@ -178,6 +178,7 @@
     <!-- Footer Actions -->
     <template #actions>
       <v-button
+          v-if="allowDuplicate"
           :disabled="selectedItems.length === 0"
           kind="warning"
           icon
@@ -188,6 +189,7 @@
       </v-button>
 
       <v-button
+          v-if="allowLink"
           :disabled="selectedItems.length === 0"
           icon
           @click="handleConfirm"
@@ -254,10 +256,14 @@ interface Props {
   availableLanguages?: Array<{ code: string; name: string; }>;
   getTranslatedFieldValue?: (item: any, field: string) => string;
   isFieldTranslatable?: (field: string) => boolean;
+  allowLink?: boolean;
+  allowDuplicate?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  loading: false
+  loading: false,
+  allowLink: true,
+  allowDuplicate: true
 });
 
 const emit = defineEmits<{

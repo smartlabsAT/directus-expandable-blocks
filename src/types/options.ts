@@ -21,6 +21,8 @@ export interface ExpandableBlocksOptions {
   isAllowedDelete?: boolean;
   isAllowedDuplicate?: boolean;
   maxBlocks?: number | null;
+  allowLinkExisting?: boolean;
+  allowDuplicateExisting?: boolean;
   
   // AI Configuration
   enableAI?: boolean;

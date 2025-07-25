@@ -118,6 +118,8 @@ interface Props {
     icon?: string;
   }>;
   canAdd: boolean;
+  allowLinkExisting?: boolean;
+  allowDuplicateExisting?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -132,9 +134,11 @@ const existingCollections = computed(() => {
   return props.collectionsForExisting || [];
 });
 
-// Only show "Add Existing" button if there are collections available
+// Only show "Add Existing" button if there are collections available AND at least one permission is enabled
 const showAddExisting = computed(() => {
-  return existingCollections.value && existingCollections.value.length > 0;
+  const hasCollections = existingCollections.value && existingCollections.value.length > 0;
+  const hasPermission = props.allowLinkExisting !== false || props.allowDuplicateExisting !== false;
+  return hasCollections && hasPermission;
 });
 </script>
 
