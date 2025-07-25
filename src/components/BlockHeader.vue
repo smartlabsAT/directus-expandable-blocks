@@ -29,14 +29,15 @@
   <div class="block-info">
     <div class="block-main">
       <span class="block-title">{{ title }}</span>
-      <v-chip x-small outline class="collection-chip">
-        {{ collectionName }}
-      </v-chip>
+
       <span v-if="showItemId && !isNew" class="item-id">
         ID: {{ itemId }}
       </span>
     </div>
 
+    <v-chip x-small outline class="collection-chip">
+      {{ collectionName }}
+    </v-chip>
     <!-- Usage Indicator -->
     <v-chip
       v-if="usageCount && usageCount > 0"
