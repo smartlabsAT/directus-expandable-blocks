@@ -10,6 +10,7 @@ export interface ExpandableBlocksOptions {
   showFieldsFilter?: string[];
   compactMode?: boolean;
   showItemId?: boolean;
+  showCollectionName?: boolean;
   
   // Collection Options
   allowedCollections?: string[];

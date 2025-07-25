@@ -84,6 +84,13 @@ export function useExpandableBlocks(
     return value;
   });
 
+  const shouldShowCollectionName = computed(() => {
+    const value = mergedOptions.value?.showCollectionName;
+    if (value === false) return false;
+    if (value === undefined) return true;
+    return value;
+  });
+
   const canAddMoreBlocks = computed(() => {
     const maxBlocks = mergedOptions.value?.maxBlocks;
     if (!maxBlocks || maxBlocks <= 0) return true;
@@ -388,6 +395,7 @@ export function useExpandableBlocks(
     sortable,
     saveButtonWouldBeActive,
     shouldShowItemId,
+    shouldShowCollectionName,
     canAddMoreBlocks,
     allowedCollectionsMap: m2aData.allowedCollectionsMap,
     

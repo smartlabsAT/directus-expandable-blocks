@@ -130,6 +130,22 @@ export default defineInterface({
           default_value: true
         }
       },
+      {
+        field: 'showCollectionName',
+        name: 'Show Collection Name',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Display the collection name in block headers'
+          },
+          width: 'half',
+          note: 'Shows the collection name for each block'
+        },
+        schema: {
+          default_value: true
+        }
+      },
       /*
       {
         field: 'startExpanded',

@@ -31,6 +31,7 @@
               :title="getItemTitle(item)"
               :collection-name="getCollectionName(item)"
               :show-item-id="showItemId"
+              :show-collection-name="showCollectionName"
               :item-id="getActualItemId(item)"
               :is-expanded="expandedItems.includes(getItemId(item))"
               :usage-count="getBlockUsageData(item)?.usageCount || 0"
@@ -104,6 +105,7 @@ interface Props {
   disabled: boolean;
   compactMode: boolean;
   showItemId: boolean;
+  showCollectionName: boolean;
   allowDuplicate: boolean;
   allowDelete: boolean;
   availableStatuses: Array<{ value: string; label: string }>;

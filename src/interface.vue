@@ -8,6 +8,7 @@
         :disabled="disabled"
         :compact-mode="mergedOptions?.compactMode"
         :show-item-id="shouldShowItemId"
+        :show-collection-name="shouldShowCollectionName"
         :allow-duplicate="mergedOptions?.isAllowedDuplicate !== false"
         :allow-delete="mergedOptions?.isAllowedDelete !== false"
         :available-statuses="availableStatuses"
@@ -120,6 +121,7 @@ const {
   // Computed
   sortable,
   shouldShowItemId,
+  shouldShowCollectionName,
   canAddMoreBlocks,
 
   // Methods

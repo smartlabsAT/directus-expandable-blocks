@@ -35,7 +35,7 @@
       </span>
     </div>
 
-    <v-chip x-small outline class="collection-chip">
+    <v-chip v-if="showCollectionName" x-small outline class="collection-chip">
       {{ collectionName }}
     </v-chip>
     <!-- Usage Indicator or Placeholder -->
@@ -91,6 +91,7 @@ interface Props {
   title: string;
   collectionName: string;
   showItemId: boolean;
+  showCollectionName: boolean;
   itemId: string | number;
   isExpanded: boolean;
   usageCount?: number;
