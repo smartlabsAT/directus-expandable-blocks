@@ -129,10 +129,10 @@
             </div>
 
             <!-- Usage Warning -->
-            <div v-if="itemRelations && itemRelations[item.id]" class="usage-warning">
-              <v-icon name="warning" x-small/>
-              <span>Used in {{ getTotalUsageCount(item.id) }} place{{ getTotalUsageCount(item.id) > 1 ? 's' : '' }} - changes will affect all references</span>
-            </div>
+<!--            <div v-if="itemRelations && itemRelations[item.id]" class="usage-warning">-->
+<!--              <v-icon name="warning" x-small/>-->
+<!--              <span>Used in {{ getTotalUsageCount(item.id) }} place{{ getTotalUsageCount(item.id) > 1 ? 's' : '' }} - changes will affect all references</span>-->
+<!--            </div>-->
 
             <!-- Additional Fields - darunter -->
             <div v-if="displayFields.length > 0" class="item-fields">
