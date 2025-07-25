@@ -1,6 +1,23 @@
 <template>
   <div class="search-container">
+    <!-- Simple Search Input (Default) -->
+    <SimpleSearchInput
+        v-if="!useTagSearch"
+        ref="simpleSearchInputRef"
+        class="search-input"
+        :model-value="searchQuery"
+        :loading="loading"
+        :show-help="showHelp"
+        :available-fields="availableFields"
+        :total-items="totalItems"
+        placeholder="Search items..."
+        @update:model-value="handleSearchUpdate"
+        @toggle-help="$emit('update:show-help', !showHelp)"
+    />
+    
+    <!-- Tag Search Input (Alpha) -->
     <SearchTagInput
+        v-else
         ref="searchTagInputRef"
         class="search-input"
         :model-value="searchQuery"
@@ -16,6 +33,29 @@
     <!-- Collapsible Search Help -->
     <transition name="expand">
       <div v-if="showHelp" class="search-help-panel">
+        <!-- Tag Search Toggle -->
+        <div class="search-mode-toggle">
+          <div class="toggle-wrapper">
+            <span class="toggle-label">
+              Advanced Tag Search
+              <v-chip 
+                size="x-small" 
+                :color="useTagSearch ? 'danger' : 'grey'"
+                class="alpha-badge"
+                clickable
+                @click="useTagSearch = !useTagSearch"
+              >
+                ALPHA
+              </v-chip>
+            </span>
+            <v-icon
+                name="info"
+                x-small
+                v-tooltip="'Experimental feature: Advanced search with visual tags. May contain bugs.'"
+            />
+          </div>
+        </div>
+        
         <div class="search-help-content">
           <!-- Available Fields Section -->
           <div class="search-help-section" v-if="nonTranslatableFields.length > 0 || translationInfo?.translationFields?.length > 0">
@@ -122,6 +162,7 @@
 <script setup lang="ts">
 import { ref, computed, type ComponentPublicInstance } from 'vue';
 import SearchTagInput from './SearchTagInput.vue';
+import SimpleSearchInput from './SimpleSearchInput.vue';
 
 interface FieldInfo {
   field: string;
@@ -165,6 +206,10 @@ const nonTranslatableFields = computed(() => {
 
 // Refs
 const searchTagInputRef = ref<ComponentPublicInstance>();
+const simpleSearchInputRef = ref<ComponentPublicInstance>();
+
+// Toggle state for tag search
+const useTagSearch = ref(false);
 
 // Search operators configuration
 const searchOperators = [
@@ -192,16 +237,26 @@ function handleSearchUpdate(value: string) {
 }
 
 function addFieldToSearch(field: string) {
-  (searchTagInputRef.value as any)?.addFieldToSearch(field);
+  if (useTagSearch.value) {
+    (searchTagInputRef.value as any)?.addFieldToSearch(field);
+  } else {
+    (simpleSearchInputRef.value as any)?.addFieldToSearch(field);
+  }
 }
 
 function addOperatorToSearch(operator: string) {
-  (searchTagInputRef.value as any)?.addOperatorToSearch(operator);
+  if (useTagSearch.value) {
+    (searchTagInputRef.value as any)?.addOperatorToSearch(operator);
+  } else {
+    (simpleSearchInputRef.value as any)?.addOperatorToSearch(operator);
+  }
 }
 
 function addLogicalOperator(op: 'AND' | 'OR') {
-  if (searchTagInputRef.value) {
-    (searchTagInputRef.value as any).addLogicalOperator(op);
+  if (useTagSearch.value) {
+    (searchTagInputRef.value as any)?.addLogicalOperator(op);
+  } else {
+    (simpleSearchInputRef.value as any)?.addLogicalOperator(op);
   }
 }
 </script>
@@ -237,16 +292,64 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 
 .search-help-panel {
   margin-top: 12px;
-  padding: 16px;
   background: var(--background-subdued);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-subdued);
+  overflow: hidden;
+}
+
+/* Search Mode Toggle */
+.search-mode-toggle {
+  padding: 12px 16px;
+  background-color: var(--theme--background);
+  border-bottom: 1px solid var(--theme--border-color-subdued);
+  
+  .toggle-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--theme--foreground);
+      
+      .alpha-badge {
+        margin-left: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 0 6px;
+        height: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+      }
+    }
+    
+    .v-icon {
+      color: var(--theme--foreground-subdued);
+      cursor: help;
+      
+      &:hover {
+        color: var(--theme--foreground);
+      }
+    }
+  }
 }
 
 .search-help-content {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 16px;
 }
 
 .search-help-section {
