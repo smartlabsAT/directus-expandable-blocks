@@ -47,9 +47,20 @@
         </v-list>
       </v-menu>
 
-      <!-- Add Existing Button -->
+      <!-- Add Existing Button - Single Collection -->
+      <v-button
+        v-if="showAddExisting && existingCollections.length === 1"
+        class="add-block-button add-existing-button"
+        :disabled="disabled"
+        @click="$emit('add-existing', existingCollections[0].collection)"
+      >
+        <v-icon name="link" />
+        <span>Add Existing</span>
+      </v-button>
+
+      <!-- Add Existing Button - Multiple Collections -->
       <v-menu
-        v-if="showAddExisting"
+        v-else-if="showAddExisting && existingCollections.length > 1"
         placement="bottom"
         show-arrow
       >
