@@ -7,6 +7,7 @@ import {
   CacheStats,
   CacheTTL
 } from '../types/CacheTypes';
+import { getLogger } from '../utils/logger-utils';
 
 // Global memory cache shared across all instances
 const globalMemoryCache = new Map<string, CacheEntry>();
@@ -43,7 +44,7 @@ export class CacheServiceImpl implements CacheService {
     this.services = config.services;
     this.defaultTTL = config.defaultTTL || CacheTTL.SHORT;
     this.prefix = config.prefix || 'directus_api';
-    this.logger = config.services?.logger || console;
+    this.logger = getLogger(config.services);
     
     // Use global memory cache
     this.memoryCache = globalMemoryCache;

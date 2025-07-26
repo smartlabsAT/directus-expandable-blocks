@@ -10,6 +10,7 @@ import {
 import { InvalidCollectionError } from '../types/errors';
 import { TranslationFieldAnalyzer } from './TranslationFieldAnalyzer';
 import { TranslationFieldAnalyzerConfig } from '../types/TranslationFieldAnalyzerTypes';
+import { getLogger } from '../utils/logger-utils';
 
 /**
  * Service for analyzing collection fields and identifying searchable fields
@@ -26,7 +27,7 @@ export class FieldAnalyzer {
     this.schema = config.schema;
     this.database = config.database;
     this.accountability = config.accountability;
-    this.logger = config.services?.logger || console;
+    this.logger = getLogger(config.services);
   }
 
   /**

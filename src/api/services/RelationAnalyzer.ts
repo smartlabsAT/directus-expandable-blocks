@@ -16,6 +16,7 @@ import {
 } from '../types/RelationTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { parseMetadata, humanizeName, getFieldFromMeta, getDisplayName } from '../utils/relation-utils';
+import { getLogger } from '../utils/logger-utils';
 
 export class RelationAnalyzer {
   private database: Knex;
@@ -23,7 +24,7 @@ export class RelationAnalyzer {
 
   constructor(config: RelationAnalyzerConfig) {
     this.database = config.database;
-    this.logger = config.services?.logger || console;
+    this.logger = getLogger(config.services);
   }
 
   /**

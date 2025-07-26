@@ -5,6 +5,7 @@ import {
   CacheStats,
   CacheTTL
 } from '../types/CacheTypes';
+import { getLogger } from '../utils/logger-utils';
 
 /**
  * Simple in-memory cache with TTL support
@@ -59,7 +60,7 @@ export class DirectusCacheWrapper implements CacheService {
     // Ensure defaultTTL is in milliseconds
     this.defaultTTL = config.defaultTTL || CacheTTLHelper.SHORT;
     this.maxKeys = config.maxKeys || 50000; // Allow configuration of max keys
-    this.logger = config.services?.logger || console;
+    this.logger = getLogger(config.services);
 
     // Note: In production, you might want to use Redis through Directus' cache service
     // For now, we use a simple in-memory implementation

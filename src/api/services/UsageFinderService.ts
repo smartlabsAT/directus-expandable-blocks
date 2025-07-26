@@ -8,6 +8,7 @@ import {
   RelationInfo,
   UsageCacheEntry
 } from '../types/UsageFinderTypes';
+import { getLogger } from '../utils/logger-utils';
 
 /**
  * Service for finding where items are used across collections
@@ -28,7 +29,7 @@ export class UsageFinderService {
     this.schema = config.schema;
     this.accountability = config.accountability;
     this.incomingRelations = config.incomingRelations;
-    this.logger = config.services?.logger || console;
+    this.logger = getLogger(config.services);
   }
 
   /**

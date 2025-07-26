@@ -13,6 +13,7 @@ import {
 import { UsageLocation, UsageTree } from '../types/UsageFinderTypes';
 import { UsageFinderService } from './UsageFinderService';
 import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
+import { getLogger } from '../utils/logger-utils';
 
 /**
  * Service for building hierarchical paths from usage information
@@ -37,7 +38,7 @@ export class PathBuilderService {
     // Use provided UsageFinderService instance instead of creating new one
     this.usageFinder = config.usageFinder;
     this.cache = config.cache;
-    this.logger = config.services?.logger || console;
+    this.logger = getLogger(config.services);
   }
 
   /**
