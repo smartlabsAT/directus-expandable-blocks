@@ -232,56 +232,6 @@ export default defineInterface({
       },
       */
       
-      // Permissions Group
-      {
-        field: 'permissions_divider',
-        name: 'Permissions',
-        type: 'alias',
-        meta: {
-          interface: 'presentation-divider',
-          options: {
-            icon: 'lock',
-            color: '#FFA439',
-            title: 'Permissions & Actions',
-            inlineTitle: false
-          },
-          special: ['alias', 'no-data'],
-          width: 'full'
-        }
-      },
-      {
-        field: 'isAllowedDelete',
-        name: 'Allow Delete',
-        type: 'boolean',
-        meta: {
-          interface: 'boolean',
-          options: {
-            label: 'Allow users to delete blocks'
-          },
-          width: 'half',
-          note: 'When disabled, users cannot delete existing blocks'
-        },
-        schema: {
-          default_value: true
-        }
-      },
-      {
-        field: 'isAllowedDuplicate',
-        name: 'Allow Duplicate',
-        type: 'boolean',
-        meta: {
-          interface: 'boolean',
-          options: {
-            label: 'Allow users to duplicate blocks'
-          },
-          width: 'half',
-          note: 'When disabled, users cannot duplicate existing blocks'
-        },
-        schema: {
-          default_value: true
-        }
-      },
-      
       // Limits & Restrictions Group
       {
         field: 'limits_divider',
@@ -402,6 +352,58 @@ export default defineInterface({
           },
           width: 'half',
           note: 'When enabled, users can create copies of existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      // Permissions Group
+      baseOptions.push({
+        field: 'permissions_divider',
+        name: 'Permissions',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'lock',
+            color: '#FFA439',
+            title: 'Permissions & Actions',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
+      baseOptions.push({
+        field: 'isAllowedDelete',
+        name: 'Allow Delete',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow users to delete blocks'
+          },
+          width: 'half',
+          note: 'When disabled, users cannot delete existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      baseOptions.push({
+        field: 'isAllowedDuplicate',
+        name: 'Allow Duplicate',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow users to duplicate blocks'
+          },
+          width: 'half',
+          note: 'When disabled, users cannot duplicate existing blocks'
         },
         schema: {
           default_value: true
