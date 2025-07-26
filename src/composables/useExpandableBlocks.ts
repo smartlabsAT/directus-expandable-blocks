@@ -190,7 +190,7 @@ export function useExpandableBlocks(
   const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
   const watchers = useBlockWatchers(ctx, updateOriginalItemOrder, clearStateTracking, m2aData.loadFullItemData, m2aData.processPasteData);
   const uiHelpers = useUIHelpers(ctx);
-  const permissions = usePermissionChecks(mergedOptions);
+  const permissions = usePermissionChecks(computed(() => mergedOptions.value));
   
   // Computed collections filtered by permissions
   const allowedCollectionsWithPermissions = computed(() => {

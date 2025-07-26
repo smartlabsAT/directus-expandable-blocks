@@ -124,7 +124,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       isInternalUpdate,
       source,
       sortField: getSortField(),
-      debugData: { itemCount: itemsArray.length, ...extraDebugData }
+      debugData: { itemCount: itemsArray.length, ...extraDebugData },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
   }
 
@@ -195,7 +196,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       prepareItemsForEmit,
       isInternalUpdate,
       source: 'updateItem',
-      sortField: getSortField()
+      sortField: getSortField(),
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
   }
 
@@ -255,7 +257,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
           defaultData: defaultData
         },
         totalItemsCount: items.value.length
-      }
+      },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
     
     notifyInfo('Block Added', 'New block added. Save to persist changes.');
@@ -308,7 +311,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
           itemId: itemId
         },
         remainingItemsCount: updatedItems.length
-      }
+      },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
     
     logDebug('Item unlinked', { itemId, remainingItems: updatedItems.length });
@@ -383,7 +387,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
             junctionCollection: relationInfo.value?.junctionCollection,
             foreignKeyField: relationInfo.value?.foreignKeyField
           }
-        }
+        },
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
       });
       
       itemToDelete.value = null;
@@ -475,7 +480,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
             tempId: dupKey,
             collection: collection
           }
-        })
+        }),
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
       });
       
       notifySuccess('Duplicated', 'Block duplicated. Save to persist changes.');
@@ -554,7 +560,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
             collection: item.collection,
             itemType: typeof item.item
           }
-        })
+        }),
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
       });
       
       // Don't show notification - status not saved yet
@@ -614,7 +621,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         blockId,
         index,
         isRestored
-      })
+      }),
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
     
     // Show notification
@@ -683,7 +691,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       debugData: {
         ...debugData,
         totalItemsCount: items.value.length
-      }
+      },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
   }
 
