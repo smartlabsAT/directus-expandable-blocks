@@ -17,6 +17,7 @@
           :fields="getFieldsForItem(item)"
           :disabled="disabled"
           :compact-mode="compactMode"
+          :can-read="canReadItem(item)"
           :can-update="canUpdateItem(item)"
           :usage-data="getBlockUsageData(item)"
           @toggle-expand="$emit('toggle-expand', getItemId(item))"
@@ -28,7 +29,7 @@
               :disabled="disabled"
               :collection-icon="getCollectionIcon(item)"
               :is-new="isNewItem(item)"
-              :is-dirty="isBlockDirty(getItemId(item), item.item)"
+              :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
               :title="getItemTitle(item)"
               :collection-name="getCollectionName(item)"
               :show-item-id="showItemId"
@@ -38,6 +39,7 @@
               :usage-count="getBlockUsageData(item)?.usageCount || 0"
               :usage-data="getBlockUsageData(item)"
               :has-any-usage-indicator="hasAnyUsageIndicator"
+              :can-read="canReadItem(item)"
               @toggle-expand="$emit('toggle-expand', getItemId(item))"
             >
               <template #status>
@@ -57,7 +59,7 @@
                 <block-actions
                   :allow-duplicate="allowDuplicate && canUpdateItem(item)"
                   :allow-delete="allowDelete && canUpdateItem(item)"
-                  :is-dirty="isBlockDirty(getItemId(item), item.item)"
+                  :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
                   @unlink="$emit('unlink', item, index)"
@@ -151,6 +153,7 @@ const hasNestedM2A = (item: JunctionRecord) => props.expandableBlocks.hasNestedM
 const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFields(item);
 const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
 const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBlockUsageData(item);
+const canReadItem = (item: JunctionRecord) => props.expandableBlocks.canReadItem(item);
 const canUpdateItem = (item: JunctionRecord) => props.expandableBlocks.canUpdateItem(item);
 
 // Check if any block has usage indicators

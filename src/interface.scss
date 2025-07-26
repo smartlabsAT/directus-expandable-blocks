@@ -78,6 +78,24 @@ $expanded-border-width: 5px;
       }
     }
   }
+  
+  // No permission state (no read permissions)
+  &.no-permission {
+    .block-header {
+      background: var(--background-normal-alt);
+      opacity: 0.7;
+      cursor: not-allowed;
+      
+      &:hover {
+        background: var(--background-normal-alt);
+      }
+      
+      .block-title {
+        color: var(--foreground-subdued);
+        font-style: italic;
+      }
+    }
+  }
 
   // Compact mode
   &.compact {

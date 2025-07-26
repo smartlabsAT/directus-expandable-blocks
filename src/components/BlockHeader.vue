@@ -28,9 +28,14 @@
   <!-- Main Info Section -->
   <div class="block-info">
     <div class="block-main">
-      <span class="block-title">{{ title }}</span>
+      <span class="block-title">
+        <template v-if="canRead === false">
+          <v-icon name="block" x-small /> No permission
+        </template>
+        <template v-else>{{ title }}</template>
+      </span>
 
-      <span v-if="showItemId && !isNew" class="item-id">
+      <span v-if="showItemId && !isNew && canRead !== false" class="item-id">
         ID: {{ itemId }}
       </span>
     </div>
@@ -101,6 +106,7 @@ interface Props {
     internalCount: number;
   };
   hasAnyUsageIndicator?: boolean;
+  canRead?: boolean;
 }
 
 const props = defineProps<Props>();

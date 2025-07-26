@@ -214,6 +214,16 @@ export function useExpandableBlocks(
     });
   });
   
+  // Check if user can read a specific collection
+  function canReadCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canRead = permissionsStore.hasPermission(collection, 'read');
+    if (!canRead) {
+      logDebug('User has no read permission for collection', { collection });
+    }
+    return canRead;
+  }
+  
   // Check if user can update a specific collection
   function canUpdateCollection(collection: string): boolean {
     if (!permissionsStore) return true; // If no permissions store, assume full access
@@ -222,6 +232,18 @@ export function useExpandableBlocks(
       logDebug('User has no update permission for collection', { collection });
     }
     return canUpdate;
+  }
+  
+  // Check if user can read a specific item
+  function canReadItem(item: JunctionRecord): boolean {
+    const collection = item.collection;
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can read', { item });
+      return true;
+    }
+    
+    return canReadCollection(collection);
   }
   
   // Check if user can update a specific item
@@ -474,7 +496,9 @@ export function useExpandableBlocks(
     isBlockDirty,
     loadBlockUsageData,
     getBlockUsageData,
+    canReadCollection,
     canUpdateCollection,
+    canReadItem,
     canUpdateItem,
     
     // Actions from blockActions
