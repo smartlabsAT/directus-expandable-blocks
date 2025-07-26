@@ -984,6 +984,10 @@ $expanded-border-width: 5px;
       background-color: var(--background-normal-alt);
     }
   }
+  
+  &.status-placeholder {
+    opacity: 0.5;
+  }
 }
 
 // Status dot with variants
@@ -1004,6 +1008,11 @@ $expanded-border-width: 5px;
 
   &.status-archived {
     background: var(--theme--warning);
+  }
+  
+  &.status-unknown {
+    background: var(--border-normal);
+    opacity: 0.5;
   }
 }
 

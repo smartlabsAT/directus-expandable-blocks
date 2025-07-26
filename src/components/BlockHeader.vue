@@ -45,7 +45,16 @@
     </v-chip>
     <!-- Usage Indicator or Placeholder -->
     <v-chip
-      v-if="usageCount && usageCount > 0"
+      v-if="canRead === false"
+      x-small
+      class="usage-indicator usage-placeholder-chip"
+      disabled
+    >
+      <v-icon name="link" x-small />
+      —
+    </v-chip>
+    <v-chip
+      v-else-if="usageCount && usageCount > 0"
       x-small
       class="usage-indicator"
       v-tooltip="usageTooltip"
@@ -150,5 +159,13 @@ const usageTooltip = computed(() => {
   width: 45px; /* Adjust based on typical usage indicator width */
   height: 24px; /* Same height as v-chip x-small */
   margin-left: 0px;
+}
+
+.usage-placeholder-chip {
+  opacity: 0.5;
+  
+  :deep(.v-icon) {
+    opacity: 0.7;
+  }
 }
 </style>

@@ -44,11 +44,11 @@
             >
               <template #status>
                 <block-status
-                  v-if="hasStatusField(item)"
-                  :has-status="true"
+                  v-if="hasStatusField(item) || canReadItem(item) === false"
+                  :has-status="hasStatusField(item) && canReadItem(item) !== false"
                   :compact-mode="compactMode"
-                  :current-status="getItemStatus(item)"
-                  :status-label="getStatusLabel(getItemStatus(item))"
+                  :current-status="canReadItem(item) === false ? 'unknown' : getItemStatus(item)"
+                  :status-label="canReadItem(item) === false ? '—' : getStatusLabel(getItemStatus(item))"
                   :statuses="availableStatuses"
                   :allow-change="allowStatusChange && canUpdateItem(item)"
                   @update-status="$emit('update-status', item, index, $event)"

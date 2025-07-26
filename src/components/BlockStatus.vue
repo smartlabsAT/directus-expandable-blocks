@@ -1,8 +1,17 @@
 <template>
-  <div v-if="hasStatus && !compactMode">
+  <div v-if="!compactMode">
+    <!-- Placeholder for no permission blocks -->
+    <div
+      v-if="!hasStatus"
+      class="status-display status-readonly status-placeholder"
+    >
+      <span class="status-dot status-unknown" />
+      <span class="status-text">{{ statusLabel }}</span>
+    </div>
+    
     <!-- Status display only (no dropdown) when change not allowed -->
     <div
-      v-if="!allowChange"
+      v-else-if="!allowChange"
       class="status-display status-readonly"
       v-tooltip.top="'You do not have permission to change status'"
     >
