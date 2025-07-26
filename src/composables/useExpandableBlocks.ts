@@ -1,4 +1,4 @@
-import { ref, computed, nextTick, type Ref } from 'vue';
+import { ref, computed, nextTick, type Ref, type ComputedRef } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
 import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
@@ -19,7 +19,8 @@ import type {
   DirectusFieldsStore,
   DirectusRelationsStore,
   DirectusCollectionsStore,
-  DirectusNotificationsStore
+  DirectusNotificationsStore,
+  DirectusPermissionsStore
 } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -41,11 +42,12 @@ export function useExpandableBlocks(
   // API and stores
   const api = useApi();
   const stores = useStores();
-  const { useFieldsStore, useRelationsStore, useCollectionsStore, useNotificationsStore } = stores;
+  const { useFieldsStore, useRelationsStore, useCollectionsStore, useNotificationsStore, usePermissionsStore } = stores;
   const fieldsStore = useFieldsStore() as DirectusFieldsStore;
   const relationsStore = useRelationsStore() as DirectusRelationsStore;
   const collectionsStore = useCollectionsStore() as DirectusCollectionsStore;
   const notificationsStore = useNotificationsStore() as DirectusNotificationsStore;
+  const permissionsStore = usePermissionsStore ? usePermissionsStore() : null;
 
   // Initialize M2A Helper
   const m2aHelper = new M2AHelper(api, stores);
@@ -184,6 +186,33 @@ export function useExpandableBlocks(
   const watchers = useBlockWatchers(ctx, updateOriginalItemOrder, clearStateTracking, m2aData.loadFullItemData, m2aData.processPasteData);
   const uiHelpers = useUIHelpers(ctx);
   const permissions = usePermissionChecks(mergedOptions);
+  
+  // Computed collections filtered by permissions
+  const allowedCollectionsWithPermissions = computed(() => {
+    if (!permissionsStore) return allowedCollections.value;
+    
+    // Filter collections where user has create permission
+    return allowedCollections.value.filter(collection => {
+      const hasCreatePermission = permissionsStore.hasPermission(collection.collection, 'create');
+      if (!hasCreatePermission) {
+        logDebug('User has no create permission for collection', { collection: collection.collection });
+      }
+      return hasCreatePermission;
+    });
+  });
+  
+  const allowedCollectionsForExistingWithPermissions = computed(() => {
+    if (!permissionsStore) return allowedCollectionsForExisting.value;
+    
+    // Filter collections where user has read permission
+    return allowedCollectionsForExisting.value.filter(collection => {
+      const hasReadPermission = permissionsStore.hasPermission(collection.collection, 'read');
+      if (!hasReadPermission) {
+        logDebug('User has no read permission for collection', { collection: collection.collection });
+      }
+      return hasReadPermission;
+    });
+  });
 
   /**
    * Load all options from field configuration
@@ -403,6 +432,8 @@ export function useExpandableBlocks(
     shouldShowCollectionName,
     canAddMoreBlocks,
     allowedCollectionsMap: m2aData.allowedCollectionsMap,
+    allowedCollectionsWithPermissions,
+    allowedCollectionsForExistingWithPermissions,
     
     // Core methods
     initialize,

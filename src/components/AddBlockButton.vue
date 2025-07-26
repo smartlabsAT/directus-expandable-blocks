@@ -1,6 +1,6 @@
 <template>
   <div class="add-block-wrapper">
-    <div v-if="canAdd && !disabled" class="button-group">
+    <div v-if="canAdd && !disabled && hasAvailableCollections" class="button-group">
       <!-- Create New Button -->
       <!-- Single Collection -->
       <v-button
@@ -99,6 +99,12 @@
       <v-icon name="info" x-small />
       <span>Maximum blocks reached</span>
     </div>
+    
+    <!-- No permissions for any collection -->
+    <div v-else-if="canAdd && !disabled && !hasAvailableCollections" class="max-blocks-message">
+      <v-icon name="block" x-small />
+      <span>No permissions to create blocks</span>
+    </div>
   </div>
 </template>
 
@@ -139,6 +145,11 @@ const showAddExisting = computed(() => {
   const hasCollections = existingCollections.value && existingCollections.value.length > 0;
   const hasPermission = props.allowLinkExisting !== false || props.allowDuplicateExisting !== false;
   return hasCollections && hasPermission;
+});
+
+// Check if any collections are available for create or existing
+const hasAvailableCollections = computed(() => {
+  return props.collections.length > 0 || existingCollections.value.length > 0;
 });
 </script>
 

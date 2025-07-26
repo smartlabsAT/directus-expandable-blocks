@@ -26,8 +26,8 @@
 
     <add-block-button
         :disabled="disabled || !canAddBlocks"
-        :collections="allowedCollections"
-        :collections-for-existing="allowedCollectionsForExisting"
+        :collections="allowedCollectionsWithPermissions"
+        :collections-for-existing="allowedCollectionsForExistingWithPermissions"
         :can-add="canAddMoreBlocks && canAddBlocks"
         :allow-link-existing="mergedOptions?.allowLinkExisting"
         :allow-duplicate-existing="mergedOptions?.allowDuplicateExisting"
@@ -130,6 +130,8 @@ const {
   shouldShowItemId,
   shouldShowCollectionName,
   canAddMoreBlocks,
+  allowedCollectionsWithPermissions,
+  allowedCollectionsForExistingWithPermissions,
 
   // Methods
   initialize,

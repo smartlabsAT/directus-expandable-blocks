@@ -63,9 +63,14 @@ export interface DirectusNotificationsStore {
   add: (notification: DirectusNotification) => void;
 }
 
+export interface DirectusPermissionsStore {
+  hasPermission: (collection: string, action: 'create' | 'read' | 'update' | 'delete' | 'share') => boolean;
+}
+
 export interface DirectusStores {
   useFieldsStore: () => DirectusFieldsStore;
   useRelationsStore: () => DirectusRelationsStore;
   useCollectionsStore: () => DirectusCollectionsStore;
   useNotificationsStore: () => DirectusNotificationsStore;
+  usePermissionsStore?: () => DirectusPermissionsStore;
 }
