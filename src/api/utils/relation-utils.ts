@@ -14,7 +14,7 @@ export function parseMetadata(meta: any): ParsedMetadata {
     try {
       return JSON.parse(meta);
     } catch (e) {
-      console.warn('Failed to parse metadata:', e);
+      // Silently fail and return empty object
       return {};
     }
   }

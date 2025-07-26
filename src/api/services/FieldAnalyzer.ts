@@ -19,12 +19,14 @@ export class FieldAnalyzer {
   private schema: any;
   private database?: any;
   private accountability?: any;
+  private logger: any;
 
   constructor(config: FieldAnalyzerConfig) {
     this.services = config.services;
     this.schema = config.schema;
     this.database = config.database;
     this.accountability = config.accountability;
+    this.logger = config.services?.logger || console;
   }
 
   /**
@@ -77,7 +79,7 @@ export class FieldAnalyzer {
         if (translationFullInfo.translationType === 'combined') {
           // For combined translations, don't mark individual fields as translatable
           // Instead, add a note about the combined translation
-          console.log(`[FieldAnalyzer] Combined translation detected for ${collection}`);
+          this.logger.debug(`[FieldAnalyzer] Combined translation detected for ${collection}`);
         } else {
           // For standard translations, map translation info to fields
           translatableFields.forEach(tf => {

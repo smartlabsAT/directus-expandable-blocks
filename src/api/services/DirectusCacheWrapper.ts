@@ -42,6 +42,7 @@ export class DirectusCacheWrapper implements CacheService {
   private maxKeys: number;
   private cleanupInterval: NodeJS.Timer | null = null;
   private nextExpirationCheck: number = Infinity;
+  private logger: any;
 
   // Statistics
   private stats: CacheStats = {
@@ -58,10 +59,11 @@ export class DirectusCacheWrapper implements CacheService {
     // Ensure defaultTTL is in milliseconds
     this.defaultTTL = config.defaultTTL || CacheTTLHelper.SHORT;
     this.maxKeys = config.maxKeys || 50000; // Allow configuration of max keys
+    this.logger = config.services?.logger || console;
 
     // Note: In production, you might want to use Redis through Directus' cache service
     // For now, we use a simple in-memory implementation
-    console.log(
+    this.logger.debug(
         `[DirectusCacheWrapper] Initialized with in-memory cache (max ${this.maxKeys} keys, default TTL: ${this.defaultTTL}ms)`
     );
 
@@ -96,7 +98,7 @@ export class DirectusCacheWrapper implements CacheService {
       this.stats.hits++;
       return entry.value as T;
     } catch (error) {
-      console.error('[DirectusCacheWrapper] Get error:', error);
+      this.logger.error('[DirectusCacheWrapper] Get error:', error);
       this.stats.misses++;
       return null;
     }
@@ -129,7 +131,7 @@ export class DirectusCacheWrapper implements CacheService {
 
       this.stats.size = this.cache.size;
     } catch (error) {
-      console.error('[DirectusCacheWrapper] Set error:', error);
+      this.logger.error('[DirectusCacheWrapper] Set error:', error);
     }
   }
 
@@ -142,7 +144,7 @@ export class DirectusCacheWrapper implements CacheService {
       this.cache.delete(prefixedKey);
       this.stats.size = this.cache.size;
     } catch (error) {
-      console.error('[DirectusCacheWrapper] Delete error:', error);
+      this.logger.error('[DirectusCacheWrapper] Delete error:', error);
     }
   }
 
@@ -192,7 +194,7 @@ export class DirectusCacheWrapper implements CacheService {
 
       this.stats.size = this.cache.size;
     } catch (error) {
-      console.error('[DirectusCacheWrapper] DeletePattern error:', error);
+      this.logger.error('[DirectusCacheWrapper] DeletePattern error:', error);
     }
 
     return deletedCount;
@@ -203,7 +205,7 @@ export class DirectusCacheWrapper implements CacheService {
    */
   async deleteTags(tags: string[]): Promise<number> {
     // Not supported by default in-memory cache
-    console.warn('[DirectusCacheWrapper] Tag-based delete not supported in memory cache');
+    this.logger.warn('[DirectusCacheWrapper] Tag-based delete not supported in memory cache');
     return 0;
   }
 
@@ -238,9 +240,9 @@ export class DirectusCacheWrapper implements CacheService {
       this.stats.misses = 0;
       this.stats.size = 0;
       this.nextExpirationCheck = Infinity;
-      console.log('[DirectusCacheWrapper] Cache flushed');
+      this.logger.debug('[DirectusCacheWrapper] Cache flushed');
     } catch (error) {
-      console.error('[DirectusCacheWrapper] Flush error:', error);
+      this.logger.error('[DirectusCacheWrapper] Flush error:', error);
     }
   }
 
@@ -255,11 +257,11 @@ export class DirectusCacheWrapper implements CacheService {
     // Try to get from cache first
     const cached = await this.get<T>(key);
     if (cached !== null) {
-      console.log(`[DirectusCacheWrapper] Cache HIT for key: ${key}`);
+      this.logger.debug(`[DirectusCacheWrapper] Cache HIT for key: ${key}`);
       return cached;
     }
 
-    console.log(`[DirectusCacheWrapper] Cache MISS for key: ${key} - generating new value`);
+    this.logger.debug(`[DirectusCacheWrapper] Cache MISS for key: ${key} - generating new value`);
 
     // Generate new value
     const value = await factory();
@@ -318,7 +320,7 @@ export class DirectusCacheWrapper implements CacheService {
 
       if (deletedCount > 0) {
         this.stats.size = this.cache.size;
-        console.log(`[DirectusCacheWrapper] Cleaned up ${deletedCount} expired entries`);
+        this.logger.debug(`[DirectusCacheWrapper] Cleaned up ${deletedCount} expired entries`);
       }
     }, 30000); // 30 seconds
 
@@ -359,7 +361,7 @@ export class DirectusCacheWrapper implements CacheService {
     // Clear the cache
     this.cache.clear();
 
-    console.log('[DirectusCacheWrapper] Cache service destroyed');
+    this.logger.debug('[DirectusCacheWrapper] Cache service destroyed');
   }
 
   /**

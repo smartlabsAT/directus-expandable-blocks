@@ -20,6 +20,7 @@ export class UsageFinderService {
   private incomingRelations: RelationInfo[];
   private cache: Map<string, UsageCacheEntry> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private logger: any;
 
   constructor(config: UsageFinderConfig) {
     this.database = config.database;
@@ -27,6 +28,7 @@ export class UsageFinderService {
     this.schema = config.schema;
     this.accountability = config.accountability;
     this.incomingRelations = config.incomingRelations;
+    this.logger = config.services?.logger || console;
   }
 
   /**
@@ -55,7 +57,7 @@ export class UsageFinderService {
       excludeTranslations = false  // New option to exclude translation references
     } = options;
 
-    console.log(`[UsageFinder] Finding direct usages for ${collection}/${itemId}`);
+    this.logger.debug(`[UsageFinder] Finding direct usages for ${collection}/${itemId}`);
 
     // Use pre-loaded relations instead of querying again
     const relations = this.incomingRelations;
@@ -146,7 +148,7 @@ export class UsageFinderService {
           }
         }
       } catch (error) {
-        console.error(`[UsageFinder] Error checking relation:`, error);
+        this.logger.error(`[UsageFinder] Error checking relation:`, error);
       }
     }
 
@@ -486,7 +488,7 @@ export class UsageFinderService {
         .whereIn('id', ids.map(id => String(id)));
       return items;
     } catch (error) {
-      console.error(`[UsageFinder] Error loading items from ${collection}:`, error);
+      this.logger.error(`[UsageFinder] Error loading items from ${collection}:`, error);
       return [];
     }
   }

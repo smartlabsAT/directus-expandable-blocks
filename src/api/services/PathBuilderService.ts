@@ -25,6 +25,7 @@ export class PathBuilderService {
   private defaultLocale: string;
   private usageFinder: UsageFinderService;
   private cache: CacheService;
+  private logger: any;
 
   constructor(config: PathBuilderConfig) {
     this.database = config.database;
@@ -36,6 +37,7 @@ export class PathBuilderService {
     // Use provided UsageFinderService instance instead of creating new one
     this.usageFinder = config.usageFinder;
     this.cache = config.cache;
+    this.logger = config.services?.logger || console;
   }
 
   /**
@@ -333,7 +335,7 @@ export class PathBuilderService {
       
       // Check for circular reference
       if (visited.has(key)) {
-        console.warn(`[PathBuilder] Circular reference detected at ${key}`);
+        this.logger.warn(`[PathBuilder] Circular reference detected at ${key}`);
         break;
       }
       visited.add(key);
@@ -484,12 +486,12 @@ export class PathBuilderService {
           current = parent;
         } catch (error) {
           // Parent could not be loaded - end hierarchy here (graceful degradation)
-          console.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}`, error);
+          this.logger.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}`, error);
           break;
         }
       }
     } catch (error) {
-      console.error('[PathBuilder] Error building path with relations:', error);
+      this.logger.error('[PathBuilder] Error building path with relations:', error);
     }
     
     return path;
@@ -553,7 +555,7 @@ export class PathBuilderService {
         depth: 0
       };
     } catch (error) {
-      console.error('[PathBuilder] Error loading parent:', error);
+      this.logger.error('[PathBuilder] Error loading parent:', error);
     }
     
     return null;

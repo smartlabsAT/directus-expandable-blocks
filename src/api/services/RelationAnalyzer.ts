@@ -19,9 +19,11 @@ import { parseMetadata, humanizeName, getFieldFromMeta, getDisplayName } from '.
 
 export class RelationAnalyzer {
   private database: Knex;
+  private logger: any;
 
   constructor(config: RelationAnalyzerConfig) {
     this.database = config.database;
+    this.logger = config.services?.logger || console;
   }
 
   /**
@@ -122,13 +124,13 @@ export class RelationAnalyzer {
     try {
       // Validate table name to prevent SQL injection
       if (!VALID_TABLE_NAME_PATTERN.test(tableName)) {
-        console.warn(`Invalid table name format: ${tableName}`);
+        this.logger.warn(`Invalid table name format: ${tableName}`);
         return false;
       }
 
       // Additional length check
       if (tableName.length > POSTGRES_TABLE_NAME_LIMIT) {
-        console.warn(`Table name too long: ${tableName}`);
+        this.logger.warn(`Table name too long: ${tableName}`);
         return false;
       }
 
@@ -143,7 +145,7 @@ export class RelationAnalyzer {
 
       return result.rows?.[0]?.exists || false;
     } catch (error: any) {
-      console.error(`Error checking table existence for '${tableName}':`, error.message || error);
+      this.logger.error(`Error checking table existence for '${tableName}':`, error.message || error);
       return false;
     }
   }
@@ -529,7 +531,7 @@ export class RelationAnalyzer {
       
       return metadata;
     } catch (error: any) {
-      console.error('Error loading collection metadata:', error.message || error);
+      this.logger.error('Error loading collection metadata:', error.message || error);
       // Return default metadata
       collections.forEach(col => {
         metadata.set(col, {
@@ -616,7 +618,7 @@ export class RelationAnalyzer {
       
       return fieldMetadata;
     } catch (error: any) {
-      console.error('Error loading field metadata:', error.message || error);
+      this.logger.error('Error loading field metadata:', error.message || error);
       
       // Fallback: humanize all field names
       usageMap.forEach((entry, collection) => {

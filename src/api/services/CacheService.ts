@@ -28,6 +28,7 @@ export class CacheServiceImpl implements CacheService {
   private tagIndex: Map<string, Set<string>>; // tag -> keys mapping
   private useRedis: boolean = false;
   private cleanupInterval?: NodeJS.Timer;
+  private logger: any;
   
   // Statistics
   private stats: CacheStats = {
@@ -42,6 +43,7 @@ export class CacheServiceImpl implements CacheService {
     this.services = config.services;
     this.defaultTTL = config.defaultTTL || CacheTTL.SHORT;
     this.prefix = config.prefix || 'directus_api';
+    this.logger = config.services?.logger || console;
     
     // Use global memory cache
     this.memoryCache = globalMemoryCache;
@@ -254,11 +256,11 @@ export class CacheServiceImpl implements CacheService {
     // Try to get from cache first
     const cached = await this.get<T>(key);
     if (cached !== null) {
-      console.log(`[CacheService] Cache HIT for key: ${key}`);
+      this.logger.debug(`[CacheService] Cache HIT for key: ${key}`);
       return cached;
     }
     
-    console.log(`[CacheService] Cache MISS for key: ${key} - generating new value`);
+    this.logger.debug(`[CacheService] Cache MISS for key: ${key} - generating new value`);
     
     // Generate new value
     const value = await factory();
@@ -304,7 +306,7 @@ export class CacheServiceImpl implements CacheService {
         this.redisClient = config.redisClient;
         this.useRedis = true;
         this.stats.type = 'redis';
-        console.log('[CacheService] Using provided Redis client');
+        this.logger.debug('[CacheService] Using provided Redis client');
         return;
       }
 
@@ -316,11 +318,11 @@ export class CacheServiceImpl implements CacheService {
           this.redisClient = this.services.cache.client;
           this.useRedis = true;
           this.stats.type = 'redis';
-          console.log('[CacheService] Using Directus Redis cache');
+          this.logger.debug('[CacheService] Using Directus Redis cache');
         }
       }
     } catch (error) {
-      console.log('[CacheService] Redis not available, using in-memory cache');
+      this.logger.debug('[CacheService] Redis not available, using in-memory cache');
     }
   }
 
@@ -408,7 +410,7 @@ export class CacheServiceImpl implements CacheService {
       this.stats.hits++;
       return JSON.parse(value) as T;
     } catch (error) {
-      console.error('[CacheService] Redis get error:', error);
+      this.logger.error('[CacheService] Redis get error:', error);
       this.stats.misses++;
       return null;
     }
@@ -429,7 +431,7 @@ export class CacheServiceImpl implements CacheService {
         await this.addTagsToRedis(key, tags);
       }
     } catch (error) {
-      console.error('[CacheService] Redis set error:', error);
+      this.logger.error('[CacheService] Redis set error:', error);
     }
   }
 
@@ -449,7 +451,7 @@ export class CacheServiceImpl implements CacheService {
         }
       }
     } catch (error) {
-      console.error('[CacheService] Redis delete error:', error);
+      this.logger.error('[CacheService] Redis delete error:', error);
     }
   }
 
@@ -467,7 +469,7 @@ export class CacheServiceImpl implements CacheService {
         return JSON.parse(value) as T;
       });
     } catch (error) {
-      console.error('[CacheService] Redis mget error:', error);
+      this.logger.error('[CacheService] Redis mget error:', error);
       return keys.map(() => null);
     }
   }
