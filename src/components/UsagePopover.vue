@@ -44,13 +44,31 @@
           :key="usedIn.id"
           class="usage-item"
           clickable
-          @click="$emit('item-click', { collection: usage.collection, item: usedIn })"
+          @click="handleItemClick(usage.collection, usedIn)"
         >
           <v-list-item-content>
-            <v-list-item-title class="usage-item-title">
-              {{ getItemTitle(usedIn) }}
-            </v-list-item-title>
-            <v-list-item-subtitle v-if="usedIn.path">
+            <div class="usage-item-header">
+              <v-list-item-title class="usage-item-title">
+                {{ getItemTitle(usedIn) }}
+              </v-list-item-title>
+              <v-button
+                v-if="usedIn.edit_url || usedIn.id"
+                x-small
+                icon
+                secondary
+                class="usage-item-link"
+                @click.stop="openInNewTab(usage.collection, usedIn)"
+                v-tooltip.top="'Open in new tab'"
+              >
+                <v-icon name="open_in_new" x-small />
+              </v-button>
+            </div>
+            <v-breadcrumb
+              v-if="getPathArray(usedIn).length > 0"
+              :items="formatPathAsBreadcrumbs(getPathArray(usedIn))"
+              class="usage-item-breadcrumb"
+            />
+            <v-list-item-subtitle v-else-if="usedIn.path && typeof usedIn.path === 'string'">
               {{ usedIn.path }}
             </v-list-item-subtitle>
           </v-list-item-content>
@@ -77,7 +95,15 @@ import { extractItemTitle } from '../utils/helpers';
 interface UsageItem {
   id: string | number;
   title?: string;
-  path?: string;
+  path?: string | any[];
+  edit_url?: string;
+  breadcrumbs?: Array<{
+    label: string;
+    collection?: string;
+    id?: string | number;
+    url?: string;
+    icon?: string;
+  }>;
   [key: string]: any;
 }
 
@@ -98,7 +124,7 @@ const props = withDefaults(defineProps<Props>(), {
   placement: 'bottom'
 });
 
-defineEmits<{
+const emit = defineEmits<{
   'item-click': [payload: { collection: string; item: UsageItem }];
 }>();
 
@@ -131,6 +157,48 @@ function capitalizeField(fieldName: string): string {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
+}
+
+function handleItemClick(collection: string, item: UsageItem) {
+  // Open in new tab when clicking the item
+  openInNewTab(collection, item);
+  // Also emit the event for any other handling
+  emit('item-click', { collection, item });
+}
+
+function openInNewTab(collection: string, item: UsageItem) {
+  const url = item.edit_url || `/admin/content/${collection}/${item.id}`;
+  window.open(url, '_blank');
+}
+
+function getPathArray(item: UsageItem): any[] {
+  // Check if path is an array (new format from API)
+  if (Array.isArray(item.path)) {
+    return item.path;
+  }
+  // Check if breadcrumbs property exists (future compatibility)
+  if (item.breadcrumbs && Array.isArray(item.breadcrumbs)) {
+    return item.breadcrumbs;
+  }
+  return [];
+}
+
+function formatPathAsBreadcrumbs(pathArray: any[]) {
+  if (!pathArray || pathArray.length === 0) return [];
+  
+  // Skip the first item (current item) to avoid duplication with the title
+  // Only show the parent hierarchy
+  const parentPath = pathArray.slice(1);
+  
+  if (parentPath.length === 0) return [];
+  
+  // Convert path array to breadcrumb format
+  return parentPath.map((pathItem, index) => ({
+    name: pathItem.title || pathItem.collection_display || pathItem.collection,
+    icon: pathItem.icon || getCollectionIcon(pathItem.collection),
+    disabled: true, // All breadcrumb items are disabled (not clickable in popover)
+    to: null // No navigation from breadcrumbs in popover
+  }));
 }
 </script>
 
@@ -182,8 +250,50 @@ function capitalizeField(fieldName: string): string {
       background-color: var(--background-highlight);
     }
     
+    .usage-item-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
     .usage-item-title {
       font-size: 13px;
+      flex: 1;
+    }
+    
+    .usage-item-link {
+      opacity: 0;
+      transition: opacity 0.2s;
+      
+      :deep(.v-icon) {
+        --v-icon-size: 14px;
+      }
+    }
+    
+    &:hover .usage-item-link {
+      opacity: 0.7;
+      
+      &:hover {
+        opacity: 1;
+      }
+    }
+    
+    .usage-item-breadcrumb {
+      margin-top: 4px;
+      
+      :deep(.v-breadcrumb) {
+        font-size: 11px;
+        opacity: 0.7;
+        
+        .v-list-item {
+          min-height: unset;
+          padding: 0;
+        }
+        
+        .v-icon {
+          --v-icon-size: 12px;
+        }
+      }
     }
     
     :deep(.v-list-item-subtitle) {
