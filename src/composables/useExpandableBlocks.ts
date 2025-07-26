@@ -177,6 +177,10 @@ export function useExpandableBlocks(
       m2aStructure,
       values,
       initialValues
+    },
+    permissions: {
+      canUpdateItem,
+      canReadItem
     }
   };
 
@@ -204,13 +208,28 @@ export function useExpandableBlocks(
   const allowedCollectionsForExistingWithPermissions = computed(() => {
     if (!permissionsStore) return allowedCollectionsForExisting.value;
     
-    // Filter collections where user has read permission
+    // Filter collections where user has read permission AND either create or update permission
+    // This ensures users can actually do something with the items they select
     return allowedCollectionsForExisting.value.filter(collection => {
       const hasReadPermission = permissionsStore.hasPermission(collection.collection, 'read');
       if (!hasReadPermission) {
         logDebug('User has no read permission for collection', { collection: collection.collection });
+        return false;
       }
-      return hasReadPermission;
+      
+      // Check if user can either create (for duplicate) or update (for link) items
+      const hasCreatePermission = permissionsStore.hasPermission(collection.collection, 'create');
+      const hasUpdatePermission = permissionsStore.hasPermission(collection.collection, 'update');
+      
+      if (!hasCreatePermission && !hasUpdatePermission) {
+        logDebug('User has read but no create/update permission for collection', { 
+          collection: collection.collection,
+          permissions: { read: true, create: hasCreatePermission, update: hasUpdatePermission }
+        });
+        return false;
+      }
+      
+      return true;
     });
   });
   
