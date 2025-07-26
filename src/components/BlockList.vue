@@ -58,7 +58,7 @@
               <template #actions>
                 <block-actions
                   :allow-duplicate="allowDuplicate && canUpdateItem(item)"
-                  :allow-delete="allowDelete && canUpdateItem(item)"
+                  :allow-delete="allowDelete && canDeleteItem(item)"
                   :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
@@ -155,6 +155,7 @@ const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFiel
 const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBlockUsageData(item);
 const canReadItem = (item: JunctionRecord) => props.expandableBlocks.canReadItem(item);
 const canUpdateItem = (item: JunctionRecord) => props.expandableBlocks.canUpdateItem(item);
+const canDeleteItem = (item: JunctionRecord) => props.expandableBlocks.canDeleteItem(item);
 
 // Check if any block has usage indicators
 const hasAnyUsageIndicator = computed(() => {

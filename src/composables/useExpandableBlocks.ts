@@ -180,7 +180,8 @@ export function useExpandableBlocks(
     },
     permissions: {
       canUpdateItem,
-      canReadItem
+      canReadItem,
+      canDeleteItem
     }
   };
 
@@ -285,6 +286,28 @@ export function useExpandableBlocks(
     }
     
     return canUpdateCollection(collection);
+  }
+  
+  // Check if user can delete a specific collection
+  function canDeleteCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canDelete = permissionsStore.hasPermission(collection, 'delete');
+    if (!canDelete) {
+      logDebug('User has no delete permission for collection', { collection });
+    }
+    return canDelete;
+  }
+  
+  // Check if user can delete a specific item
+  function canDeleteItem(item: JunctionRecord): boolean {
+    const collection = item.collection;
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can delete', { item });
+      return true;
+    }
+    
+    return canDeleteCollection(collection);
   }
 
   /**
@@ -517,8 +540,10 @@ export function useExpandableBlocks(
     getBlockUsageData,
     canReadCollection,
     canUpdateCollection,
+    canDeleteCollection,
     canReadItem,
     canUpdateItem,
+    canDeleteItem,
     
     // Actions from blockActions
     toggleExpand: blockActions.toggleExpand,

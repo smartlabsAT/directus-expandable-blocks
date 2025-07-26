@@ -29,7 +29,7 @@ export interface BlockStateContext {
 export interface BlockStateFunctions {
   getItemId: (item: JunctionRecord) => string;
   isNewItem: (item: JunctionRecord) => boolean;
-  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string) => any[];
+  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string, canUpdateItemFn?: (item: JunctionRecord) => boolean) => any[];
   updateOriginalState: (blockId: string, state: any) => void;
   markBlockDirty: (blockId: string, isDirty: boolean) => void;
   removeBlockState: (blockId: string) => void;
@@ -79,6 +79,15 @@ export interface BlockDataContext {
 }
 
 /**
+ * Permission-related functions
+ */
+export interface PermissionFunctions {
+  canUpdateItem: (item: JunctionRecord) => boolean;
+  canReadItem: (item: JunctionRecord) => boolean;
+  canDeleteItem: (item: JunctionRecord) => boolean;
+}
+
+/**
  * Complete context object passed to all composables
  */
 export interface ExpandableBlocksContext {
@@ -87,4 +96,5 @@ export interface ExpandableBlocksContext {
   deps: BlockDependencies;
   ui: BlockUIContext;
   data: BlockDataContext;
+  permissions?: PermissionFunctions;
 }
