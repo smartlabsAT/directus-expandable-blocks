@@ -13,15 +13,16 @@ import {
   LINK_FIELD_PATTERNS,
   EXCLUDED_TRANSLATION_FIELDS
 } from '../types/TranslationFieldAnalyzerTypes';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
  * Service for analyzing translation fields and patterns in Directus collections
  */
 export class TranslationFieldAnalyzer {
   private database: Knex;
-  private services: any;
-  private schema?: any;
-  private accountability?: any;
+  private services: DirectusServices;
+  private schema?: DirectusSchema;
+  private accountability?: DirectusAccountability;
 
   constructor(config: TranslationFieldAnalyzerConfig) {
     this.database = config.database;

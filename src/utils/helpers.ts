@@ -106,7 +106,7 @@ export function parseAllowedCollections(
  * @param item - The junction record or item
  * @returns The actual item data
  */
-export function getActualItem(item: JunctionRecord | ItemRecord): any {
+export function getActualItem(item: JunctionRecord | ItemRecord): ItemRecord {
   return (item as JunctionRecord).item || item;
 }
 

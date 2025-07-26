@@ -2,6 +2,7 @@ import { Knex } from 'knex';
 import { UsageLocation, UsageTree } from './UsageFinderTypes';
 import { UsageFinderService } from '../services/UsageFinderService';
 import { CacheService } from './CacheTypes';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
 
 /**
  * Configuration for PathBuilderService
@@ -11,13 +12,13 @@ export interface PathBuilderConfig {
   database: Knex;
   
   /** Directus services object */
-  services: any;
+  services: DirectusServices;
   
   /** Optional Directus schema */
-  schema?: any;
+  schema?: DirectusSchema;
   
   /** Optional accountability for permissions */
-  accountability?: any;
+  accountability?: DirectusAccountability;
   
   /** Default locale for formatting */
   defaultLocale?: string;

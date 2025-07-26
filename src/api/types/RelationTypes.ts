@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
 
 /**
  * Represents a possible location where an item from a collection can be used
@@ -102,13 +103,13 @@ export interface RelationAnalyzerConfig {
   database: Knex;
   
   /** Directus services */
-  services?: any;
+  services?: DirectusServices;
   
   /** Schema information */
-  schema?: any;
+  schema?: DirectusSchema;
   
   /** User accountability */
-  accountability?: any;
+  accountability?: DirectusAccountability;
   
   // TODO: Implement these features in future versions
   /** Optional: Collections to exclude from analysis */

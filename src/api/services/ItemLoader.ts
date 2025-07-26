@@ -10,15 +10,16 @@ import {
 } from '../types/ItemLoaderTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { TranslationFieldAnalyzer } from './TranslationFieldAnalyzer';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
  * Service for loading items from Directus collections with pagination and filtering
  */
 export class ItemLoader {
   private database: Knex;
-  private schema: any;
-  private services: any;
-  private accountability?: any;
+  private schema: DirectusSchema;
+  private services: DirectusServices;
+  private accountability?: DirectusAccountability;
 
   constructor(config: ItemLoaderConfig) {
     this.database = config.database;

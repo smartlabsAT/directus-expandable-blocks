@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
 
 /**
  * Configuration for TranslationFieldAnalyzer service
@@ -8,13 +9,13 @@ export interface TranslationFieldAnalyzerConfig {
   database: Knex;
   
   /** Directus services object */
-  services: any;
+  services: DirectusServices;
   
   /** Optional Directus schema */
-  schema?: any;
+  schema?: DirectusSchema;
   
   /** Optional accountability for permissions */
-  accountability?: any;
+  accountability?: DirectusAccountability;
 }
 
 /**

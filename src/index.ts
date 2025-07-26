@@ -1,12 +1,13 @@
 import { defineInterface } from '@directus/extensions-sdk';
 import InterfaceComponent from './interface.vue';
+import type { DirectusRelation, DirectusField, DirectusCollection, DirectusStores } from './types/directus';
 
 // ExtensionOptionsContext is not available in @directus/types, define it locally
 interface ExtensionOptionsContext {
-  relations?: any;
-  field?: any;
-  collections?: any;
-  stores?: any;
+  relations?: DirectusRelation[];
+  field?: DirectusField;
+  collections?: DirectusCollection[];
+  stores?: DirectusStores;
 }
 
 export default defineInterface({
@@ -19,7 +20,7 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field, collections, stores }: ExtensionOptionsContext & { stores?: any }) => {
+  options: ({ relations, field, collections, stores }: ExtensionOptionsContext) => {
     
     // Handle both ref and non-ref cases
     const rels = relations || {};

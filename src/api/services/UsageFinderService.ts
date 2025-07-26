@@ -10,19 +10,20 @@ import {
 } from '../types/UsageFinderTypes';
 import { getLogger } from '../utils/logger-utils';
 import { TITLE_FIELDS, METADATA_FIELDS, parseAllowedCollections } from '../../utils/helpers';
+import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
  * Service for finding where items are used across collections
  */
 export class UsageFinderService {
   private database: Knex;
-  private services: any;
-  private schema?: any;
-  private accountability?: any;
+  private services: DirectusServices;
+  private schema?: DirectusSchema;
+  private accountability?: DirectusAccountability;
   private incomingRelations: RelationInfo[];
   private cache: Map<string, UsageCacheEntry> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  private logger: any;
+  private logger: Logger;
 
   constructor(config: UsageFinderConfig) {
     this.database = config.database;

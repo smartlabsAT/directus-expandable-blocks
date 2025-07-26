@@ -1,20 +1,21 @@
 import { Knex } from 'knex';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
 
 /**
  * Configuration for FieldAnalyzer service
  */
 export interface FieldAnalyzerConfig {
   /** Directus services object containing FieldsService */
-  services: any;
+  services: DirectusServices;
   
   /** Directus schema object */
-  schema: any;
+  schema: DirectusSchema;
   
   /** Optional database connection (for future use) */
   database?: Knex;
   
   /** Optional accountability for permissions */
-  accountability?: any;
+  accountability?: DirectusAccountability;
 }
 
 /**

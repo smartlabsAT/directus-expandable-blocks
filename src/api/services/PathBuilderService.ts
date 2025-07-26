@@ -15,19 +15,20 @@ import { UsageFinderService } from './UsageFinderService';
 import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
 import { TITLE_FIELDS } from '../../utils/helpers';
 import { getLogger } from '../utils/logger-utils';
+import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
  * Service for building hierarchical paths from usage information
  */
 export class PathBuilderService {
   private database: Knex;
-  private services: any;
-  private schema?: any;
-  private accountability?: any;
+  private services: DirectusServices;
+  private schema?: DirectusSchema;
+  private accountability?: DirectusAccountability;
   private defaultLocale: string;
   private usageFinder: UsageFinderService;
   private cache: CacheService;
-  private logger: any;
+  private logger: Logger;
 
   constructor(config: PathBuilderConfig) {
     this.database = config.database;

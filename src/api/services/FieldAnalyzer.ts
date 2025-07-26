@@ -11,16 +11,18 @@ import { InvalidCollectionError } from '../types/errors';
 import { TranslationFieldAnalyzer } from './TranslationFieldAnalyzer';
 import { TranslationFieldAnalyzerConfig } from '../types/TranslationFieldAnalyzerTypes';
 import { getLogger } from '../utils/logger-utils';
+import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
+import { Knex } from 'knex';
 
 /**
  * Service for analyzing collection fields and identifying searchable fields
  */
 export class FieldAnalyzer {
-  private services: any;
-  private schema: any;
-  private database?: any;
-  private accountability?: any;
-  private logger: any;
+  private services: DirectusServices;
+  private schema: DirectusSchema;
+  private database?: Knex;
+  private accountability?: DirectusAccountability;
+  private logger: Logger;
 
   constructor(config: FieldAnalyzerConfig) {
     this.services = config.services;

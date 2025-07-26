@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
 
 /**
  * Configuration for UsageFinderService
@@ -8,13 +9,13 @@ export interface UsageFinderConfig {
   database: Knex;
   
   /** Directus services object */
-  services: any;
+  services: DirectusServices;
   
   /** Optional Directus schema */
-  schema?: any;
+  schema?: DirectusSchema;
   
   /** Optional accountability for permissions */
-  accountability?: any;
+  accountability?: DirectusAccountability;
   
   /** Incoming relations for the collection - REQUIRED for performance */
   incomingRelations: RelationInfo[];

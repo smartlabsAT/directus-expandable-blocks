@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
 
 /**
  * Configuration for ItemLoader service
@@ -8,13 +9,13 @@ export interface ItemLoaderConfig {
   database: Knex;
   
   /** Directus schema object */
-  schema: any;
+  schema: DirectusSchema;
   
   /** Directus services object containing ItemsService, etc. */
-  services: any;
+  services: DirectusServices;
   
   /** Optional accountability for permissions */
-  accountability?: any;
+  accountability?: DirectusAccountability;
 }
 
 /**

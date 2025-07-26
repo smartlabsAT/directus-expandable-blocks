@@ -18,10 +18,11 @@ import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { parseMetadata, humanizeName, getFieldFromMeta, getDisplayName } from '../utils/relation-utils';
 import { getLogger } from '../utils/logger-utils';
 import { parseAllowedCollections } from '../../utils/helpers';
+import type { Logger } from '../types/directus-api';
 
 export class RelationAnalyzer {
   private database: Knex;
-  private logger: any;
+  private logger: Logger;
 
   constructor(config: RelationAnalyzerConfig) {
     this.database = config.database;

@@ -12,10 +12,11 @@ import {UsageFinderService} from './services/UsageFinderService';
 import {PathBuilderService} from './services/PathBuilderService';
 import {DirectusCacheWrapper} from './services/DirectusCacheWrapper';
 import {CacheKeys, CacheTTL} from './types/CacheTypes';
+import type { DirectusAccountability } from './types/directus-api';
 
 // Extend Express Request type for Directus
 interface DirectusRequest extends Request {
-    accountability?: any;
+    accountability?: DirectusAccountability;
 }
 
 // Create a singleton cache instance that persists across requests
