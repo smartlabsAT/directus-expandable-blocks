@@ -18,6 +18,9 @@ export interface CacheServiceConfig {
   
   /** Optional Redis client if available */
   redisClient?: any;
+  
+  /** Maximum number of keys to store (default: 10000) */
+  maxKeys?: number;
 }
 
 /**
@@ -141,6 +144,9 @@ export interface CacheStats {
   
   /** Cache type (redis or memory) */
   type: 'redis' | 'memory';
+  
+  /** Hit rate percentage */
+  hitRate?: number;
 }
 
 /**

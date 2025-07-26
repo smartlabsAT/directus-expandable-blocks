@@ -81,8 +81,8 @@ export interface SearchableField {
   /** Whether this field is translatable */
   translatable?: boolean;
   
-  /** Translation type: 'table' | 'json' | 'none' */
-  translation_type?: 'table' | 'json' | 'none';
+  /** Translation type: 'table' | 'json' | 'combined' | 'none' */
+  translation_type?: 'table' | 'json' | 'combined' | 'none';
   
   /** Available languages for this field */
   available_languages?: string[];
@@ -246,5 +246,5 @@ export const DEFAULT_FIELD_OPTIONS: Required<FieldAnalyzerOptions> = {
   includeSchema: false,
   includeTranslations: true,
   onlyTranslatable: false,
-  language: undefined
+  language: '' as string
 };

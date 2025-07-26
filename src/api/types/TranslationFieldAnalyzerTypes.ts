@@ -25,7 +25,7 @@ export interface TranslationInfo {
   hasTranslations: boolean;
   
   /** Type of translation implementation */
-  translationType: 'table' | 'json' | 'combined' | 'hybrid' | 'none';
+  translationType: 'table' | 'json' | 'combined' | 'hybrid' | 'standard' | 'custom' | 'none';
   
   /** Name of the translation table (if applicable) */
   translationTable?: string;
@@ -112,6 +112,9 @@ export interface TranslationAnalysisOptions {
   
   /** Fields to exclude from analysis */
   excludeFields?: string[];
+  
+  /** Include field mapping information */
+  includeFieldMapping?: boolean;
 }
 
 /**
@@ -119,7 +122,7 @@ export interface TranslationAnalysisOptions {
  */
 export interface TranslationPattern {
   /** Detected pattern type */
-  type: 'standard' | 'custom' | 'json' | 'combined' | 'hybrid';
+  type: 'standard' | 'custom' | 'json' | 'combined' | 'hybrid' | 'none';
   
   /** Confidence in the detection (0-1) */
   confidence: number;
@@ -178,3 +181,22 @@ export const EXCLUDED_TRANSLATION_FIELDS = [
   'user_created',
   'user_updated'
 ] as const;
+
+/**
+ * Translation field mapping
+ */
+export interface TranslationFieldMapping {
+  field: string;
+  translationField: string;
+  type: string;
+}
+
+/**
+ * Translation coverage information
+ */
+export interface TranslationCoverage {
+  totalFields: number;
+  translatableFields: number;
+  coverage: number;
+  fields: TranslationFieldMapping[];
+}

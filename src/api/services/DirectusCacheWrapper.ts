@@ -332,7 +332,7 @@ export class DirectusCacheWrapper implements CacheService {
    * Setup process handlers for cleanup
    */
   private setupProcessHandlers(): void {
-    if (typeof process !== 'undefined' && process.on) {
+    if (typeof process !== 'undefined' && process.on !== undefined) {
       const cleanup = () => {
         this.destroy();
       };
@@ -352,7 +352,7 @@ export class DirectusCacheWrapper implements CacheService {
   destroy(): void {
     // Stop the cleanup interval
     if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
+      clearInterval(this.cleanupInterval as any);
       this.cleanupInterval = null;
     }
 

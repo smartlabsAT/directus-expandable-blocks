@@ -145,7 +145,7 @@ export interface PathBuildOptions {
 /**
  * Path formatting options
  */
-export interface PathFormatOptions {
+export interface PathFormatOptions extends Partial<PathBuildOptions> {
   /** Locale for formatting */
   locale?: string;
   

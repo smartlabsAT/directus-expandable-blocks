@@ -479,7 +479,9 @@ export class PathBuilderService {
         
         // Try to load parent
         try {
-          current = await this.loadParent(current);
+          const parent = await this.loadParent(current);
+          if (!parent) break;
+          current = parent;
         } catch (error) {
           // Parent could not be loaded - end hierarchy here (graceful degradation)
           console.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}`, error);

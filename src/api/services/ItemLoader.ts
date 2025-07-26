@@ -218,7 +218,7 @@ export class ItemLoader {
         .count('* as count')
         .first();
       
-      const count = parseInt(result?.count || '0');
+      const count = parseInt(String(result?.count || '0'));
       return count;
     } catch (error: any) {
       return 0;

@@ -101,6 +101,15 @@ export interface RelationAnalyzerConfig {
   /** Database connection */
   database: Knex;
   
+  /** Directus services */
+  services?: any;
+  
+  /** Schema information */
+  schema?: any;
+  
+  /** User accountability */
+  accountability?: any;
+  
   // TODO: Implement these features in future versions
   /** Optional: Collections to exclude from analysis */
   // excludeCollections?: string[];

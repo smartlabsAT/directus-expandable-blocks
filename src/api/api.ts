@@ -1,4 +1,5 @@
 import {defineEndpoint} from '@directus/extensions-sdk';
+import type {Request} from 'express';
 import {RelationAnalyzer} from './services/RelationAnalyzer';
 import {RelationAnalyzerConfig} from './types/RelationTypes';
 import {ItemLoader} from './services/ItemLoader';
@@ -11,7 +12,11 @@ import {UsageFinderService} from './services/UsageFinderService';
 import {PathBuilderService} from './services/PathBuilderService';
 import {DirectusCacheWrapper} from './services/DirectusCacheWrapper';
 import {CacheKeys, CacheTTL} from './types/CacheTypes';
-// Note: Remove unused import - use context.logger instead
+
+// Extend Express Request type for Directus
+interface DirectusRequest extends Request {
+    accountability?: any;
+}
 
 // Create a singleton cache instance that persists across requests
 let cacheInstance: DirectusCacheWrapper | null = null;
@@ -36,7 +41,7 @@ export default defineEndpoint({
          * Route 1: Metadata Endpoint
          * Returns collection metadata for frontend initialization
          */
-        router.get('/:collection/metadata', async (req, res) => {
+        router.get('/:collection/metadata', async (req: DirectusRequest, res) => {
             try {
                 const {collection} = req.params;
                 const schema = await getSchema();
@@ -102,7 +107,7 @@ export default defineEndpoint({
                 context.logger.error('Error in metadata endpoint:', error);
                 res.status(500).json({
                     errors: [{
-                        message: error.message || 'Internal server error',
+                        message: error instanceof Error ? error.message : 'Internal server error',
                         extensions: {
                             code: 'INTERNAL_SERVER_ERROR'
                         }
@@ -115,7 +120,7 @@ export default defineEndpoint({
          * Route 2: Fast Search Endpoint
          * Returns items with translations but without usage information
          */
-        router.get('/:collection/search', async (req, res) => {
+        router.get('/:collection/search', async (req: DirectusRequest, res) => {
             try {
                 const {collection} = req.params;
                 const {
@@ -177,7 +182,7 @@ export default defineEndpoint({
                 context.logger.error('Error in search endpoint:', error);
                 res.status(500).json({
                     errors: [{
-                        message: error.message || 'Internal server error',
+                        message: error instanceof Error ? error.message : 'Internal server error',
                         extensions: {
                             code: 'INTERNAL_SERVER_ERROR'
                         }
@@ -190,7 +195,7 @@ export default defineEndpoint({
          * Route 3: Batch Usage Endpoint
          * Returns full items with usage information for specific IDs
          */
-        router.post('/:collection/detail', async (req, res) => {
+        router.post('/:collection/detail', async (req: DirectusRequest, res) => {
             try {
                 const {collection} = req.params;
                 const {ids, fields = '*'} = req.body;
@@ -324,7 +329,7 @@ export default defineEndpoint({
                 context.logger.error('Error in batch usage endpoint:', error);
                 res.status(500).json({
                     errors: [{
-                        message: error.message || 'Internal server error',
+                        message: error instanceof Error ? error.message : 'Internal server error',
                         extensions: {
                             code: 'INTERNAL_SERVER_ERROR'
                         }

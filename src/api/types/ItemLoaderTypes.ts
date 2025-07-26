@@ -41,6 +41,9 @@ export interface ItemQuery {
   
   /** Whether to automatically expand translation fields (default: true) */
   expandTranslations?: boolean;
+  
+  /** Deep filter for nested relations */
+  deep?: any;
 }
 
 /**
@@ -98,10 +101,11 @@ export const DEFAULT_QUERY: Required<ItemQuery> = {
   limit: 10,
   offset: 0,
   fields: ['*'],
-  filter: undefined,
-  search: undefined,
+  filter: undefined as any,
+  search: '' as string,
   sort: [],
-  expandTranslations: true
+  expandTranslations: true,
+  deep: undefined as any
 };
 
 /**

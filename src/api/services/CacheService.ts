@@ -528,7 +528,7 @@ export class CacheServiceImpl implements CacheService {
    */
   destroy(): void {
     if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
+      clearInterval(this.cleanupInterval as any);
     }
   }
 }

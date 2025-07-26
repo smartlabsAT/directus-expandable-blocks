@@ -95,8 +95,8 @@ export class FieldAnalyzer {
 
       // Filter fields based on options
       let searchableFields = allFields
-        .filter(field => this.shouldIncludeField(field, opts))
-        .map(field => {
+        .filter((field: any) => this.shouldIncludeField(field, opts))
+        .map((field: any) => {
           const transformed = this.transformToSearchableField(field);
           
           // Add translation info if available
@@ -112,12 +112,12 @@ export class FieldAnalyzer {
 
       // Filter only translatable if requested
       if (opts.onlyTranslatable) {
-        searchableFields = searchableFields.filter(field => field.translatable);
+        searchableFields = searchableFields.filter((field: any) => field.translatable);
       }
 
       // Sort by priority if requested
       if (opts.sortByPriority) {
-        searchableFields.sort((a, b) => {
+        searchableFields.sort((a: any, b: any) => {
           const priorityDiff = (b.display_priority || 0) - (a.display_priority || 0);
           if (priorityDiff !== 0) return priorityDiff;
           

@@ -426,7 +426,7 @@ export class TranslationFieldAnalyzer {
       const fields = await fieldsService.readAll(collection);
       
       // Filter to only fields from the requested collection
-      const collectionFields = fields.filter(f => !f.collection || f.collection === collection);
+      const collectionFields = fields.filter((f: any) => !f.collection || f.collection === collection);
       
       return collectionFields;
     } catch (error) {
