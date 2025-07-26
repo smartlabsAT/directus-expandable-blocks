@@ -17,6 +17,7 @@ import {
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { parseMetadata, humanizeName, getFieldFromMeta, getDisplayName } from '../utils/relation-utils';
 import { getLogger } from '../utils/logger-utils';
+import { parseAllowedCollections } from '../../utils/helpers';
 
 export class RelationAnalyzer {
   private database: Knex;
@@ -293,7 +294,7 @@ export class RelationAnalyzer {
         const mainCollection = this.extractMainCollection(rel);
         const fieldName = this.detectFieldName(rel, mainCollection, reverseRelations);
         
-        const allowedCollections = rel.one_allowed_collections.split(',').map(c => c.trim());
+        const allowedCollections = parseAllowedCollections(rel.one_allowed_collections);
         if (allowedCollections.includes(targetCollection) && rel.many_collection) {
           const relationDetail: RelationDetail = {
             field: fieldName,

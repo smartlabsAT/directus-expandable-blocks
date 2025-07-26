@@ -13,6 +13,7 @@ import {
 import { UsageLocation, UsageTree } from '../types/UsageFinderTypes';
 import { UsageFinderService } from './UsageFinderService';
 import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
+import { TITLE_FIELDS } from '../../utils/helpers';
 import { getLogger } from '../utils/logger-utils';
 
 /**
@@ -639,10 +640,10 @@ export class PathBuilderService {
       
       if (!item) return `${collection} #${itemId}`;
       
-      // Common field names for display
+      // Common field names for display - use TITLE_FIELDS first, then additional fields
       const displayFields = [
-        'name', 'title', 'headline', 'label', 'display_name',
-        'slug', 'description', 'text', 'content'
+        ...TITLE_FIELDS,
+        'display_name', 'slug', 'description', 'text', 'content'
       ];
 
       for (const field of displayFields) {

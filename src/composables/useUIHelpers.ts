@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger-wrapper';
-import { extractItemTitle, getActualItemId as getItemActualId, getActualItem, getItemCollection } from '../utils/helpers';
+import { extractItemTitle, getActualItemId, getActualItem, getItemCollection, METADATA_FIELDS } from '../utils/helpers';
 import { isValidCollection } from '../utils/validation';
 import type { JunctionRecord, ItemRecord, CollectionInfo } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
@@ -20,14 +20,8 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
   const { mergedOptions, availableStatuses } = ctx.ui;
   const { m2aStructure } = ctx.data;
   
-  // Item ID helpers
-  function getActualItemId(item: JunctionRecord): string | number {
-    return getItemActualId(item);
-  }
-
-  function getItemTitle(item: JunctionRecord): string {
-    return extractItemTitle(item);
-  }
+  // Note: These are kept for backward compatibility
+  // They just re-export the helper functions
 
   // Collection helpers
   function getCollectionName(item: JunctionRecord): string {
@@ -46,7 +40,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   // Field helpers
   function getFieldsForItem(item: JunctionRecord): any[] {
-    const actualItem = item.item || item;
+    const actualItem = getActualItem(item);
     const collection = (actualItem as any).collection || item.collection;
     
     if (!isValidCollection(collection)) {
@@ -57,7 +51,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
     return fieldsStore.getFieldsForCollection(collection)
       .filter((field: any) => {
         if (field.meta?.hidden || field.meta?.readonly) return false;
-        if (['id', 'user_created', 'date_created', 'user_updated', 'date_updated'].includes(field.field)) return false;
+        if (METADATA_FIELDS.includes(field.field)) return false;
         if (!field.meta?.interface) return false;
         
         if (mergedOptions.value?.showFieldsFilter && mergedOptions.value?.showFieldsFilter.length > 0) {
@@ -70,7 +64,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   // Status helpers
   function hasStatusField(item: JunctionRecord): boolean {
-    const actualItem = item.item || item;
+    const actualItem = getActualItem(item);
     const collection = item.collection || (actualItem as any).collection;
     
     if (!isValidCollection(collection)) return false;
@@ -120,9 +114,9 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
   }
 
   return {
-    // Item helpers
+    // Item helpers (directly from utils/helpers)
     getActualItemId,
-    getItemTitle,
+    getItemTitle: extractItemTitle,
     
     // Collection helpers
     getCollectionName,

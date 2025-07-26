@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 import { nextTick } from 'vue';
-import { logger } from './logger';
+import { logger } from './logger-wrapper';
 import type { JunctionRecord } from '../types';
 
 export interface EmitOptions {

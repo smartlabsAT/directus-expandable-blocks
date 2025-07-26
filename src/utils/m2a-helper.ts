@@ -1,5 +1,6 @@
-import { logger } from './logger';
+import { logger } from './logger-wrapper';
 import { isNotNullish } from './validation';
+import { METADATA_FIELDS } from './helpers';
 import type { M2AFieldInfo } from '../types';
 
 export type { M2AFieldInfo };
@@ -190,7 +191,7 @@ export class M2AHelper {
       // Process each field
       fields.forEach((field: any) => {
         // Skip system fields
-        if (['id', 'user_created', 'user_updated', 'date_created', 'date_updated'].includes(field.field)) {
+        if (METADATA_FIELDS.includes(field.field)) {
           return;
         }
         

@@ -9,6 +9,7 @@ import {
   UsageCacheEntry
 } from '../types/UsageFinderTypes';
 import { getLogger } from '../utils/logger-utils';
+import { TITLE_FIELDS, METADATA_FIELDS, parseAllowedCollections } from '../../utils/helpers';
 
 /**
  * Service for finding where items are used across collections
@@ -76,7 +77,7 @@ export class UsageFinderService {
       try {
         // Handle M2A relations
         if (relation.one_collection === null && relation.one_allowed_collections) {
-          const allowedCollections = relation.one_allowed_collections.split(',').map(c => c.trim());
+          const allowedCollections = parseAllowedCollections(relation.one_allowed_collections);
           if (!allowedCollections.includes(collection)) continue;
 
           const junctionUsages = await this.findM2AUsages(
@@ -522,11 +523,11 @@ export class UsageFinderService {
       return `${collectionName} #unknown`;
     }
 
-    // Common field names for display
+    // Common field names for display - use TITLE_FIELDS first, then additional fields
     const displayFields = [
-      'name', 'title', 'headline', 'label', 'display_name',
-      'slug', 'description', 'text', 'content', 'page_title',
-      'menu_title', 'heading', 'caption', 'subject'
+      ...TITLE_FIELDS,
+      'display_name', 'slug', 'description', 'text', 'content',
+      'page_title', 'menu_title', 'caption', 'subject'
     ];
 
     // Find first non-empty field
@@ -539,8 +540,7 @@ export class UsageFinderService {
     // If no display field found, use first string field
     for (const [key, value] of Object.entries(obj)) {
       if (value && typeof value === 'string' &&
-          !['id', 'status', 'sort', 'user_created', 'user_updated',
-            'date_created', 'date_updated'].includes(key) &&
+          ![...METADATA_FIELDS, 'status', 'sort'].includes(key) &&
           value.trim().length > 0 && value.trim().length < 100) {
         return value;
       }

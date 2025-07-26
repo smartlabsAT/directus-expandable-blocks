@@ -3,7 +3,7 @@
  */
 
 import type { JunctionRecord, ItemRecord, CollectionInfo } from '../types';
-import { deepEqual } from './state-helpers';
+import { deepEqual, deepClone } from './state-helpers';
 import { isTemporaryId } from './validation';
 
 /**
@@ -133,41 +133,6 @@ export function getItemCollection(item: JunctionRecord | ItemRecord): string | u
 }
 
 /**
- * Deep clone an object
- */
-export function deepClone<T>(obj: T): T {
-  // Handle primitive types and null
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-  
-  // Handle undefined
-  if (obj === undefined) {
-    return obj;
-  }
-  
-  // Handle Date
-  if (obj instanceof Date) {
-    return new Date(obj.getTime()) as any;
-  }
-  
-  // Handle Array
-  if (Array.isArray(obj)) {
-    return obj.map(item => deepClone(item)) as any;
-  }
-  
-  // Handle Object
-  const clonedObj = {} as any;
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      clonedObj[key] = deepClone(obj[key]);
-    }
-  }
-  
-  return clonedObj;
-}
-
-/**
  * Add junction metadata (foreign key and sort field) to an item
  * @param item - The junction record to add metadata to
  * @param foreignKeyField - The foreign key field name
@@ -193,5 +158,5 @@ export function addJunctionMetadata(
   }
 }
 
-// Re-export deepEqual for backward compatibility
-export { deepEqual };
+// Re-export deepEqual and deepClone for backward compatibility
+export { deepEqual, deepClone };
