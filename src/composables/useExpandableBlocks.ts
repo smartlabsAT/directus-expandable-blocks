@@ -9,6 +9,7 @@ import { useBlockActions } from './useBlockActions';
 import { useM2AData } from './useM2AData';
 import { useBlockWatchers } from './useBlockWatchers';
 import { useUIHelpers } from './useUIHelpers';
+import { usePermissionChecks } from './usePermissionChecks';
 import type { 
   ExpandableBlocksOptions, 
   JunctionRecord, 
@@ -182,6 +183,7 @@ export function useExpandableBlocks(
   const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
   const watchers = useBlockWatchers(ctx, updateOriginalItemOrder, clearStateTracking, m2aData.loadFullItemData, m2aData.processPasteData);
   const uiHelpers = useUIHelpers(ctx);
+  const permissions = usePermissionChecks(mergedOptions);
 
   /**
    * Load all options from field configuration
@@ -430,6 +432,9 @@ export function useExpandableBlocks(
     // From useM2AData (for interface.vue if needed)
     loadFullItemData: m2aData.loadFullItemData,
     processLoadedRecords: m2aData.processLoadedRecords,
-    processPasteData: m2aData.processPasteData
+    processPasteData: m2aData.processPasteData,
+    
+    // Permissions
+    ...permissions
   };
 }

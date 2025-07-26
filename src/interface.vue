@@ -4,13 +4,14 @@
         v-model="items"
         :expanded-items="expandedItems"
         :loading="loading"
-        :sortable="sortable"
+        :sortable="sortable && canSort"
         :disabled="disabled"
         :compact-mode="mergedOptions?.compactMode"
         :show-item-id="shouldShowItemId"
         :show-collection-name="shouldShowCollectionName"
-        :allow-duplicate="mergedOptions?.isAllowedDuplicate !== false"
-        :allow-delete="mergedOptions?.isAllowedDelete !== false"
+        :allow-duplicate="mergedOptions?.isAllowedDuplicate !== false && canDuplicate"
+        :allow-delete="mergedOptions?.isAllowedDelete !== false && canDelete"
+        :allow-status-change="canChangeStatus"
         :available-statuses="availableStatuses"
         :expandable-blocks="expandableBlocks"
         @toggle-expand="toggleExpand"
@@ -24,10 +25,10 @@
     />
 
     <add-block-button
-        :disabled="disabled"
+        :disabled="disabled || !canAddBlocks"
         :collections="allowedCollections"
         :collections-for-existing="allowedCollectionsForExisting"
-        :can-add="canAddMoreBlocks"
+        :can-add="canAddMoreBlocks && canAddBlocks"
         :allow-link-existing="mergedOptions?.allowLinkExisting"
         :allow-duplicate-existing="mergedOptions?.allowDuplicateExisting"
         @add-item="addNewItem"
@@ -158,7 +159,14 @@ const {
   hasNestedM2A,
   getM2AFields,
   formatFieldName,
-  loadBlockUsageData
+  loadBlockUsageData,
+  
+  // Permissions
+  canChangeStatus,
+  canSort,
+  canAddBlocks,
+  canDelete,
+  canDuplicate
 } = expandableBlocks;
 
 // Initialize API

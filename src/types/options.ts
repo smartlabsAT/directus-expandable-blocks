@@ -24,6 +24,13 @@ export interface ExpandableBlocksOptions {
   allowLinkExisting?: boolean;
   allowDuplicateExisting?: boolean;
   
+  // Role-based Permissions
+  rolesCanChangeStatus?: string[];
+  rolesCanSort?: string[];
+  rolesCanAddBlocks?: string[];
+  rolesCanDelete?: string[];
+  rolesCanDuplicate?: string[];
+  
   // AI Configuration
   enableAI?: boolean;
   aiProvider?: 'openai' | 'claude' | 'custom';

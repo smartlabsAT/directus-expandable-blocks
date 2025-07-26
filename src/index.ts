@@ -407,6 +407,130 @@ export default defineInterface({
           default_value: true
         }
       });
+      
+      // Role-based Permissions Group
+      baseOptions.push({
+        field: 'role_permissions_divider',
+        name: 'Role-based Permissions',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'admin_panel_settings',
+            color: '#9C27B0',
+            title: 'Role-based Permissions',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
+      baseOptions.push({
+        field: 'role_permissions_info',
+        name: 'Role Permissions Info',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-notice',
+          options: {
+            icon: 'info',
+            color: 'blue-grey',
+            text: 'Configure which roles can perform specific actions. Leave empty to allow all roles (default behavior). Administrators always have full access.'
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanChangeStatus',
+        name: 'Roles Can Change Status',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can change block status (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanSort',
+        name: 'Roles Can Sort',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can reorder blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanAddBlocks',
+        name: 'Roles Can Add Blocks',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can add new blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanDelete',
+        name: 'Roles Can Delete',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can delete blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanDuplicate',
+        name: 'Roles Can Duplicate',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can duplicate blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
     }
 
     return baseOptions;

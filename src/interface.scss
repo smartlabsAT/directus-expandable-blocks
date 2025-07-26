@@ -41,6 +41,8 @@ $expanded-border-width: 5px;
       border-left: $expanded-border-width solid var(--theme--sidebar--section--toggle--background);
       margin-top: -5px;
       padding: 15px;
+      position: relative;
+      overflow: visible;
     }
 
     .v-form.grid {
@@ -931,6 +933,15 @@ $expanded-border-width: 5px;
   border-radius: var(--border-radius);
   font-size: 12px;
   transition: background-color $transition-fast;
+  
+  &.status-readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    
+    &:hover {
+      background-color: transparent;
+    }
+  }
 
   &.clickable {
     cursor: pointer;
@@ -1076,12 +1087,12 @@ $expanded-border-width: 5px;
 
 .expand-enter-to {
   opacity: 1;
-  max-height: 400px; // Angepasst für Search Help Panel
+  max-height: 1000px; // Increased to accommodate forms with notices
 }
 
 .expand-leave-from {
   opacity: 1;
-  max-height: 400px; // Angepasst für Search Help Panel
+  max-height: 1000px; // Increased to accommodate forms with notices
 }
 
 .expand-leave-to {
@@ -1109,6 +1120,20 @@ $expanded-border-width: 5px;
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
+}
+
+/* Fix v-notice positioning within block-content */
+.block-content :deep(.v-notice) {
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Ensure v-form empty state notice is properly positioned */
+.block-content :deep(.v-form .v-notice) {
+  position: relative !important;
+  margin: 16px 0 !important;
+  transform: none !important;
 }
 
 /* Status dropdown styles */
