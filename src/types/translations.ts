@@ -14,6 +14,7 @@ export interface TranslationInfo {
   translationFields: TranslationField[];
   isCombinedTranslation?: boolean;
   message?: string;
+  availableLanguages?: LanguageOption[];
 }
 
 /**
@@ -35,6 +36,7 @@ export interface TranslationField {
 export interface FieldWithTranslation {
   field: string;
   name?: string;
+  display_name?: string;
   type: string;
   interface?: string;
   translatable?: boolean;
@@ -43,6 +45,10 @@ export interface FieldWithTranslation {
   required?: boolean;
   readonly?: boolean;
   hidden?: boolean;
+  searchable?: boolean;
+  weight?: number;
+  display?: string;
+  options?: any;
 }
 
 /**

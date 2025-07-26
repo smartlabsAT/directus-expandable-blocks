@@ -4,7 +4,7 @@ import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
 import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption } from '../types';
 
-export function useItemSelector(api: any) {  // collections entfernt
+export function useItemSelector(api: any) {
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
   const itemRelations = ref<Record<string, any[]>>({});
@@ -116,7 +116,7 @@ export function useItemSelector(api: any) {  // collections entfernt
    */
   function parseSearchQuery(query: string) {
     // Unterstützte Operatoren
-    const operators = {
+    const operators: Record<string, string> = {
       '=%': '_contains',
       '!~': '_ncontains',
       '=': '_eq',
@@ -170,7 +170,7 @@ export function useItemSelector(api: any) {  // collections entfernt
    * Example: "title=product OR status=active" -> {_or: [{field: 'title'...}, {field: 'status'...}]}
    */
   function parseMultipleQueries(query: string): any {
-    const operators = {
+    const operators: Record<string, string> = {
       '=%': '_contains',
       '!~': '_ncontains',
       '=': '_eq',
@@ -343,11 +343,11 @@ export function useItemSelector(api: any) {  // collections entfernt
         const queries = parseMultipleQueries(searchQuery.value);
         if (queries.length > 0) {
           // Build complex filter from multiple queries
-          let currentGroup = [];
-          const orGroups = [];
+          let currentGroup: any[] = [];
+          const orGroups: any[] = [];
           let hasOr = false;
           
-          queries.forEach((q, index) => {
+          queries.forEach((q: any, index: number) => {
             const transformed = transformFieldForTranslation(
               q.field,
               q.operator,
@@ -375,7 +375,7 @@ export function useItemSelector(api: any) {  // collections entfernt
             params.filter = { _or: orGroups };
           } else {
             // Build filters with translation support
-            const filters = queries.map(q => {
+            const filters = queries.map((q: any) => {
               const transformed = transformFieldForTranslation(q.field, q.operator, q.value);
               return transformed.filter;
             });
@@ -386,11 +386,11 @@ export function useItemSelector(api: any) {  // collections entfernt
           // Fulltext search with translation support
           if (translationInfo.value?.hasTranslations && translationInfo.value.translationFields?.length > 0) {
             // Create OR conditions for all searchable fields including translations
-            const searchConditions = [];
+            const searchConditions: any[] = [];
             const languageCode = selectedLanguage.value || 'en-US';
             
             // Build conditions for translation fields
-            const translationConditions = [];
+            const translationConditions: any[] = [];
             translationInfo.value.translationFields.forEach(field => {
               if (['string', 'text'].includes(field.type)) {
                 translationConditions.push({
