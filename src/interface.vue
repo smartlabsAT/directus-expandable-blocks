@@ -162,6 +162,7 @@ const {
   getM2AFields,
   formatFieldName,
   loadBlockUsageData,
+  canUpdateItem,
   
   // Permissions
   canChangeStatus,

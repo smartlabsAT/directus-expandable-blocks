@@ -2,7 +2,7 @@ import { ref, computed, nextTick, type Ref, type ComputedRef } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
 import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
-import { logDebug, logError } from '../utils/logger-wrapper';
+import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 import { isItemObject } from '../utils/validation';
 import { useBlockState } from './useBlockState';
 import { useBlockActions } from './useBlockActions';
@@ -213,6 +213,38 @@ export function useExpandableBlocks(
       return hasReadPermission;
     });
   });
+  
+  // Check if user can update a specific collection
+  function canUpdateCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canUpdate = permissionsStore.hasPermission(collection, 'update');
+    if (!canUpdate) {
+      logDebug('User has no update permission for collection', { collection });
+    }
+    return canUpdate;
+  }
+  
+  // Check if user can update a specific item
+  function canUpdateItem(item: JunctionRecord): boolean {
+    // M2A structure: item.collection contains the target collection name
+    const collection = item.collection;
+    
+    logDebug('Checking update permission for item', { 
+      collection,
+      itemStructure: {
+        hasCollection: !!item.collection,
+        hasItem: !!item.item,
+        collectionValue: item.collection
+      }
+    });
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can update', { item });
+      return true;
+    }
+    
+    return canUpdateCollection(collection);
+  }
 
   /**
    * Load all options from field configuration
@@ -442,6 +474,8 @@ export function useExpandableBlocks(
     isBlockDirty,
     loadBlockUsageData,
     getBlockUsageData,
+    canUpdateCollection,
+    canUpdateItem,
     
     // Actions from blockActions
     toggleExpand: blockActions.toggleExpand,

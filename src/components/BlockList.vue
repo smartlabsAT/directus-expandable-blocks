@@ -17,6 +17,7 @@
           :fields="getFieldsForItem(item)"
           :disabled="disabled"
           :compact-mode="compactMode"
+          :can-update="canUpdateItem(item)"
           :usage-data="getBlockUsageData(item)"
           @toggle-expand="$emit('toggle-expand', getItemId(item))"
           @update-item="$emit('update-item', index, $event)"
@@ -47,14 +48,15 @@
                   :current-status="getItemStatus(item)"
                   :status-label="getStatusLabel(getItemStatus(item))"
                   :statuses="availableStatuses"
+                  :allow-change="allowStatusChange && canUpdateItem(item)"
                   @update-status="$emit('update-status', item, index, $event)"
                 />
               </template>
 
               <template #actions>
                 <block-actions
-                  :allow-duplicate="allowDuplicate"
-                  :allow-delete="allowDelete"
+                  :allow-duplicate="allowDuplicate && canUpdateItem(item)"
+                  :allow-delete="allowDelete && canUpdateItem(item)"
                   :is-dirty="isBlockDirty(getItemId(item), item.item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
@@ -108,6 +110,7 @@ interface Props {
   showCollectionName: boolean;
   allowDuplicate: boolean;
   allowDelete: boolean;
+  allowStatusChange: boolean;
   availableStatuses: Array<{ value: string; label: string }>;
   expandableBlocks: any; // The entire expandableBlocks instance
 }
@@ -148,6 +151,7 @@ const hasNestedM2A = (item: JunctionRecord) => props.expandableBlocks.hasNestedM
 const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFields(item);
 const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
 const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBlockUsageData(item);
+const canUpdateItem = (item: JunctionRecord) => props.expandableBlocks.canUpdateItem(item);
 
 // Check if any block has usage indicators
 const hasAnyUsageIndicator = computed(() => {

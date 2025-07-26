@@ -4,7 +4,8 @@
     :class="{
       expanded: isExpanded,
       compact: compactMode,
-      disabled: disabled
+      disabled: disabled,
+      'read-only': canUpdate === false
     }"
   >
     <!-- Block Header -->
@@ -45,12 +46,22 @@
             </div>
           </v-notice>
 
+          <!-- Read-only Notice -->
+          <v-notice
+            v-if="canUpdate === false"
+            type="info"
+            icon="visibility"
+            class="read-only-notice"
+          >
+            Read-only: You don't have permission to update this collection
+          </v-notice>
+
           <v-form
             :initial-values="itemData"
             :fields="fields"
             :model-value="itemData"
             :primary-key="itemData.id"
-            :disabled="disabled"
+            :disabled="disabled || canUpdate === false"
             :badge="null"
             :autofocus="false"
             :show-validation-errors="false"
@@ -76,6 +87,7 @@ interface Props {
   fields: any[];
   disabled: boolean;
   compactMode?: boolean;
+  canUpdate?: boolean;
   usageData?: {
     usageCount: number;
     externalCount: number;
@@ -97,6 +109,10 @@ defineEmits<{
 
 <style scoped>
 .usage-warning {
+  margin-bottom: 20px;
+}
+
+.read-only-notice {
   margin-bottom: 20px;
 }
 </style>
