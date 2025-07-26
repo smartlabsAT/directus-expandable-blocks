@@ -102,7 +102,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
    * @param sortField - Optional sort field from relation info
    * @returns Array with IDs for clean blocks and full objects for dirty blocks
    */
-  function prepareItemsForEmit(itemsArray: JunctionRecord[], sortField?: string): any[] {
+  function prepareItemsForEmit(itemsArray: JunctionRecord[], sortField?: string, canUpdateItemFn?: (item: JunctionRecord) => boolean): any[] {
     const debugInfo: Record<string, any> = {
       itemsCount: itemsArray.length,
       dirtyStatesCount: blockDirtyStates.value.size,
@@ -118,6 +118,55 @@ export function useBlockState(relationInfo?: Ref<any>) {
       
       // Existing block logic
       if (!isNew && blockId) {
+        // Check if user has update permission for this item
+        const hasUpdatePermission = canUpdateItemFn ? canUpdateItemFn(item) : true;
+        
+        if (!hasUpdatePermission) {
+          // Check if position has changed for this block
+          const currentIndex = itemsArray.indexOf(item);
+          const originalIndex = originalItemOrder.value.findIndex(id => String(id) === blockId);
+          const positionChanged = currentIndex !== -1 && originalIndex !== -1 && currentIndex !== originalIndex;
+          
+          if (positionChanged && sortField) {
+            // For blocks without update permission that have changed position,
+            // send minimal object with just ID and sort field to preserve sorting
+            logger.debug(`Emitting minimal object for repositioned no-permission block ${blockId}`, {
+              currentIndex,
+              originalIndex,
+              sortField
+            });
+            debugInfo.items.push({
+              index,
+              blockId,
+              isDirty: false,
+              hasUpdatePermission: false,
+              positionChanged: true,
+              reason: 'no-update-permission-but-position-changed'
+            });
+            
+            // Return minimal object with ID and sort field only
+            const minimalObject: any = {
+              id: item.id
+            };
+            if (sortField && item.hasOwnProperty(sortField)) {
+              minimalObject[sortField] = item[sortField]; // Use the actual sort value from the item
+            }
+            return minimalObject;
+          }
+          
+          // No position change, just send ID
+          logger.debug(`Emitting ID only for no-permission block ${blockId}`);
+          debugInfo.items.push({
+            index,
+            blockId,
+            isDirty: false,
+            hasUpdatePermission: false,
+            positionChanged: false,
+            reason: 'no-update-permission'
+          });
+          return item.id; // Only ID for blocks without update permission and no position change
+        }
+        
         // First check if it's manually marked as dirty
         let isDirty = blockDirtyStates.value.get(blockId) || false;
         
@@ -138,6 +187,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
           isDirty,
           hasOriginalState: blockOriginalStates.value.has(blockId),
           manuallyMarkedDirty: blockDirtyStates.value.get(blockId) || false,
+          hasUpdatePermission,
           itemKeys: item.item ? Object.keys(item.item) : []
         });
         
