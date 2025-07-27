@@ -322,7 +322,7 @@ export function useItemSelector(api: any) {
       const params: any = {
         limit: itemsPerPage.value,
         offset: offset,
-        fields: ['*'],
+        fields: ['*', 'user_updated.first_name', 'user_updated.last_name', 'user_updated.email'],
         meta: '*'
       };
       

@@ -116,6 +116,18 @@
                 <v-list-item-title>Hide empty fields</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
+            <v-list-item clickable @click="$emit('toggle-show-last-update')">
+              <v-list-item-icon>
+                <v-checkbox
+                    :model-value="showLastUpdate"
+                    @update:model-value="$emit('toggle-show-last-update')"
+                    @click.stop
+                />
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>Show last update</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
           </v-list>
         </div>
         
@@ -192,6 +204,7 @@ interface Props {
   isFieldTranslatable?: (field: string) => boolean;
   showIds?: boolean;
   hideEmptyFields?: boolean;
+  showLastUpdate?: boolean;
   sortField?: string | null;
   sortDirection?: 'asc' | 'desc';
   itemsPerPage?: number;
@@ -203,6 +216,7 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   showIds: false,
   hideEmptyFields: false,
+  showLastUpdate: false,
   sortField: null,
   sortDirection: 'asc',
   itemsPerPage: 100
@@ -213,6 +227,7 @@ defineEmits<{
   'change-language': [language: string];
   'toggle-show-ids': [];
   'toggle-hide-empty-fields': [];
+  'toggle-show-last-update': [];
   'update:sort-field': [field: string | null];
   'toggle-sort-direction': [];
   'update:items-per-page': [value: number];

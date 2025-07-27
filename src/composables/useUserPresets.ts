@@ -29,6 +29,7 @@ export function useUserPresets() {
   const sortFieldCache = ref<Record<string, string | null>>({});
   const sortDirectionCache = ref<Record<string, 'asc' | 'desc'>>({});
   const itemsPerPageCache = ref<Record<string, number>>({});
+  const showLastUpdateCache = ref<Record<string, boolean>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -77,6 +78,7 @@ export function useUserPresets() {
       sortFieldCache.value = {};
       sortDirectionCache.value = {};
       itemsPerPageCache.value = {};
+      showLastUpdateCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -112,6 +114,10 @@ export function useUserPresets() {
             itemsPerPageCache.value[actualCollection] = preset.layout_options.itemsPerPage;
           }
           
+          if (preset.layout_options.showLastUpdate !== undefined) {
+            showLastUpdateCache.value[actualCollection] = preset.layout_options.showLastUpdate;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
@@ -123,6 +129,7 @@ export function useUserPresets() {
             sortField: preset.layout_options.sortField,
             sortDirection: preset.layout_options.sortDirection,
             itemsPerPage: preset.layout_options.itemsPerPage,
+            showLastUpdate: preset.layout_options.showLastUpdate,
             presetId: preset.id
           });
         }
@@ -142,7 +149,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc', itemsPerPage?: number }): Promise<void> {
+  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc', itemsPerPage?: number, showLastUpdate?: boolean }): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -201,6 +208,12 @@ export function useUserPresets() {
         layoutOptions.itemsPerPage = itemsPerPageCache.value[collection];
       }
       
+      if (data.showLastUpdate !== undefined) {
+        layoutOptions.showLastUpdate = data.showLastUpdate;
+      } else if (showLastUpdateCache.value[collection] !== undefined) {
+        layoutOptions.showLastUpdate = showLastUpdateCache.value[collection];
+      }
+      
       const presetData = {
         collection: presetCollection,
         layout_options: layoutOptions,
@@ -250,6 +263,9 @@ export function useUserPresets() {
       }
       if (data.itemsPerPage !== undefined) {
         itemsPerPageCache.value[collection] = data.itemsPerPage;
+      }
+      if (data.showLastUpdate !== undefined) {
+        showLastUpdateCache.value[collection] = data.showLastUpdate;
       }
       
     } catch (err) {
@@ -516,6 +532,34 @@ export function useUserPresets() {
   }
   
   /**
+   * Get show last update setting for a specific collection
+   */
+  function getShowLastUpdate(collection: string): boolean {
+    return showLastUpdateCache.value[collection] || false;
+  }
+  
+  /**
+   * Save show last update setting for a collection
+   */
+  async function saveShowLastUpdate(collection: string, showLastUpdate: boolean): Promise<void> {
+    showLastUpdateCache.value[collection] = showLastUpdate;
+    
+    try {
+      await debouncedSaveShowLastUpdate(collection, showLastUpdate);
+    } catch (err) {
+      logWarn('Failed to persist show last update setting', { collection, showLastUpdate });
+    }
+  }
+  
+  /**
+   * Debounced save function for show last update
+   */
+  const debouncedSaveShowLastUpdate = debounce(
+    (collection: string, showLastUpdate: boolean) => savePresetData(collection, { showLastUpdate }), 
+    500
+  );
+  
+  /**
    * Initialize presets (load and migrate if needed)
    */
   async function initialize(): Promise<void> {
@@ -539,6 +583,7 @@ export function useUserPresets() {
     sortFieldCache,
     sortDirectionCache,
     itemsPerPageCache,
+    showLastUpdateCache,
     loading,
     error,
     
@@ -559,6 +604,8 @@ export function useUserPresets() {
     saveSortSettings,
     getItemsPerPage,
     saveItemsPerPage,
+    getShowLastUpdate,
+    saveShowLastUpdate,
     initialize
   };
 }

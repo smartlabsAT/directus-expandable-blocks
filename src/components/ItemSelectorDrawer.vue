@@ -71,10 +71,12 @@
               :sort-field="sortField"
               :sort-direction="sortDirection"
               :items-per-page="itemsPerPageLocal"
+              :show-last-update="showLastUpdate"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
               @toggle-hide-empty-fields="toggleHideEmptyFields"
+              @toggle-show-last-update="toggleShowLastUpdate"
               @update:sort-field="updateSortField"
               @toggle-sort-direction="toggleSortDirection"
               @update:items-per-page="updateItemsPerPage"
@@ -110,6 +112,14 @@
         v-tooltip.top="capitalizeField(item.status)"
     />
               <span class="item-title">{{ extractItemTitle(item) }}</span>
+              
+              <!-- Update Info -->
+              <span v-if="showLastUpdate && item.date_updated" class="update-info">
+                · {{ formatRelativeTime(item.date_updated) }}
+                <span v-if="item.user_updated">
+                  by {{ getUserDisplayName(item.user_updated) }}
+                </span>
+              </span>
 
               <!-- Spacer to push items to the right -->
               <div class="spacer"></div>
@@ -299,6 +309,7 @@ const displayFields = ref<string[]>([]);
 const selectedLanguageLocal = ref<string>('');
 const showIds = ref(false);
 const hideEmptyFields = ref(false);
+const showLastUpdate = ref(false);
 const sortField = ref<string | null>(null);
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const itemsPerPageLocal = ref(100);
@@ -542,6 +553,20 @@ async function toggleHideEmptyFields() {
   }
 }
 
+async function toggleShowLastUpdate() {
+  showLastUpdate.value = !showLastUpdate.value;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveShowLastUpdate(props.collection, showLastUpdate.value);
+      logger.debug('Saved show last update preference', { collection: props.collection, showLastUpdate: showLastUpdate.value });
+    } catch (err) {
+      logger.error('Failed to save show last update preference', err);
+    }
+  }
+}
+
 async function updateSortField(field: string | null) {
   sortField.value = field;
   
@@ -615,6 +640,50 @@ function handleEditRefresh() {
   emit('search', searchQuery.value);
 }
 
+function formatRelativeTime(dateString: string): string {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 7) {
+    // Show absolute date for older items
+    return date.toLocaleDateString();
+  } else if (days > 0) {
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  } else if (hours > 0) {
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  } else if (minutes > 0) {
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  } else {
+    return 'just now';
+  }
+}
+
+function getUserDisplayName(user: any): string {
+  if (!user) return '';
+  
+  // Try different combinations for display name
+  if (user.first_name && user.last_name) {
+    return `${user.first_name} ${user.last_name}`;
+  } else if (user.first_name) {
+    return user.first_name;
+  } else if (user.last_name) {
+    return user.last_name;
+  } else if (user.email) {
+    // Show only the part before @ for privacy
+    return user.email.split('@')[0];
+  }
+  
+  return 'Unknown';
+}
+
 // Reset when drawer opens/closes
 watch(() => props.open, async (isOpen) => {
   if (isOpen) {
@@ -647,6 +716,7 @@ watch(() => props.open, async (isOpen) => {
       
       showIds.value = userPresets.getShowIds(props.collection);
       hideEmptyFields.value = userPresets.getHideEmptyFields(props.collection);
+      showLastUpdate.value = userPresets.getShowLastUpdate(props.collection);
       sortField.value = userPresets.getSortField(props.collection);
       sortDirection.value = userPresets.getSortDirection(props.collection);
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
@@ -657,6 +727,7 @@ watch(() => props.open, async (isOpen) => {
         language: selectedLanguageLocal.value,
         showIds: showIds.value,
         hideEmptyFields: hideEmptyFields.value,
+        showLastUpdate: showLastUpdate.value,
         sortField: sortField.value,
         sortDirection: sortDirection.value,
         itemsPerPage: itemsPerPageLocal.value
@@ -684,6 +755,7 @@ watch(() => props.collection, async (collection) => {
     
     showIds.value = userPresets.getShowIds(collection);
     hideEmptyFields.value = userPresets.getHideEmptyFields(collection);
+    showLastUpdate.value = userPresets.getShowLastUpdate(collection);
     sortField.value = userPresets.getSortField(collection);
     sortDirection.value = userPresets.getSortDirection(collection);
     itemsPerPageLocal.value = userPresets.getItemsPerPage(collection);
@@ -694,6 +766,7 @@ watch(() => props.collection, async (collection) => {
       language: selectedLanguageLocal.value,
       showIds: showIds.value,
       hideEmptyFields: hideEmptyFields.value,
+      showLastUpdate: showLastUpdate.value,
       sortField: sortField.value,
       sortDirection: sortDirection.value,
       itemsPerPage: itemsPerPageLocal.value
@@ -807,5 +880,13 @@ onMounted(async () => {
   :deep(.usage-popover) {
     /* Remove margin-left auto since we use spacer now */
   }
+}
+
+/* Update info styling */
+.update-info {
+  font-size: 12px;
+  color: var(--foreground-subdued);
+  margin-left: 8px;
+  white-space: nowrap;
 }
 </style>
