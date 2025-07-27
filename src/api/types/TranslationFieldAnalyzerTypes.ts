@@ -80,6 +80,42 @@ export interface TranslationField {
   
   /** For combined translations: source fields this translation covers */
   coversFields?: string[];
+  
+  /** Interface used for this field */
+  interface?: string | null;
+  
+  /** Display options */
+  display?: string | null;
+  display_options?: any;
+  
+  /** Interface options */
+  options?: any;
+  
+  /** Field note */
+  note?: string | null;
+  
+  /** Field requirements */
+  required?: boolean;
+  readonly?: boolean;
+  hidden?: boolean;
+  
+  /** Special field flags */
+  special?: string[] | null;
+  
+  /** Field width in form */
+  width?: string | null;
+  
+  /** Validation rules */
+  validation?: any;
+  
+  /** Conditional display rules */
+  conditions?: any;
+  
+  /** Full metadata */
+  meta?: any;
+  
+  /** Schema information */
+  schema?: any;
 }
 
 

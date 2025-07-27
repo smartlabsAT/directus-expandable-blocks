@@ -90,11 +90,13 @@ import {toRefs, inject, ref, onMounted, computed, watch} from 'vue';
 import { debounce } from 'lodash-es';
 import {useExpandableBlocks} from './composables/useExpandableBlocks';
 import {useItemSelector} from './composables/useItemSelector';
+import {useUserPresets} from './composables/useUserPresets';
 import {useApi} from '@directus/extensions-sdk';
 import BlockList from './components/BlockList.vue';
 import AddBlockButton from './components/AddBlockButton.vue';
 import ItemSelectorDrawer from './components/ItemSelectorDrawer.vue';
 import type {UseExpandableBlocksProps} from './composables/useExpandableBlocks';
+import { logDebug } from './utils/logger-wrapper';
 
 interface Props extends UseExpandableBlocksProps {
 }
@@ -180,8 +182,29 @@ const {
 // Initialize API
 const api = useApi();
 
+// Initialize user presets
+const userPresets = useUserPresets();
+const userPresetsInitialized = ref(false);
+
 // Initialize item selector composable
 const itemSelector = useItemSelector(api, allowedCollections);
+
+// Override the open function to include user preferences
+const originalOpen = itemSelector.open;
+itemSelector.open = async (collection: string) => {
+  // Get user preferences for the collection
+  const userPrefs = {
+    selectedLanguage: userPresets.getSelectedLanguage(collection),
+    itemsPerPage: userPresets.getItemsPerPage(collection),
+    sortField: userPresets.getSortField(collection),
+    sortDirection: userPresets.getSortDirection(collection)
+  };
+  
+  logDebug('Opening item selector with user preferences', { collection, userPrefs });
+  
+  // Call the original open function with preferences
+  await originalOpen(collection, userPrefs);
+};
 
 // Handle item selection from drawer
 function handleItemSelection(selectedItems: any[]) {
@@ -211,6 +234,15 @@ watch(items, debounce(async (newItems, oldItems) => {
 
 // Initialize on mount
 onMounted(async () => {
+  // Initialize user presets first
+  try {
+    await userPresets.initialize();
+    userPresetsInitialized.value = true;
+    logDebug('User presets initialized');
+  } catch (err) {
+    logDebug('Failed to initialize user presets', { error: err });
+  }
+  
   await initialize();
   // Load usage data for existing blocks
   await loadBlockUsageData();

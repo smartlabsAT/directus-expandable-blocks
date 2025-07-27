@@ -26,7 +26,7 @@
           v-model:search-query="searchQuery"
           v-model:show-help="showSearchHelp"
           :loading="loading"
-          :available-fields="availableFields"
+          :available-fields="allAvailableFields"
           :translation-info="translationInfo"
           :total-items="totalItems"
           @search="$emit('search', $event)"
@@ -59,7 +59,7 @@
 
           <!-- Settings Button -->
           <FieldSettingsMenu
-              :available-fields="availableFields"
+              :available-fields="allAvailableFields"
               :display-fields="displayFields"
               :selected-language="selectedLanguageLocal"
               :available-languages="availableLanguages"
@@ -195,7 +195,7 @@
           :selected-items="selectedItems"
           :display-fields="displayFields"
           :collection-name="collectionName"
-          :available-fields="availableFields"
+          :available-fields="allAvailableFields"
           :item-relations="itemRelations"
           :show-ids="showIds"
           :hide-empty-fields="hideEmptyFields"
@@ -375,6 +375,63 @@ const totalPages = computed(() => {
   return Math.ceil(props.totalItems / props.itemsPerPage);
 });
 
+// Combine available fields with translation fields
+const allAvailableFields = computed(() => {
+  const fields = [...(props.availableFields || [])];
+  
+  // Add translation fields if they exist
+  if (props.translationInfo?.translationFields) {
+    logger.debug('Adding translation fields to available fields', {
+      translationFields: props.translationInfo.translationFields
+    });
+    
+    props.translationInfo.translationFields.forEach((tf: any) => {
+      // Debug log for each translation field
+      if (tf.field === 'description') {
+        logger.debug('Translation field description raw data', {
+          tf,
+          hasInterface: 'interface' in tf,
+          interfaceValue: tf.interface,
+          allKeys: Object.keys(tf)
+        });
+      }
+      
+      // Don't add if already exists
+      if (!fields.find(f => f.field === tf.field)) {
+        const translationField = {
+          ...tf,
+          // Ensure the field has all necessary properties
+          field: tf.field,
+          name: tf.name || tf.field,
+          type: tf.type,
+          interface: tf.interface || null,
+          display: tf.display || null,
+          options: tf.options || null,
+          translatable: true,
+          translation_type: 'combined'
+        };
+        
+        logger.debug('Adding translation field', {
+          field: tf.field,
+          interface: translationField.interface,
+          tfInterface: tf.interface,
+          originalTf: tf
+        });
+        
+        fields.push(translationField);
+      }
+    });
+  }
+  
+  logger.debug('All available fields computed', {
+    totalFields: fields.length,
+    hasDescriptionField: fields.some(f => f.field === 'description'),
+    descriptionField: fields.find(f => f.field === 'description')
+  });
+  
+  return fields;
+});
+
 const currentPageLocal = computed({
   get: () => props.currentPage || 1,
   set: (value) => emit('update:current-page', value)
@@ -461,12 +518,12 @@ async function toggleFieldDisplay(field: string) {
 }
 
 function getFieldLabel(field: string): string {
-  const fieldInfo = props.availableFields?.find(f => f.field === field);
+  const fieldInfo = allAvailableFields.value?.find(f => f.field === field);
   return fieldInfo?.name || field;
 }
 
 function getFieldInfo(field: string) {
-  return props.availableFields?.find(f => f.field === field);
+  return allAvailableFields.value?.find(f => f.field === field);
 }
 
 function getFieldValue(value: any): string {

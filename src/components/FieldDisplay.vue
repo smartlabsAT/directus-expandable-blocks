@@ -110,7 +110,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
+import { createScopedLogger } from '../utils/logger-wrapper';
+
+const logger = createScopedLogger('FieldDisplay');
 
 interface Props {
   value: any;
@@ -130,6 +133,18 @@ const props = withDefaults(defineProps<Props>(), {
   maxLength: 100
 });
 
+// Debug logging
+watch(() => props.fieldInfo, (info) => {
+  if (props.field === 'description') {
+    logger.debug('FieldInfo for description field', {
+      field: props.field,
+      fieldInfo: info,
+      interface: info?.interface,
+      isWysiwyg: info?.interface === 'input-rich-text-html'
+    });
+  }
+}, { immediate: true });
+
 // Field type detection
 const fieldType = computed(() => props.fieldInfo?.type || typeof props.value);
 const fieldInterface = computed(() => props.fieldInfo?.interface);
@@ -139,11 +154,21 @@ const isSelectDropdown = computed(() =>
   fieldInterface.value === 'select-dropdown'
 );
 
-const isWysiwyg = computed(() => 
-  fieldInterface.value === 'input-rich-text-html' || 
-  fieldInterface.value === 'input-rich-text-md' ||
-  fieldDisplay.value === 'formatted-value'
-);
+const isWysiwyg = computed(() => {
+  const result = fieldInterface.value === 'input-rich-text-html' || 
+    fieldInterface.value === 'input-rich-text-md' ||
+    fieldDisplay.value === 'formatted-value';
+  
+  if (props.field === 'description') {
+    logger.debug('isWysiwyg check for description', {
+      fieldInterface: fieldInterface.value,
+      fieldDisplay: fieldDisplay.value,
+      result
+    });
+  }
+  
+  return result;
+});
 
 const isDateField = computed(() => 
   fieldType.value === 'date' || 

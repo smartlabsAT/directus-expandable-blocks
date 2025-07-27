@@ -4,7 +4,7 @@ import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
 import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption } from '../types';
 
-export function useItemSelector(api: any) {
+export function useItemSelector(api: any, allowedCollections?: string[]) {
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
   const itemRelations = ref<Record<string, any[]>>({});
@@ -586,9 +586,42 @@ export function useItemSelector(api: any) {
   const debouncedLoadItems = debounce(loadItems, 300);
 
   /**
+   * Initialize settings from user preferences or defaults
+   */
+  function initializeSettings(collection: string, userPrefs: any) {
+    // Initialize language
+    if (userPrefs?.selectedLanguage) {
+      selectedLanguage.value = userPrefs.selectedLanguage;
+    } else if (!selectedLanguage.value) {
+      selectedLanguage.value = 'en-US';
+    }
+    
+    // Initialize items per page
+    if (userPrefs?.itemsPerPage) {
+      itemsPerPage.value = userPrefs.itemsPerPage;
+    }
+    
+    // Initialize sort settings
+    if (userPrefs?.sortField) {
+      sortField.value = userPrefs.sortField;
+    }
+    if (userPrefs?.sortDirection) {
+      sortDirection.value = userPrefs.sortDirection;
+    }
+    
+    logDebug('Initialized settings', {
+      collection,
+      selectedLanguage: selectedLanguage.value,
+      itemsPerPage: itemsPerPage.value,
+      sortField: sortField.value,
+      sortDirection: sortDirection.value
+    });
+  }
+
+  /**
    * Open the selector for a specific collection
    */
-  async function open(collection: string) {
+  async function open(collection: string, userPrefs?: any) {
 
     selectedCollection.value = collection;
 
@@ -596,6 +629,9 @@ export function useItemSelector(api: any) {
     const storeCollectionInfo = collectionsStore.getCollection(collection);
     selectedCollectionName.value = storeCollectionInfo?.name || collection;
     selectedCollectionIcon.value = storeCollectionInfo?.meta?.icon || 'box';
+    
+    // Initialize settings from user preferences
+    initializeSettings(collection, userPrefs);
 
     // Load collection metadata including searchable fields
     await loadCollectionMetadata();

@@ -207,6 +207,9 @@ export class TranslationFieldAnalyzer {
             ...tf,
             translationMethod: 'combined',
             isContentField: true,
+            interface: tf.interface || null,
+            display: tf.display || null,
+            options: tf.options || null,
             //coversFields: tf.coversFields || sourceFields
           });
         }
@@ -226,6 +229,9 @@ export class TranslationFieldAnalyzer {
           field: field.field,
           type: field.type,
           name: field.meta?.display || field.meta?.name || field.field,
+          interface: field.meta?.interface || null,
+          display: field.meta?.display || null,
+          options: field.meta?.options || null,
           translatable: true,
           translationMethod: 'json'
         });
@@ -323,7 +329,23 @@ export class TranslationFieldAnalyzer {
           field: f.field,
           type: f.type,
           name: f.meta?.display || f.meta?.name || f.field,
-          translatable: true
+          interface: f.meta?.interface || null,
+          display: f.meta?.display || null,
+          display_options: f.meta?.display_options || null,
+          options: f.meta?.options || null,
+          note: f.meta?.note || null,
+          required: f.meta?.required || false,
+          readonly: f.meta?.readonly || false,
+          hidden: f.meta?.hidden || false,
+          special: f.meta?.special || null,
+          width: f.meta?.width || null,
+          validation: f.meta?.validation || null,
+          conditions: f.meta?.conditions || null,
+          translatable: true,
+          // Include full metadata
+          meta: f.meta || {},
+          // Include schema if available
+          schema: f.schema || {}
         }));
 
       return {
