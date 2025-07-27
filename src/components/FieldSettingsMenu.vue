@@ -35,6 +35,25 @@
       
       <v-list-item disabled>
         <v-list-item-content>
+          <div class="field-selector-header">Display Options</div>
+        </v-list-item-content>
+      </v-list-item>
+      <v-divider/>
+      <v-list-item clickable @click="$emit('toggle-show-ids')">
+        <v-list-item-icon>
+          <v-checkbox
+              :model-value="showIds"
+              @update:model-value="$emit('toggle-show-ids')"
+              @click.stop
+          />
+        </v-list-item-icon>
+        <v-list-item-content>
+          <v-list-item-title>Show IDs</v-list-item-title>
+        </v-list-item-content>
+      </v-list-item>
+      <v-divider/>
+      <v-list-item disabled>
+        <v-list-item-content>
           <div class="field-selector-header">
             Select fields to display
             <v-progress-circular v-if="loading" indeterminate x-small />
@@ -96,17 +115,20 @@ interface Props {
   translationInfo?: any;
   loading?: boolean;
   isFieldTranslatable?: (field: string) => boolean;
+  showIds?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableFields: () => [],
   displayFields: () => [],
-  loading: false
+  loading: false,
+  showIds: false
 });
 
 defineEmits<{
   'toggle-field': [field: string];
   'change-language': [language: string];
+  'toggle-show-ids': [];
 }>();
 
 // Helper function to check if field is translatable

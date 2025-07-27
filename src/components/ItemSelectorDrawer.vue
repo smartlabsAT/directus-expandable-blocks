@@ -66,8 +66,10 @@
               :translation-info="translationInfo"
               :loading="userPresets.loading.value"
               :is-field-translatable="isFieldTranslatable"
+              :show-ids="showIds"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
+              @toggle-show-ids="toggleShowIds"
           />
         </div>
       </div>
@@ -100,9 +102,6 @@
         v-tooltip.top="capitalizeField(item.status)"
     />
               <span class="item-title">{{ extractItemTitle(item) }}</span>
-              <v-chip v-if="item.id" x-small label class="item-id-badge">
-                ID: {{ item.id }}
-              </v-chip>
 
               <!-- Spacer to push items to the right -->
               <div class="spacer"></div>
@@ -114,6 +113,12 @@
                 :item-id="item.id"
                 @item-click="handleUsageItemClick"
               />
+
+              <!-- ID Badge -->
+              <v-chip v-if="showIds && item.id" x-small label class="item-id-badge">
+                <v-icon name="fingerprint" x-small />
+                {{ item.id }}
+              </v-chip>
 
               <!-- Edit Button -->
               <v-button
@@ -280,6 +285,7 @@ const selectedItems = ref<(string | number)[]>([]);
 const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
 const selectedLanguageLocal = ref<string>('');
+const showIds = ref(false);
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -456,6 +462,20 @@ async function handleLanguageChange(language: string) {
   }
 }
 
+async function toggleShowIds() {
+  showIds.value = !showIds.value;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveShowIds(props.collection, showIds.value);
+      logger.debug('Saved show IDs preference', { collection: props.collection, showIds: showIds.value });
+    } catch (err) {
+      logger.error('Failed to save show IDs preference', err);
+    }
+  }
+}
+
 function openEditDrawer(item: any) {
   logger.debug('Opening edit drawer for item', { item });
   editingItem.value = item;
@@ -486,7 +506,7 @@ watch(() => props.open, async (isOpen) => {
       }
     }
     
-    // Always load display fields and language for current collection when drawer opens
+    // Always load display fields, language and show IDs for current collection when drawer opens
     if (props.collection && preferencesInitialized.value) {
       const fields = userPresets.getDisplayFields(props.collection);
       displayFields.value = fields;
@@ -498,10 +518,13 @@ watch(() => props.open, async (isOpen) => {
         selectedLanguageLocal.value = props.selectedLanguage;
       }
       
+      showIds.value = userPresets.getShowIds(props.collection);
+      
       logger.debug('Loaded preferences on drawer open', { 
         collection: props.collection, 
         fields,
-        language: selectedLanguageLocal.value
+        language: selectedLanguageLocal.value,
+        showIds: showIds.value
       });
     }
   }
@@ -524,10 +547,13 @@ watch(() => props.collection, async (collection) => {
       selectedLanguageLocal.value = props.selectedLanguage;
     }
     
+    showIds.value = userPresets.getShowIds(collection);
+    
     logger.debug('Loaded preferences on collection change', { 
       collection, 
       fields,
-      language: selectedLanguageLocal.value
+      language: selectedLanguageLocal.value,
+      showIds: showIds.value
     });
   }
 });
@@ -545,7 +571,7 @@ onMounted(async () => {
     await userPresets.initialize();
     preferencesInitialized.value = true;
     
-    // Load display fields and language for current collection
+    // Load display fields, language and show IDs for current collection
     if (props.collection) {
       displayFields.value = userPresets.getDisplayFields(props.collection);
       
@@ -555,6 +581,8 @@ onMounted(async () => {
       } else if (props.selectedLanguage) {
         selectedLanguageLocal.value = props.selectedLanguage;
       }
+      
+      showIds.value = userPresets.getShowIds(props.collection);
     }
   } catch (err) {
     logger.error('Failed to initialize user presets', err);
@@ -600,6 +628,22 @@ onMounted(async () => {
     
     &:hover {
       opacity: 1;
+    }
+  }
+  
+  .item-id-badge {
+    background-color: var(--background-subdued);
+    color: var(--foreground-subdued);
+    font-family: var(--family-monospace);
+    font-size: 11px;
+    min-width: 80px;
+    text-align: center;
+    justify-content: center;
+    
+    :deep(.v-icon) {
+      margin-right: 4px;
+      --v-icon-size: 14px;
+      color: var(--foreground-subdued);
     }
   }
   

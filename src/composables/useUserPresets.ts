@@ -24,6 +24,7 @@ export function useUserPresets() {
   // State
   const displayFieldsCache = ref<Record<string, string[]>>({});
   const selectedLanguageCache = ref<Record<string, string>>({});
+  const showIdsCache = ref<Record<string, boolean>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -67,6 +68,7 @@ export function useUserPresets() {
       // Parse presets into our cache
       displayFieldsCache.value = {};
       selectedLanguageCache.value = {};
+      showIdsCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -82,12 +84,17 @@ export function useUserPresets() {
             selectedLanguageCache.value[actualCollection] = preset.layout_options.selectedLanguage;
           }
           
+          if (preset.layout_options.showIds !== undefined) {
+            showIdsCache.value[actualCollection] = preset.layout_options.showIds;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
             collection: actualCollection,
             fields: preset.layout_options.displayFields,
             language: preset.layout_options.selectedLanguage,
+            showIds: preset.layout_options.showIds,
             presetId: preset.id
           });
         }
@@ -107,7 +114,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string }): Promise<void> {
+  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean }): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -134,6 +141,12 @@ export function useUserPresets() {
         layoutOptions.selectedLanguage = data.selectedLanguage;
       } else if (selectedLanguageCache.value[collection]) {
         layoutOptions.selectedLanguage = selectedLanguageCache.value[collection];
+      }
+      
+      if (data.showIds !== undefined) {
+        layoutOptions.showIds = data.showIds;
+      } else if (showIdsCache.value[collection] !== undefined) {
+        layoutOptions.showIds = showIdsCache.value[collection];
       }
       
       const presetData = {
@@ -170,6 +183,9 @@ export function useUserPresets() {
       }
       if (data.selectedLanguage !== undefined) {
         selectedLanguageCache.value[collection] = data.selectedLanguage;
+      }
+      if (data.showIds !== undefined) {
+        showIdsCache.value[collection] = data.showIds;
       }
       
     } catch (err) {
@@ -271,6 +287,34 @@ export function useUserPresets() {
   );
   
   /**
+   * Get show IDs setting for a specific collection
+   */
+  function getShowIds(collection: string): boolean {
+    return showIdsCache.value[collection] || false;
+  }
+  
+  /**
+   * Save show IDs setting for a collection
+   */
+  async function saveShowIds(collection: string, showIds: boolean): Promise<void> {
+    showIdsCache.value[collection] = showIds;
+    
+    try {
+      await debouncedSaveShowIds(collection, showIds);
+    } catch (err) {
+      logWarn('Failed to persist show IDs setting', { collection, showIds });
+    }
+  }
+  
+  /**
+   * Debounced save function for show IDs
+   */
+  const debouncedSaveShowIds = debounce(
+    (collection: string, showIds: boolean) => savePresetData(collection, { showIds }), 
+    500
+  );
+  
+  /**
    * Migrate data from localStorage to presets
    */
   async function migrateFromLocalStorage(): Promise<void> {
@@ -333,6 +377,7 @@ export function useUserPresets() {
     // State
     displayFieldsCache,
     selectedLanguageCache,
+    showIdsCache,
     loading,
     error,
     
@@ -344,6 +389,8 @@ export function useUserPresets() {
     toggleDisplayField,
     getSelectedLanguage,
     saveSelectedLanguage,
+    getShowIds,
+    saveShowIds,
     initialize
   };
 }
