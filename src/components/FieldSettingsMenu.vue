@@ -5,6 +5,7 @@
           v-tooltip.bottom="'Display Settings'"
           icon
           secondary
+          small
           @click="toggle"
       >
         <v-icon name="settings"/>

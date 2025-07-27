@@ -198,8 +198,9 @@
       </v-notice>
     </div>
 
-    <!-- Footer Actions -->
+    <!--  Actions -->
     <template #actions>
+      <div class="action-buttons-wrapper">
       <v-button
           v-if="allowDuplicate"
           :disabled="selectedItems.length === 0"
@@ -216,10 +217,12 @@
           :disabled="selectedItems.length === 0"
           icon
           @click="handleConfirm"
+
           v-tooltip.left="'Adds a reference to the selected item. Changes to the item will affect all places where it is used.'"
       >
         <v-icon name="link"/>
       </v-button>
+      </div>
     </template>
   </v-drawer>
 
@@ -888,5 +891,12 @@ onMounted(async () => {
   color: var(--foreground-subdued);
   margin-left: 8px;
   white-space: nowrap;
+}
+
+/* Action buttons wrapper */
+.action-buttons-wrapper {
+  margin-left: 12px;
+  display: flex;
+  gap: 8px;
 }
 </style>
