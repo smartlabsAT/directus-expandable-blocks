@@ -72,6 +72,7 @@
               :sort-direction="sortDirection"
               :items-per-page="itemsPerPageLocal"
               :show-last-update="showLastUpdate"
+              :view-mode="viewMode"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
@@ -80,12 +81,13 @@
               @update:sort-field="updateSortField"
               @toggle-sort-direction="toggleSortDirection"
               @update:items-per-page="updateItemsPerPage"
+              @change-view-mode="handleViewModeChange"
           />
         </div>
       </div>
 
-      <!-- Items List -->
-      <v-list v-if="items.length > 0" class="items-list">
+      <!-- Items List View -->
+      <v-list v-if="items.length > 0 && viewMode === 'list'" class="items-list">
         <v-list-item
             v-for="item in items"
             :key="item.id || item"
@@ -185,6 +187,26 @@
           </v-list-item-content>
         </v-list-item>
       </v-list>
+      
+      <!-- Items Table View -->
+      <ItemSelectorTable
+          v-else-if="items.length > 0 && viewMode === 'table'"
+          :items="items"
+          :selected-items="selectedItems"
+          :display-fields="displayFields"
+          :collection-name="collectionName"
+          :available-fields="availableFields"
+          :item-relations="itemRelations"
+          :show-ids="showIds"
+          :hide-empty-fields="hideEmptyFields"
+          :show-last-update="showLastUpdate"
+          :get-translated-field-value="getTranslatedFieldValue"
+          :is-field-translatable="isFieldTranslatable"
+          @toggle-selection="toggleSelection"
+          @toggle-all="toggleAll"
+          @open-edit="openEditDrawer"
+          @usage-item-click="handleUsageItemClick"
+      />
 
       <!-- Error State -->
       <v-notice v-else-if="apiError" type="danger" icon="error">
@@ -244,6 +266,7 @@ import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import FieldSettingsMenu from './FieldSettingsMenu.vue';
 import ItemEditDrawer from './ItemEditDrawer.vue';
+import ItemSelectorTable from './ItemSelectorTable.vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { useUserPresets } from '../composables/useUserPresets';
 
@@ -316,6 +339,7 @@ const showLastUpdate = ref(false);
 const sortField = ref<string | null>(null);
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const itemsPerPageLocal = ref(100);
+const viewMode = ref<'list' | 'table'>('table');
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -643,6 +667,30 @@ function handleEditRefresh() {
   emit('search', searchQuery.value);
 }
 
+function toggleAll(value: boolean) {
+  if (value) {
+    // Select all items
+    selectedItems.value = props.items.map(item => item.id || item);
+  } else {
+    // Deselect all
+    selectedItems.value = [];
+  }
+}
+
+async function handleViewModeChange(mode: 'list' | 'table') {
+  viewMode.value = mode;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveViewMode(props.collection, mode);
+      logger.debug('Saved view mode preference', { collection: props.collection, viewMode: mode });
+    } catch (err) {
+      logger.error('Failed to save view mode preference', err);
+    }
+  }
+}
+
 function formatRelativeTime(dateString: string): string {
   if (!dateString) return '';
   
@@ -723,6 +771,7 @@ watch(() => props.open, async (isOpen) => {
       sortField.value = userPresets.getSortField(props.collection);
       sortDirection.value = userPresets.getSortDirection(props.collection);
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
+      viewMode.value = userPresets.getViewMode(props.collection);
       
       logger.debug('Loaded preferences on drawer open', { 
         collection: props.collection, 
@@ -733,7 +782,8 @@ watch(() => props.open, async (isOpen) => {
         showLastUpdate: showLastUpdate.value,
         sortField: sortField.value,
         sortDirection: sortDirection.value,
-        itemsPerPage: itemsPerPageLocal.value
+        itemsPerPage: itemsPerPageLocal.value,
+        viewMode: viewMode.value
       });
     }
   }
@@ -762,6 +812,7 @@ watch(() => props.collection, async (collection) => {
     sortField.value = userPresets.getSortField(collection);
     sortDirection.value = userPresets.getSortDirection(collection);
     itemsPerPageLocal.value = userPresets.getItemsPerPage(collection);
+    viewMode.value = userPresets.getViewMode(collection);
     
     logger.debug('Loaded preferences on collection change', { 
       collection, 
@@ -772,7 +823,8 @@ watch(() => props.collection, async (collection) => {
       showLastUpdate: showLastUpdate.value,
       sortField: sortField.value,
       sortDirection: sortDirection.value,
-      itemsPerPage: itemsPerPageLocal.value
+      itemsPerPage: itemsPerPageLocal.value,
+      viewMode: viewMode.value
     });
   }
 });

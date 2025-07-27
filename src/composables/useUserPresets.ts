@@ -30,6 +30,7 @@ export function useUserPresets() {
   const sortDirectionCache = ref<Record<string, 'asc' | 'desc'>>({});
   const itemsPerPageCache = ref<Record<string, number>>({});
   const showLastUpdateCache = ref<Record<string, boolean>>({});
+  const viewModeCache = ref<Record<string, 'list' | 'table'>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -79,6 +80,7 @@ export function useUserPresets() {
       sortDirectionCache.value = {};
       itemsPerPageCache.value = {};
       showLastUpdateCache.value = {};
+      viewModeCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -118,6 +120,10 @@ export function useUserPresets() {
             showLastUpdateCache.value[actualCollection] = preset.layout_options.showLastUpdate;
           }
           
+          if (preset.layout_options.viewMode !== undefined) {
+            viewModeCache.value[actualCollection] = preset.layout_options.viewMode;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
@@ -130,6 +136,7 @@ export function useUserPresets() {
             sortDirection: preset.layout_options.sortDirection,
             itemsPerPage: preset.layout_options.itemsPerPage,
             showLastUpdate: preset.layout_options.showLastUpdate,
+            viewMode: preset.layout_options.viewMode,
             presetId: preset.id
           });
         }
@@ -149,7 +156,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc', itemsPerPage?: number, showLastUpdate?: boolean }): Promise<void> {
+  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc', itemsPerPage?: number, showLastUpdate?: boolean, viewMode?: 'list' | 'table' }): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -214,6 +221,12 @@ export function useUserPresets() {
         layoutOptions.showLastUpdate = showLastUpdateCache.value[collection];
       }
       
+      if (data.viewMode !== undefined) {
+        layoutOptions.viewMode = data.viewMode;
+      } else if (viewModeCache.value[collection] !== undefined) {
+        layoutOptions.viewMode = viewModeCache.value[collection];
+      }
+      
       const presetData = {
         collection: presetCollection,
         layout_options: layoutOptions,
@@ -266,6 +279,9 @@ export function useUserPresets() {
       }
       if (data.showLastUpdate !== undefined) {
         showLastUpdateCache.value[collection] = data.showLastUpdate;
+      }
+      if (data.viewMode !== undefined) {
+        viewModeCache.value[collection] = data.viewMode;
       }
       
     } catch (err) {
@@ -560,6 +576,34 @@ export function useUserPresets() {
   );
   
   /**
+   * Get view mode for a specific collection
+   */
+  function getViewMode(collection: string): 'list' | 'table' {
+    return viewModeCache.value[collection] || 'table';
+  }
+  
+  /**
+   * Save view mode for a collection
+   */
+  async function saveViewMode(collection: string, viewMode: 'list' | 'table'): Promise<void> {
+    viewModeCache.value[collection] = viewMode;
+    
+    try {
+      await debouncedSaveViewMode(collection, viewMode);
+    } catch (err) {
+      logWarn('Failed to persist view mode setting', { collection, viewMode });
+    }
+  }
+  
+  /**
+   * Debounced save function for view mode
+   */
+  const debouncedSaveViewMode = debounce(
+    (collection: string, viewMode: 'list' | 'table') => savePresetData(collection, { viewMode }), 
+    500
+  );
+
+  /**
    * Initialize presets (load and migrate if needed)
    */
   async function initialize(): Promise<void> {
@@ -584,6 +628,7 @@ export function useUserPresets() {
     sortDirectionCache,
     itemsPerPageCache,
     showLastUpdateCache,
+    viewModeCache,
     loading,
     error,
     
@@ -606,6 +651,8 @@ export function useUserPresets() {
     saveItemsPerPage,
     getShowLastUpdate,
     saveShowLastUpdate,
+    getViewMode,
+    saveViewMode,
     initialize
   };
 }

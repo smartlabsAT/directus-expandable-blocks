@@ -50,6 +50,41 @@
             </v-list-item>
             <v-divider/>
             
+            <!-- View Mode -->
+            <v-list-item disabled>
+              <v-list-item-content>
+                <div class="field-selector-header">
+                  <v-icon name="view_module" small />
+                  View Mode
+                </div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <div class="view-mode-buttons">
+                  <v-button
+                      :secondary="viewMode !== 'list'"
+                      :primary="viewMode === 'list'"
+                      small
+                      @click="$emit('change-view-mode', 'list')"
+                  >
+                    <v-icon name="view_list" small />
+                    List
+                  </v-button>
+                  <v-button
+                      :secondary="viewMode !== 'table'"
+                      :primary="viewMode === 'table'"
+                      small
+                      @click="$emit('change-view-mode', 'table')"
+                  >
+                    <v-icon name="table_chart" small />
+                    Table
+                  </v-button>
+                </div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-divider/>
+            
             <!-- Items per Page -->
             <v-list-item disabled>
               <v-list-item-content>
@@ -232,6 +267,7 @@ interface Props {
   sortField?: string | null;
   sortDirection?: 'asc' | 'desc';
   itemsPerPage?: number;
+  viewMode?: 'list' | 'table';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -243,7 +279,8 @@ const props = withDefaults(defineProps<Props>(), {
   showLastUpdate: false,
   sortField: null,
   sortDirection: 'asc',
-  itemsPerPage: 100
+  itemsPerPage: 100,
+  viewMode: 'table'
 });
 
 defineEmits<{
@@ -255,6 +292,7 @@ defineEmits<{
   'update:sort-field': [field: string | null];
   'toggle-sort-direction': [];
   'update:items-per-page': [value: number];
+  'change-view-mode': [mode: 'list' | 'table'];
 }>();
 
 // Computed properties
@@ -416,5 +454,17 @@ function capitalizeField(fieldName: string): string {
 .v-select :deep(.v-input .input) {
   min-height: 44px !important;
   padding: 0 12px !important;
+}
+
+/* View mode buttons */
+.view-mode-buttons {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.view-mode-buttons .v-button {
+  flex: 1;
+  justify-content: center;
 }
 </style>
