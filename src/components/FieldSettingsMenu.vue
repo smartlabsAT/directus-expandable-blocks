@@ -11,85 +11,99 @@
       </v-button>
     </template>
 
-    <v-list class="field-selector-list">
-      <!-- Language Selector (if translations available) -->
-      <template v-if="translationInfo?.hasTranslations">
-        <v-list-item disabled>
-          <v-list-item-content>
-            <div class="field-selector-header">Language</div>
-          </v-list-item-content>
-        </v-list-item>
-        <v-list-item>
-          <v-list-item-content>
-            <v-select
-                :model-value="selectedLanguage"
-                :items="availableLanguages || []"
-                item-text="name"
-                item-value="code"
-                @update:model-value="$emit('change-language', $event)"
-            />
-          </v-list-item-content>
-        </v-list-item>
-        <v-divider/>
-      </template>
-      
-      <v-list-item disabled>
-        <v-list-item-content>
-          <div class="field-selector-header">Display Options</div>
-        </v-list-item-content>
-      </v-list-item>
-      <v-divider/>
-      <v-list-item clickable @click="$emit('toggle-show-ids')">
-        <v-list-item-icon>
-          <v-checkbox
-              :model-value="showIds"
-              @update:model-value="$emit('toggle-show-ids')"
-              @click.stop
-          />
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title>Show IDs</v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-      <v-divider/>
-      <v-list-item disabled>
-        <v-list-item-content>
-          <div class="field-selector-header">
-            Select fields to display
-            <v-progress-circular v-if="loading" indeterminate x-small />
-          </div>
-        </v-list-item-content>
-      </v-list-item>
-      <v-divider/>
-      <v-list-item
-          v-for="field in availableFields"
-          :key="field.field"
-          clickable
-          @click="$emit('toggle-field', field.field)"
-      >
-        <v-list-item-icon>
-          <v-checkbox
-              :model-value="displayFields.includes(field.field)"
-              @update:model-value="$emit('toggle-field', field.field)"
-              @click.stop
-          />
-        </v-list-item-icon>
-        <v-list-item-content>
-          <v-list-item-title class="field-selector-title">
-            <span class="field-name">
-              {{ capitalizeField(field.name || field.field) }}
-            </span>
-            <v-icon 
-                v-if="isTranslatable(field)" 
-                name="translate" 
-                small
-                v-tooltip.top="'This field is translatable'"
-                class="translation-icon"
-            />
-          </v-list-item-title>
-        </v-list-item-content>
-      </v-list-item>
-    </v-list>
+    <div class="settings-menu-content">
+      <div class="settings-columns">
+        <!-- Left Column: Language & Display Options -->
+        <div class="settings-column settings-column-left">
+          <v-list class="field-selector-list">
+            <!-- Language Selector (if translations available) -->
+            <template v-if="translationInfo?.hasTranslations">
+              <v-list-item disabled>
+                <v-list-item-content>
+                  <div class="field-selector-header">Language</div>
+                </v-list-item-content>
+              </v-list-item>
+              <v-list-item>
+                <v-list-item-content>
+                  <v-select
+                      :model-value="selectedLanguage"
+                      :items="availableLanguages || []"
+                      item-text="name"
+                      item-value="code"
+                      @update:model-value="$emit('change-language', $event)"
+                  />
+                </v-list-item-content>
+              </v-list-item>
+              <v-divider/>
+            </template>
+            
+            <v-list-item disabled>
+              <v-list-item-content>
+                <div class="field-selector-header">Display Options</div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-divider/>
+            <v-list-item clickable @click="$emit('toggle-show-ids')">
+              <v-list-item-icon>
+                <v-checkbox
+                    :model-value="showIds"
+                    @update:model-value="$emit('toggle-show-ids')"
+                    @click.stop
+                />
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>Show IDs</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </div>
+        
+        <!-- Right Column: Field Selection -->
+        <div class="settings-column settings-column-right">
+          <v-list class="field-selector-list">
+            <v-list-item disabled>
+              <v-list-item-content>
+                <div class="field-selector-header">
+                  Select fields to display
+                  <v-progress-circular v-if="loading" indeterminate x-small />
+                </div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-divider/>
+            <div class="field-list-scrollable">
+              <v-list-item
+                  v-for="field in availableFields"
+                  :key="field.field"
+                  clickable
+                  @click="$emit('toggle-field', field.field)"
+              >
+                <v-list-item-icon>
+                  <v-checkbox
+                      :model-value="displayFields.includes(field.field)"
+                      @update:model-value="$emit('toggle-field', field.field)"
+                      @click.stop
+                  />
+                </v-list-item-icon>
+                <v-list-item-content>
+                  <v-list-item-title class="field-selector-title">
+                    <span class="field-name">
+                      {{ capitalizeField(field.name || field.field) }}
+                    </span>
+                    <v-icon 
+                        v-if="isTranslatable(field)" 
+                        name="translate" 
+                        small
+                        v-tooltip.top="'This field is translatable'"
+                        class="translation-icon"
+                    />
+                  </v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+            </div>
+          </v-list>
+        </div>
+      </div>
+    </div>
   </v-menu>
 </template>
 
@@ -152,6 +166,36 @@ function capitalizeField(fieldName: string): string {
 </script>
 
 <style scoped>
+/* Two-column layout */
+.settings-menu-content {
+  width: 600px;
+  max-width: 90vw;
+  padding: 0;
+}
+
+.settings-columns {
+  display: flex;
+  height: 400px;
+  max-height: 70vh;
+}
+
+.settings-column {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-column-left {
+  flex: 0 0 250px;
+  border-right: 1px solid var(--border-normal);
+}
+
+.settings-column-right {
+  flex: 1;
+  min-width: 300px;
+}
+
 .field-selector-header {
   display: flex;
   align-items: center;
@@ -180,28 +224,34 @@ function capitalizeField(fieldName: string): string {
   opacity: 1;
 }
 
-/* Dynamic height for field selector menu */
-.field-selector-list {
-  max-height: 400px;
+/* Scrollable field list */
+.field-list-scrollable {
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
+/* Remove max-height from lists since container handles it */
+.field-selector-list {
+  height: 100%;
+  overflow: visible;
+}
+
 /* Custom scrollbar styling */
-.field-selector-list::-webkit-scrollbar {
+.field-list-scrollable::-webkit-scrollbar {
   width: 4px;
 }
 
-.field-selector-list::-webkit-scrollbar-track {
+.field-list-scrollable::-webkit-scrollbar-track {
   background: var(--background-subdued);
 }
 
-.field-selector-list::-webkit-scrollbar-thumb {
+.field-list-scrollable::-webkit-scrollbar-thumb {
   background: var(--border-normal);
   border-radius: 2px;
 }
 
-.field-selector-list::-webkit-scrollbar-thumb:hover {
+.field-list-scrollable::-webkit-scrollbar-thumb:hover {
   background: var(--border-normal-alt);
 }
 
