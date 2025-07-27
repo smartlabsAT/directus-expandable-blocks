@@ -67,9 +67,11 @@
               :loading="userPresets.loading.value"
               :is-field-translatable="isFieldTranslatable"
               :show-ids="showIds"
+              :hide-empty-fields="hideEmptyFields"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
+              @toggle-hide-empty-fields="toggleHideEmptyFields"
           />
         </div>
       </div>
@@ -140,9 +142,9 @@
 <!--            </div>-->
 
             <!-- Additional Fields - darunter -->
-            <div v-if="displayFields.length > 0" class="item-fields">
+            <div v-if="getDisplayFieldsForItem(item).length > 0" class="item-fields">
               <div
-                  v-for="field in displayFields"
+                  v-for="field in getDisplayFieldsForItem(item)"
                   :key="field"
                   class="field-item"
               >
@@ -286,6 +288,7 @@ const searchQuery = ref('');
 const displayFields = ref<string[]>([]);
 const selectedLanguageLocal = ref<string>('');
 const showIds = ref(false);
+const hideEmptyFields = ref(false);
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -324,6 +327,17 @@ const totalPages = computed(() => {
 const currentPageLocal = computed({
   get: () => props.currentPage || 1,
   set: (value) => emit('update:current-page', value)
+});
+
+// Filter display fields based on hideEmptyFields setting
+const filteredDisplayFields = computed(() => {
+  if (!hideEmptyFields.value) {
+    return displayFields.value;
+  }
+  
+  // When hideEmptyFields is true, filter the fields for each item individually
+  // This will be used in the template
+  return displayFields.value;
 });
 
 // Methods
@@ -442,6 +456,31 @@ function getTranslatedValue(item: any, field: string): string {
   return getFieldValue(item[field]);
 }
 
+function isFieldEmpty(value: any): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string') return value.trim() === '';
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === 'object') {
+    // Check if object is empty
+    return Object.keys(value).length === 0;
+  }
+  return false;
+}
+
+function getDisplayFieldsForItem(item: any): string[] {
+  if (!hideEmptyFields.value) {
+    return displayFields.value;
+  }
+  
+  // Filter out fields that have empty values for this item
+  return displayFields.value.filter(field => {
+    const value = props.getTranslatedFieldValue 
+      ? props.getTranslatedFieldValue(item, field)
+      : item[field];
+    return !isFieldEmpty(value);
+  });
+}
+
 function handleUsageItemClick(payload: { collection: string; item: any }) {
   // For now, just log it. In the future, this could navigate to the item
   logger.debug('Usage item clicked', payload);
@@ -472,6 +511,20 @@ async function toggleShowIds() {
       logger.debug('Saved show IDs preference', { collection: props.collection, showIds: showIds.value });
     } catch (err) {
       logger.error('Failed to save show IDs preference', err);
+    }
+  }
+}
+
+async function toggleHideEmptyFields() {
+  hideEmptyFields.value = !hideEmptyFields.value;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveHideEmptyFields(props.collection, hideEmptyFields.value);
+      logger.debug('Saved hide empty fields preference', { collection: props.collection, hideEmptyFields: hideEmptyFields.value });
+    } catch (err) {
+      logger.error('Failed to save hide empty fields preference', err);
     }
   }
 }
@@ -519,12 +572,14 @@ watch(() => props.open, async (isOpen) => {
       }
       
       showIds.value = userPresets.getShowIds(props.collection);
+      hideEmptyFields.value = userPresets.getHideEmptyFields(props.collection);
       
       logger.debug('Loaded preferences on drawer open', { 
         collection: props.collection, 
         fields,
         language: selectedLanguageLocal.value,
-        showIds: showIds.value
+        showIds: showIds.value,
+        hideEmptyFields: hideEmptyFields.value
       });
     }
   }
@@ -548,12 +603,14 @@ watch(() => props.collection, async (collection) => {
     }
     
     showIds.value = userPresets.getShowIds(collection);
+    hideEmptyFields.value = userPresets.getHideEmptyFields(collection);
     
     logger.debug('Loaded preferences on collection change', { 
       collection, 
       fields,
       language: selectedLanguageLocal.value,
-      showIds: showIds.value
+      showIds: showIds.value,
+      hideEmptyFields: hideEmptyFields.value
     });
   }
 });
@@ -583,6 +640,7 @@ onMounted(async () => {
       }
       
       showIds.value = userPresets.getShowIds(props.collection);
+      hideEmptyFields.value = userPresets.getHideEmptyFields(props.collection);
     }
   } catch (err) {
     logger.error('Failed to initialize user presets', err);

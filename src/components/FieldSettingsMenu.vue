@@ -55,6 +55,18 @@
                 <v-list-item-title>Show IDs</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
+            <v-list-item clickable @click="$emit('toggle-hide-empty-fields')">
+              <v-list-item-icon>
+                <v-checkbox
+                    :model-value="hideEmptyFields"
+                    @update:model-value="$emit('toggle-hide-empty-fields')"
+                    @click.stop
+                />
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>Hide empty fields</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
           </v-list>
         </div>
         
@@ -130,19 +142,22 @@ interface Props {
   loading?: boolean;
   isFieldTranslatable?: (field: string) => boolean;
   showIds?: boolean;
+  hideEmptyFields?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   availableFields: () => [],
   displayFields: () => [],
   loading: false,
-  showIds: false
+  showIds: false,
+  hideEmptyFields: false
 });
 
 defineEmits<{
   'toggle-field': [field: string];
   'change-language': [language: string];
   'toggle-show-ids': [];
+  'toggle-hide-empty-fields': [];
 }>();
 
 // Helper function to check if field is translatable

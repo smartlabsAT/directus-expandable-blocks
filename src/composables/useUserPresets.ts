@@ -25,6 +25,7 @@ export function useUserPresets() {
   const displayFieldsCache = ref<Record<string, string[]>>({});
   const selectedLanguageCache = ref<Record<string, string>>({});
   const showIdsCache = ref<Record<string, boolean>>({});
+  const hideEmptyFieldsCache = ref<Record<string, boolean>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -69,6 +70,7 @@ export function useUserPresets() {
       displayFieldsCache.value = {};
       selectedLanguageCache.value = {};
       showIdsCache.value = {};
+      hideEmptyFieldsCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -88,6 +90,10 @@ export function useUserPresets() {
             showIdsCache.value[actualCollection] = preset.layout_options.showIds;
           }
           
+          if (preset.layout_options.hideEmptyFields !== undefined) {
+            hideEmptyFieldsCache.value[actualCollection] = preset.layout_options.hideEmptyFields;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
@@ -95,6 +101,7 @@ export function useUserPresets() {
             fields: preset.layout_options.displayFields,
             language: preset.layout_options.selectedLanguage,
             showIds: preset.layout_options.showIds,
+            hideEmptyFields: preset.layout_options.hideEmptyFields,
             presetId: preset.id
           });
         }
@@ -114,7 +121,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean }): Promise<void> {
+  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean }): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -147,6 +154,12 @@ export function useUserPresets() {
         layoutOptions.showIds = data.showIds;
       } else if (showIdsCache.value[collection] !== undefined) {
         layoutOptions.showIds = showIdsCache.value[collection];
+      }
+      
+      if (data.hideEmptyFields !== undefined) {
+        layoutOptions.hideEmptyFields = data.hideEmptyFields;
+      } else if (hideEmptyFieldsCache.value[collection] !== undefined) {
+        layoutOptions.hideEmptyFields = hideEmptyFieldsCache.value[collection];
       }
       
       const presetData = {
@@ -186,6 +199,9 @@ export function useUserPresets() {
       }
       if (data.showIds !== undefined) {
         showIdsCache.value[collection] = data.showIds;
+      }
+      if (data.hideEmptyFields !== undefined) {
+        hideEmptyFieldsCache.value[collection] = data.hideEmptyFields;
       }
       
     } catch (err) {
@@ -315,6 +331,34 @@ export function useUserPresets() {
   );
   
   /**
+   * Get hide empty fields setting for a specific collection
+   */
+  function getHideEmptyFields(collection: string): boolean {
+    return hideEmptyFieldsCache.value[collection] || false;
+  }
+  
+  /**
+   * Save hide empty fields setting for a collection
+   */
+  async function saveHideEmptyFields(collection: string, hideEmptyFields: boolean): Promise<void> {
+    hideEmptyFieldsCache.value[collection] = hideEmptyFields;
+    
+    try {
+      await debouncedSaveHideEmptyFields(collection, hideEmptyFields);
+    } catch (err) {
+      logWarn('Failed to persist hide empty fields setting', { collection, hideEmptyFields });
+    }
+  }
+  
+  /**
+   * Debounced save function for hide empty fields
+   */
+  const debouncedSaveHideEmptyFields = debounce(
+    (collection: string, hideEmptyFields: boolean) => savePresetData(collection, { hideEmptyFields }), 
+    500
+  );
+  
+  /**
    * Migrate data from localStorage to presets
    */
   async function migrateFromLocalStorage(): Promise<void> {
@@ -378,6 +422,7 @@ export function useUserPresets() {
     displayFieldsCache,
     selectedLanguageCache,
     showIdsCache,
+    hideEmptyFieldsCache,
     loading,
     error,
     
@@ -391,6 +436,8 @@ export function useUserPresets() {
     saveSelectedLanguage,
     getShowIds,
     saveShowIds,
+    getHideEmptyFields,
+    saveHideEmptyFields,
     initialize
   };
 }
