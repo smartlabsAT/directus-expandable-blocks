@@ -314,14 +314,14 @@ function getUserDisplayName(user: any): string {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+
   margin-top: 8px;
 }
 
 /* Table Header */
 .table-header {
   position: sticky;
-  top: 0;
+  top: 125px;
   z-index: 2;
   background: var(--background-normal);
   border-bottom: 2px solid var(--border-normal);

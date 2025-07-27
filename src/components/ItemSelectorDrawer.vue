@@ -73,6 +73,7 @@
               :items-per-page="itemsPerPageLocal"
               :show-last-update="showLastUpdate"
               :view-mode="viewMode"
+              :remember-search="rememberSearch"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
@@ -82,6 +83,7 @@
               @toggle-sort-direction="toggleSortDirection"
               @update:items-per-page="updateItemsPerPage"
               @change-view-mode="handleViewModeChange"
+              @toggle-remember-search="toggleRememberSearch"
           />
         </div>
       </div>
@@ -340,6 +342,7 @@ const sortField = ref<string | null>(null);
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const itemsPerPageLocal = ref(100);
 const viewMode = ref<'list' | 'table'>('table');
+const rememberSearch = ref(false);
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -748,6 +751,25 @@ async function handleViewModeChange(mode: 'list' | 'table') {
   }
 }
 
+async function toggleRememberSearch() {
+  rememberSearch.value = !rememberSearch.value;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveRememberSearch(props.collection, rememberSearch.value);
+      logger.debug('Saved remember search preference', { collection: props.collection, rememberSearch: rememberSearch.value });
+      
+      // If disabling remember search, clear the saved search
+      if (!rememberSearch.value) {
+        await userPresets.saveLastSearch(props.collection, '');
+      }
+    } catch (err) {
+      logger.error('Failed to save remember search preference', err);
+    }
+  }
+}
+
 function formatRelativeTime(dateString: string): string {
   if (!dateString) return '';
   
@@ -796,7 +818,6 @@ function getUserDisplayName(user: any): string {
 watch(() => props.open, async (isOpen) => {
   if (isOpen) {
     selectedItems.value = [];
-    searchQuery.value = '';
     showSearchHelp.value = false;
     
     // Load presets if not already initialized
@@ -829,6 +850,19 @@ watch(() => props.open, async (isOpen) => {
       sortDirection.value = userPresets.getSortDirection(props.collection);
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
       viewMode.value = userPresets.getViewMode(props.collection);
+      rememberSearch.value = userPresets.getRememberSearch(props.collection);
+      
+      // Load last search if remember search is enabled
+      if (rememberSearch.value) {
+        const lastSearch = userPresets.getLastSearch(props.collection);
+        if (lastSearch) {
+          searchQuery.value = lastSearch;
+          // Trigger search with the saved query
+          emit('search', lastSearch);
+        }
+      } else {
+        searchQuery.value = '';
+      }
       
       logger.debug('Loaded preferences on drawer open', { 
         collection: props.collection, 
@@ -840,7 +874,9 @@ watch(() => props.open, async (isOpen) => {
         sortField: sortField.value,
         sortDirection: sortDirection.value,
         itemsPerPage: itemsPerPageLocal.value,
-        viewMode: viewMode.value
+        viewMode: viewMode.value,
+        rememberSearch: rememberSearch.value,
+        lastSearch: searchQuery.value
       });
     }
   }
@@ -849,7 +885,6 @@ watch(() => props.open, async (isOpen) => {
 // Reset when collection changes
 watch(() => props.collection, async (collection) => {
   selectedItems.value = [];
-  searchQuery.value = '';
   showSearchHelp.value = false;
   
   if (collection && preferencesInitialized.value) {
@@ -870,6 +905,21 @@ watch(() => props.collection, async (collection) => {
     sortDirection.value = userPresets.getSortDirection(collection);
     itemsPerPageLocal.value = userPresets.getItemsPerPage(collection);
     viewMode.value = userPresets.getViewMode(collection);
+    rememberSearch.value = userPresets.getRememberSearch(collection);
+    
+    // Load last search if remember search is enabled
+    if (rememberSearch.value) {
+      const lastSearch = userPresets.getLastSearch(collection);
+      if (lastSearch) {
+        searchQuery.value = lastSearch;
+        // Trigger search with the saved query
+        emit('search', lastSearch);
+      } else {
+        searchQuery.value = '';
+      }
+    } else {
+      searchQuery.value = '';
+    }
     
     logger.debug('Loaded preferences on collection change', { 
       collection, 
@@ -881,7 +931,9 @@ watch(() => props.collection, async (collection) => {
       sortField: sortField.value,
       sortDirection: sortDirection.value,
       itemsPerPage: itemsPerPageLocal.value,
-      viewMode: viewMode.value
+      viewMode: viewMode.value,
+      rememberSearch: rememberSearch.value,
+      lastSearch: searchQuery.value
     });
   }
 });
@@ -906,6 +958,18 @@ watch(() => props.sortDirection, (newSortDirection) => {
   }
 });
 
+// Watch for search query changes to save if remember search is enabled
+watch(searchQuery, async (newQuery) => {
+  if (props.collection && rememberSearch.value && preferencesInitialized.value) {
+    try {
+      await userPresets.saveLastSearch(props.collection, newQuery);
+      logger.debug('Saved last search', { collection: props.collection, search: newQuery });
+    } catch (err) {
+      logger.error('Failed to save last search', err);
+    }
+  }
+});
+
 // Initialize presets on mount
 onMounted(async () => {
   try {
@@ -925,6 +989,20 @@ onMounted(async () => {
       
       showIds.value = userPresets.getShowIds(props.collection);
       hideEmptyFields.value = userPresets.getHideEmptyFields(props.collection);
+      showLastUpdate.value = userPresets.getShowLastUpdate(props.collection);
+      sortField.value = userPresets.getSortField(props.collection);
+      sortDirection.value = userPresets.getSortDirection(props.collection);
+      itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
+      viewMode.value = userPresets.getViewMode(props.collection);
+      rememberSearch.value = userPresets.getRememberSearch(props.collection);
+      
+      // Load last search if remember search is enabled
+      if (rememberSearch.value) {
+        const lastSearch = userPresets.getLastSearch(props.collection);
+        if (lastSearch) {
+          searchQuery.value = lastSearch;
+        }
+      }
     }
   } catch (err) {
     logger.error('Failed to initialize user presets', err);

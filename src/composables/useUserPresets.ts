@@ -31,6 +31,8 @@ export function useUserPresets() {
   const itemsPerPageCache = ref<Record<string, number>>({});
   const showLastUpdateCache = ref<Record<string, boolean>>({});
   const viewModeCache = ref<Record<string, 'list' | 'table'>>({});
+  const rememberSearchCache = ref<Record<string, boolean>>({});
+  const lastSearchCache = ref<Record<string, string>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -81,6 +83,8 @@ export function useUserPresets() {
       itemsPerPageCache.value = {};
       showLastUpdateCache.value = {};
       viewModeCache.value = {};
+      rememberSearchCache.value = {};
+      lastSearchCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -122,6 +126,14 @@ export function useUserPresets() {
           
           if (preset.layout_options.viewMode !== undefined) {
             viewModeCache.value[actualCollection] = preset.layout_options.viewMode;
+          }
+          
+          if (preset.layout_options.rememberSearch !== undefined) {
+            rememberSearchCache.value[actualCollection] = preset.layout_options.rememberSearch;
+          }
+          
+          if (preset.layout_options.lastSearch !== undefined) {
+            lastSearchCache.value[actualCollection] = preset.layout_options.lastSearch;
           }
           
           presetIds.value[actualCollection] = preset.id;
@@ -227,6 +239,18 @@ export function useUserPresets() {
         layoutOptions.viewMode = viewModeCache.value[collection];
       }
       
+      if (data.rememberSearch !== undefined) {
+        layoutOptions.rememberSearch = data.rememberSearch;
+      } else if (rememberSearchCache.value[collection] !== undefined) {
+        layoutOptions.rememberSearch = rememberSearchCache.value[collection];
+      }
+      
+      if (data.lastSearch !== undefined) {
+        layoutOptions.lastSearch = data.lastSearch;
+      } else if (lastSearchCache.value[collection] !== undefined) {
+        layoutOptions.lastSearch = lastSearchCache.value[collection];
+      }
+      
       const presetData = {
         collection: presetCollection,
         layout_options: layoutOptions,
@@ -282,6 +306,12 @@ export function useUserPresets() {
       }
       if (data.viewMode !== undefined) {
         viewModeCache.value[collection] = data.viewMode;
+      }
+      if (data.rememberSearch !== undefined) {
+        rememberSearchCache.value[collection] = data.rememberSearch;
+      }
+      if (data.lastSearch !== undefined) {
+        lastSearchCache.value[collection] = data.lastSearch;
       }
       
     } catch (err) {
@@ -602,6 +632,65 @@ export function useUserPresets() {
     (collection: string, viewMode: 'list' | 'table') => savePresetData(collection, { viewMode }), 
     500
   );
+  
+  /**
+   * Get remember search setting for a specific collection
+   */
+  function getRememberSearch(collection: string): boolean {
+    return rememberSearchCache.value[collection] || false;
+  }
+  
+  /**
+   * Save remember search setting for a collection
+   */
+  async function saveRememberSearch(collection: string, rememberSearch: boolean): Promise<void> {
+    rememberSearchCache.value[collection] = rememberSearch;
+    
+    try {
+      await debouncedSaveRememberSearch(collection, rememberSearch);
+    } catch (err) {
+      logWarn('Failed to persist remember search setting', { collection, rememberSearch });
+    }
+  }
+  
+  /**
+   * Debounced save function for remember search
+   */
+  const debouncedSaveRememberSearch = debounce(
+    (collection: string, rememberSearch: boolean) => savePresetData(collection, { rememberSearch }), 
+    500
+  );
+  
+  /**
+   * Get last search for a specific collection
+   */
+  function getLastSearch(collection: string): string {
+    return lastSearchCache.value[collection] || '';
+  }
+  
+  /**
+   * Save last search for a collection
+   */
+  async function saveLastSearch(collection: string, lastSearch: string): Promise<void> {
+    lastSearchCache.value[collection] = lastSearch;
+    
+    // Only save if remember search is enabled
+    if (rememberSearchCache.value[collection]) {
+      try {
+        await debouncedSaveLastSearch(collection, lastSearch);
+      } catch (err) {
+        logWarn('Failed to persist last search', { collection, lastSearch });
+      }
+    }
+  }
+  
+  /**
+   * Debounced save function for last search
+   */
+  const debouncedSaveLastSearch = debounce(
+    (collection: string, lastSearch: string) => savePresetData(collection, { lastSearch }), 
+    1000 // Longer debounce for search to avoid too many saves
+  );
 
   /**
    * Initialize presets (load and migrate if needed)
@@ -629,6 +718,8 @@ export function useUserPresets() {
     itemsPerPageCache,
     showLastUpdateCache,
     viewModeCache,
+    rememberSearchCache,
+    lastSearchCache,
     loading,
     error,
     
@@ -653,6 +744,13 @@ export function useUserPresets() {
     saveShowLastUpdate,
     getViewMode,
     saveViewMode,
+    
+    // Remember Search Methods
+    getRememberSearch,
+    saveRememberSearch,
+    getLastSearch,
+    saveLastSearch,
+    
     initialize
   };
 }

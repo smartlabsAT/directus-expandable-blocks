@@ -154,6 +154,18 @@
                 <v-list-item-title>Show last update</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
+            <v-list-item clickable @click="$emit('toggle-remember-search')">
+              <v-list-item-icon>
+                <v-checkbox
+                    :model-value="rememberSearch"
+                    @update:model-value="$emit('toggle-remember-search')"
+                    @click.stop
+                />
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>Remember last search</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
           </v-list>
         </div>
         
@@ -268,6 +280,7 @@ interface Props {
   sortDirection?: 'asc' | 'desc';
   itemsPerPage?: number;
   viewMode?: 'list' | 'table';
+  rememberSearch?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -280,7 +293,8 @@ const props = withDefaults(defineProps<Props>(), {
   sortField: null,
   sortDirection: 'asc',
   itemsPerPage: 100,
-  viewMode: 'table'
+  viewMode: 'table',
+  rememberSearch: false
 });
 
 defineEmits<{
@@ -293,6 +307,7 @@ defineEmits<{
   'toggle-sort-direction': [];
   'update:items-per-page': [value: number];
   'change-view-mode': [mode: 'list' | 'table'];
+  'toggle-remember-search': [];
 }>();
 
 // Computed properties
