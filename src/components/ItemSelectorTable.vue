@@ -219,23 +219,10 @@ function getFieldInfo(field: string) {
   // First check in available fields
   const fieldFromAvailable = props.availableFields?.find(f => f.field === field);
   
-  // Debug logging for description field
-  if (field === 'description') {
-    logger.debug('getFieldInfo for description', {
-      field,
-      availableFieldsCount: props.availableFields?.length || 0,
-      foundField: fieldFromAvailable,
-      interface: fieldFromAvailable?.interface
-    });
-  }
-  
   if (fieldFromAvailable) {
     return fieldFromAvailable;
   }
-  
-  // If not found, it might be a translation field
-  // The parent component should provide translation fields in availableFields
-  // but if not, we return a basic structure
+
   return null;
 }
 
@@ -252,18 +239,6 @@ function capitalizeField(fieldName: string): string {
 function getTranslatedValue(item: any, field: string): string {
   if (props.getTranslatedFieldValue) {
     const value = props.getTranslatedFieldValue(item, field);
-    
-    // Debug logging for description field
-    if (field === 'description') {
-      logger.debug('getTranslatedValue for description', {
-        field,
-        rawValue: value,
-        valueLength: value?.length,
-        valueType: typeof value,
-        hasHtml: value?.includes?.('<') && value?.includes?.('>')
-      });
-    }
-    
     return value;
   }
   return item[field] || '';
