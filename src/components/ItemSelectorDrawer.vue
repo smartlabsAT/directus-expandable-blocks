@@ -194,7 +194,7 @@
       <!-- Empty State -->
       <v-notice v-else :icon="searchQuery ? 'search_off' : 'inbox'">
         <div>{{ searchQuery ? 'No items found matching your search' : 'No items available' }}</div>
-        <div v-if="searchQuery" class="empty-state-hint"><br/>Try adjusting your search terms</div>
+<!--        <div v-if="searchQuery" class="empty-state-hint"><br/>Try adjusting your search terms</div>-->
       </v-notice>
     </div>
 

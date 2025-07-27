@@ -19,7 +19,10 @@
             <!-- Sort Options -->
             <v-list-item disabled>
               <v-list-item-content>
-                <div class="field-selector-header">Sort Options</div>
+                <div class="field-selector-header">
+                  <v-icon name="sort" small />
+                  Sort Options
+                </div>
               </v-list-item-content>
             </v-list-item>
             <v-list-item>
@@ -49,7 +52,10 @@
             <!-- Items per Page -->
             <v-list-item disabled>
               <v-list-item-content>
-                <div class="field-selector-header">Items per Page</div>
+                <div class="field-selector-header">
+                  <v-icon name="format_list_numbered" small />
+                  Items per Page
+                </div>
               </v-list-item-content>
             </v-list-item>
             <v-list-item>
@@ -69,7 +75,10 @@
             
             <v-list-item disabled>
               <v-list-item-content>
-                <div class="field-selector-header">Display Options</div>
+                <div class="field-selector-header">
+                  <v-icon name="visibility" small />
+                  Display Options
+                </div>
               </v-list-item-content>
             </v-list-item>
 
@@ -125,7 +134,10 @@
             <template v-if="translationInfo?.hasTranslations">
               <v-list-item disabled>
                 <v-list-item-content>
-                  <div class="field-selector-header">Language</div>
+                  <div class="field-selector-header">
+                    <v-icon name="translate" small />
+                    Language
+                  </div>
                 </v-list-item-content>
               </v-list-item>
               <v-list-item>
@@ -148,13 +160,12 @@
             <v-list-item disabled>
               <v-list-item-content>
                 <div class="field-selector-header">
+                  <v-icon name="checklist" small />
                   Select fields to display
                   <v-progress-circular v-if="loading" indeterminate x-small />
                 </div>
               </v-list-item-content>
             </v-list-item>
-            <v-divider/>
-
             <div class="field-list-scrollable">
               <v-list-item
                   v-for="field in availableFields"
@@ -323,9 +334,8 @@ function capitalizeField(fieldName: string): string {
   display: flex;
   align-items: center;
   gap: 8px;
-  justify-content: space-between;
   font-weight: 600;
-  color: var(--foreground-normal);
+  color: var(--project-color);
   cursor: auto;
 
 }
