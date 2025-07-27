@@ -26,6 +26,8 @@ export function useUserPresets() {
   const selectedLanguageCache = ref<Record<string, string>>({});
   const showIdsCache = ref<Record<string, boolean>>({});
   const hideEmptyFieldsCache = ref<Record<string, boolean>>({});
+  const sortFieldCache = ref<Record<string, string | null>>({});
+  const sortDirectionCache = ref<Record<string, 'asc' | 'desc'>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -71,6 +73,8 @@ export function useUserPresets() {
       selectedLanguageCache.value = {};
       showIdsCache.value = {};
       hideEmptyFieldsCache.value = {};
+      sortFieldCache.value = {};
+      sortDirectionCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -94,6 +98,14 @@ export function useUserPresets() {
             hideEmptyFieldsCache.value[actualCollection] = preset.layout_options.hideEmptyFields;
           }
           
+          if (preset.layout_options.sortField !== undefined) {
+            sortFieldCache.value[actualCollection] = preset.layout_options.sortField;
+          }
+          
+          if (preset.layout_options.sortDirection !== undefined) {
+            sortDirectionCache.value[actualCollection] = preset.layout_options.sortDirection;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
@@ -102,6 +114,8 @@ export function useUserPresets() {
             language: preset.layout_options.selectedLanguage,
             showIds: preset.layout_options.showIds,
             hideEmptyFields: preset.layout_options.hideEmptyFields,
+            sortField: preset.layout_options.sortField,
+            sortDirection: preset.layout_options.sortDirection,
             presetId: preset.id
           });
         }
@@ -121,7 +135,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean }): Promise<void> {
+  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc' }): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -160,6 +174,18 @@ export function useUserPresets() {
         layoutOptions.hideEmptyFields = data.hideEmptyFields;
       } else if (hideEmptyFieldsCache.value[collection] !== undefined) {
         layoutOptions.hideEmptyFields = hideEmptyFieldsCache.value[collection];
+      }
+      
+      if (data.sortField !== undefined) {
+        layoutOptions.sortField = data.sortField;
+      } else if (sortFieldCache.value[collection] !== undefined) {
+        layoutOptions.sortField = sortFieldCache.value[collection];
+      }
+      
+      if (data.sortDirection !== undefined) {
+        layoutOptions.sortDirection = data.sortDirection;
+      } else if (sortDirectionCache.value[collection] !== undefined) {
+        layoutOptions.sortDirection = sortDirectionCache.value[collection];
       }
       
       const presetData = {
@@ -202,6 +228,12 @@ export function useUserPresets() {
       }
       if (data.hideEmptyFields !== undefined) {
         hideEmptyFieldsCache.value[collection] = data.hideEmptyFields;
+      }
+      if (data.sortField !== undefined) {
+        sortFieldCache.value[collection] = data.sortField;
+      }
+      if (data.sortDirection !== undefined) {
+        sortDirectionCache.value[collection] = data.sortDirection;
       }
       
     } catch (err) {
@@ -359,6 +391,43 @@ export function useUserPresets() {
   );
   
   /**
+   * Get sort field for a specific collection
+   */
+  function getSortField(collection: string): string | null {
+    return sortFieldCache.value[collection] || null;
+  }
+  
+  /**
+   * Get sort direction for a specific collection
+   */
+  function getSortDirection(collection: string): 'asc' | 'desc' {
+    return sortDirectionCache.value[collection] || 'asc';
+  }
+  
+  /**
+   * Save sort settings for a collection
+   */
+  async function saveSortSettings(collection: string, sortField: string | null, sortDirection: 'asc' | 'desc'): Promise<void> {
+    sortFieldCache.value[collection] = sortField;
+    sortDirectionCache.value[collection] = sortDirection;
+    
+    try {
+      await debouncedSaveSortSettings(collection, sortField, sortDirection);
+    } catch (err) {
+      logWarn('Failed to persist sort settings', { collection, sortField, sortDirection });
+    }
+  }
+  
+  /**
+   * Debounced save function for sort settings
+   */
+  const debouncedSaveSortSettings = debounce(
+    (collection: string, sortField: string | null, sortDirection: 'asc' | 'desc') => 
+      savePresetData(collection, { sortField, sortDirection }), 
+    500
+  );
+  
+  /**
    * Migrate data from localStorage to presets
    */
   async function migrateFromLocalStorage(): Promise<void> {
@@ -423,6 +492,8 @@ export function useUserPresets() {
     selectedLanguageCache,
     showIdsCache,
     hideEmptyFieldsCache,
+    sortFieldCache,
+    sortDirectionCache,
     loading,
     error,
     
@@ -438,6 +509,9 @@ export function useUserPresets() {
     saveShowIds,
     getHideEmptyFields,
     saveHideEmptyFields,
+    getSortField,
+    getSortDirection,
+    saveSortSettings,
     initialize
   };
 }

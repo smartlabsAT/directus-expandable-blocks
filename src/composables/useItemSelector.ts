@@ -36,6 +36,10 @@ export function useItemSelector(api: any) {
   const currentPage = ref(1);
   const itemsPerPage = ref(10);
   const totalItems = ref(0);
+  
+  // Sorting state
+  const sortField = ref<string | null>(null);
+  const sortDirection = ref<'asc' | 'desc'>('asc');
 
 
   /**
@@ -321,6 +325,11 @@ export function useItemSelector(api: any) {
         fields: ['*'],
         meta: '*'
       };
+      
+      // Add sorting if specified
+      if (sortField.value) {
+        params.sort = `${sortDirection.value === 'desc' ? '-' : ''}${sortField.value}`;
+      }
       
       // Include translations if collection has them
       if (translationInfo.value?.hasTranslations) {
@@ -611,6 +620,16 @@ export function useItemSelector(api: any) {
     currentPage.value = 1;
     debouncedLoadItems();
   }
+  
+  /**
+   * Update sort settings
+   */
+  function updateSort(field: string | null, direction: 'asc' | 'desc') {
+    sortField.value = field;
+    sortDirection.value = direction;
+    currentPage.value = 1;
+    debouncedLoadItems();
+  }
 
   /**
    * Handle page changes
@@ -708,6 +727,10 @@ export function useItemSelector(api: any) {
     currentPage,
     itemsPerPage,
     totalItems,
+    
+    // Sorting
+    sortField,
+    sortDirection,
 
     // Methods
     open,
@@ -716,6 +739,7 @@ export function useItemSelector(api: any) {
     handleSearch,
     handlePageChange,
     getTranslatedFieldValue,
-    isFieldTranslatable
+    isFieldTranslatable,
+    updateSort
   };
 }

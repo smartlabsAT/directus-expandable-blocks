@@ -68,10 +68,14 @@
               :is-field-translatable="isFieldTranslatable"
               :show-ids="showIds"
               :hide-empty-fields="hideEmptyFields"
+              :sort-field="sortField"
+              :sort-direction="sortDirection"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
               @toggle-hide-empty-fields="toggleHideEmptyFields"
+              @update:sort-field="updateSortField"
+              @toggle-sort-direction="toggleSortDirection"
           />
         </div>
       </div>
@@ -265,6 +269,8 @@ interface Props {
   isFieldTranslatable?: (field: string) => boolean;
   allowLink?: boolean;
   allowDuplicate?: boolean;
+  sortField?: string | null;
+  sortDirection?: 'asc' | 'desc';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -280,6 +286,7 @@ const emit = defineEmits<{
   search: [query: string];
   'update:current-page': [page: number];
   'update:selected-language': [language: string];
+  'update:sort': [field: string | null, direction: 'asc' | 'desc'];
 }>();
 
 // Local state
@@ -289,6 +296,8 @@ const displayFields = ref<string[]>([]);
 const selectedLanguageLocal = ref<string>('');
 const showIds = ref(false);
 const hideEmptyFields = ref(false);
+const sortField = ref<string | null>(null);
+const sortDirection = ref<'asc' | 'desc'>('asc');
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -529,6 +538,46 @@ async function toggleHideEmptyFields() {
   }
 }
 
+async function updateSortField(field: string | null) {
+  sortField.value = field;
+  
+  // Save to presets and trigger search
+  if (props.collection) {
+    try {
+      await userPresets.saveSortSettings(props.collection, field, sortDirection.value);
+      logger.debug('Saved sort field preference', { collection: props.collection, sortField: field });
+      
+      // Emit sort update
+      emit('update:sort', field, sortDirection.value);
+      
+      // Trigger new search with sort
+      emit('search', searchQuery.value);
+    } catch (err) {
+      logger.error('Failed to save sort field preference', err);
+    }
+  }
+}
+
+async function toggleSortDirection() {
+  sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+  
+  // Save to presets and trigger search if a field is selected
+  if (props.collection && sortField.value) {
+    try {
+      await userPresets.saveSortSettings(props.collection, sortField.value, sortDirection.value);
+      logger.debug('Saved sort direction preference', { collection: props.collection, sortDirection: sortDirection.value });
+      
+      // Emit sort update
+      emit('update:sort', sortField.value, sortDirection.value);
+      
+      // Trigger new search with sort
+      emit('search', searchQuery.value);
+    } catch (err) {
+      logger.error('Failed to save sort direction preference', err);
+    }
+  }
+}
+
 function openEditDrawer(item: any) {
   logger.debug('Opening edit drawer for item', { item });
   editingItem.value = item;
@@ -573,13 +622,17 @@ watch(() => props.open, async (isOpen) => {
       
       showIds.value = userPresets.getShowIds(props.collection);
       hideEmptyFields.value = userPresets.getHideEmptyFields(props.collection);
+      sortField.value = userPresets.getSortField(props.collection);
+      sortDirection.value = userPresets.getSortDirection(props.collection);
       
       logger.debug('Loaded preferences on drawer open', { 
         collection: props.collection, 
         fields,
         language: selectedLanguageLocal.value,
         showIds: showIds.value,
-        hideEmptyFields: hideEmptyFields.value
+        hideEmptyFields: hideEmptyFields.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
       });
     }
   }
@@ -619,6 +672,19 @@ watch(() => props.collection, async (collection) => {
 watch(() => props.selectedLanguage, (newLanguage) => {
   if (newLanguage && newLanguage !== selectedLanguageLocal.value && !preferencesInitialized.value) {
     selectedLanguageLocal.value = newLanguage;
+  }
+});
+
+// Watch for external sort changes
+watch(() => props.sortField, (newSortField) => {
+  if (newSortField !== undefined && newSortField !== sortField.value) {
+    sortField.value = newSortField;
+  }
+});
+
+watch(() => props.sortDirection, (newSortDirection) => {
+  if (newSortDirection !== undefined && newSortDirection !== sortDirection.value) {
+    sortDirection.value = newSortDirection;
   }
 });
 

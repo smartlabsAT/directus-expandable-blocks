@@ -16,6 +16,36 @@
         <!-- Left Column: Language & Display Options -->
         <div class="settings-column settings-column-left">
           <v-list class="field-selector-list">
+            <!-- Sort Options -->
+            <v-list-item disabled>
+              <v-list-item-content>
+                <div class="field-selector-header">Sort Options</div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <div class="sort-controls">
+                  <v-select
+                      :model-value="sortField"
+                      :items="sortFieldOptions"
+                      item-text="text"
+                      item-value="value"
+                      placeholder="Select field..."
+                      @update:model-value="$emit('update:sort-field', $event)"
+                  />
+                  <v-button
+                      icon
+                      secondary
+                      @click="$emit('toggle-sort-direction')"
+                      v-tooltip.top="sortDirection === 'asc' ? 'Ascending' : 'Descending'"
+                  >
+                    <v-icon :name="sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" />
+                  </v-button>
+                </div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-divider/>
+            
             <!-- Language Selector (if translations available) -->
             <template v-if="translationInfo?.hasTranslations">
               <v-list-item disabled>
@@ -143,6 +173,8 @@ interface Props {
   isFieldTranslatable?: (field: string) => boolean;
   showIds?: boolean;
   hideEmptyFields?: boolean;
+  sortField?: string | null;
+  sortDirection?: 'asc' | 'desc';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -150,7 +182,9 @@ const props = withDefaults(defineProps<Props>(), {
   displayFields: () => [],
   loading: false,
   showIds: false,
-  hideEmptyFields: false
+  hideEmptyFields: false,
+  sortField: null,
+  sortDirection: 'asc'
 });
 
 defineEmits<{
@@ -158,7 +192,28 @@ defineEmits<{
   'change-language': [language: string];
   'toggle-show-ids': [];
   'toggle-hide-empty-fields': [];
+  'update:sort-field': [field: string | null];
+  'toggle-sort-direction': [];
 }>();
+
+// Computed properties
+const sortFieldOptions = computed(() => {
+  const options = [
+    { text: 'None', value: null },
+    { text: 'Date Created', value: 'date_created' },
+    { text: 'Date Updated', value: 'date_updated' }
+  ];
+  
+  // Add all available fields
+  props.availableFields.forEach(field => {
+    options.push({
+      text: capitalizeField(field.name || field.field),
+      value: field.field
+    });
+  });
+  
+  return options;
+});
 
 // Helper function to check if field is translatable
 function isTranslatable(field: FieldWithTranslation): boolean {
@@ -272,6 +327,28 @@ function capitalizeField(fieldName: string): string {
 
 /* Language selector */
 .v-select {
-  min-height: 36px;
+  min-height: 44px;
+}
+
+/* Sort controls */
+.sort-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sort-controls .v-select {
+  flex: 1;
+}
+
+/* Select field styling - 44px height */
+.v-select :deep(.v-input) {
+  min-height: 44px !important;
+  height: 44px !important;
+}
+
+.v-select :deep(.v-input .input) {
+  min-height: 44px !important;
+  padding: 0 12px !important;
 }
 </style>

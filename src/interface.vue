@@ -57,12 +57,15 @@
         :api-error="itemSelector.apiError.value"
         :allow-link="mergedOptions?.allowLinkExisting !== false"
         :allow-duplicate="mergedOptions?.allowDuplicateExisting !== false"
+        :sort-field="itemSelector.sortField.value"
+        :sort-direction="itemSelector.sortDirection.value"
         @close="itemSelector.close"
         @confirm="handleItemSelection"
         @confirm-copy="handleItemSelectionAsCopy"
         @search="itemSelector.handleSearch"
         @update:current-page="itemSelector.handlePageChange"
         @update:selected-language="(lang) => itemSelector.selectedLanguage.value = lang"
+        @update:sort="(field, direction) => itemSelector.updateSort(field, direction)"
     />
 
     <!-- Delete Dialog -->
