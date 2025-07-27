@@ -377,7 +377,6 @@ $expanded-border-width: 5px;
 
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 
   .search-container {
     padding: 16px 0;
@@ -663,6 +662,10 @@ $expanded-border-width: 5px;
   }
 
   .search-info-bar {
+    position: sticky;
+    top: 59px;
+    z-index: 10;
+    
     display: flex;
     justify-content: space-between;
     align-items: center;
