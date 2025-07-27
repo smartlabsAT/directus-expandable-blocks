@@ -374,7 +374,7 @@ $expanded-border-width: 5px;
 .drawer-collection-body {
   padding-left: var(--content-padding);
   padding-right: var(--content-padding);
-  height: 100%;
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -922,6 +922,17 @@ $expanded-border-width: 5px;
     }
 
   }
+
+
+
+}
+
+// Menu content height fix - global scope with higher specificity
+.expandable-blocks .v-menu-content,
+.expandable-blocks-interface .v-menu-content,
+.v-menu-content {
+  height: auto !important;
+  max-height: none !important;
 }
 
 // Field selector styles
