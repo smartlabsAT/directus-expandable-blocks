@@ -46,6 +46,25 @@
             </v-list-item>
             <v-divider/>
             
+            <!-- Items per Page -->
+            <v-list-item disabled>
+              <v-list-item-content>
+                <div class="field-selector-header">Items per Page</div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <v-select
+                    :model-value="itemsPerPage"
+                    :items="itemsPerPageOptions"
+                    item-text="text"
+                    item-value="value"
+                    @update:model-value="$emit('update:items-per-page', $event)"
+                />
+              </v-list-item-content>
+            </v-list-item>
+            <v-divider/>
+            
             <!-- Language Selector (if translations available) -->
             <template v-if="translationInfo?.hasTranslations">
               <v-list-item disabled>
@@ -175,6 +194,7 @@ interface Props {
   hideEmptyFields?: boolean;
   sortField?: string | null;
   sortDirection?: 'asc' | 'desc';
+  itemsPerPage?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -184,7 +204,8 @@ const props = withDefaults(defineProps<Props>(), {
   showIds: false,
   hideEmptyFields: false,
   sortField: null,
-  sortDirection: 'asc'
+  sortDirection: 'asc',
+  itemsPerPage: 100
 });
 
 defineEmits<{
@@ -194,6 +215,7 @@ defineEmits<{
   'toggle-hide-empty-fields': [];
   'update:sort-field': [field: string | null];
   'toggle-sort-direction': [];
+  'update:items-per-page': [value: number];
 }>();
 
 // Computed properties
@@ -214,6 +236,12 @@ const sortFieldOptions = computed(() => {
   
   return options;
 });
+
+const itemsPerPageOptions = computed(() => [
+  { text: '50 items', value: 50 },
+  { text: '100 items', value: 100 },
+  { text: '200 items', value: 200 }
+]);
 
 // Helper function to check if field is translatable
 function isTranslatable(field: FieldWithTranslation): boolean {

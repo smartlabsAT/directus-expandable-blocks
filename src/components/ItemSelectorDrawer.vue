@@ -70,12 +70,14 @@
               :hide-empty-fields="hideEmptyFields"
               :sort-field="sortField"
               :sort-direction="sortDirection"
+              :items-per-page="itemsPerPageLocal"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
               @toggle-hide-empty-fields="toggleHideEmptyFields"
               @update:sort-field="updateSortField"
               @toggle-sort-direction="toggleSortDirection"
+              @update:items-per-page="updateItemsPerPage"
           />
         </div>
       </div>
@@ -287,6 +289,7 @@ const emit = defineEmits<{
   'update:current-page': [page: number];
   'update:selected-language': [language: string];
   'update:sort': [field: string | null, direction: 'asc' | 'desc'];
+  'update:items-per-page': [value: number];
 }>();
 
 // Local state
@@ -298,6 +301,7 @@ const showIds = ref(false);
 const hideEmptyFields = ref(false);
 const sortField = ref<string | null>(null);
 const sortDirection = ref<'asc' | 'desc'>('asc');
+const itemsPerPageLocal = ref(100);
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -578,6 +582,27 @@ async function toggleSortDirection() {
   }
 }
 
+async function updateItemsPerPage(value: number) {
+  itemsPerPageLocal.value = value;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveItemsPerPage(props.collection, value);
+      logger.debug('Saved items per page preference', { collection: props.collection, itemsPerPage: value });
+      
+      // Emit update to parent
+      emit('update:items-per-page', value);
+      
+      // Reset to first page and trigger search
+      emit('update:current-page', 1);
+      emit('search', searchQuery.value);
+    } catch (err) {
+      logger.error('Failed to save items per page preference', err);
+    }
+  }
+}
+
 function openEditDrawer(item: any) {
   logger.debug('Opening edit drawer for item', { item });
   editingItem.value = item;
@@ -624,6 +649,7 @@ watch(() => props.open, async (isOpen) => {
       hideEmptyFields.value = userPresets.getHideEmptyFields(props.collection);
       sortField.value = userPresets.getSortField(props.collection);
       sortDirection.value = userPresets.getSortDirection(props.collection);
+      itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
       
       logger.debug('Loaded preferences on drawer open', { 
         collection: props.collection, 
@@ -632,7 +658,8 @@ watch(() => props.open, async (isOpen) => {
         showIds: showIds.value,
         hideEmptyFields: hideEmptyFields.value,
         sortField: sortField.value,
-        sortDirection: sortDirection.value
+        sortDirection: sortDirection.value,
+        itemsPerPage: itemsPerPageLocal.value
       });
     }
   }
@@ -657,13 +684,19 @@ watch(() => props.collection, async (collection) => {
     
     showIds.value = userPresets.getShowIds(collection);
     hideEmptyFields.value = userPresets.getHideEmptyFields(collection);
+    sortField.value = userPresets.getSortField(collection);
+    sortDirection.value = userPresets.getSortDirection(collection);
+    itemsPerPageLocal.value = userPresets.getItemsPerPage(collection);
     
     logger.debug('Loaded preferences on collection change', { 
       collection, 
       fields,
       language: selectedLanguageLocal.value,
       showIds: showIds.value,
-      hideEmptyFields: hideEmptyFields.value
+      hideEmptyFields: hideEmptyFields.value,
+      sortField: sortField.value,
+      sortDirection: sortDirection.value,
+      itemsPerPage: itemsPerPageLocal.value
     });
   }
 });

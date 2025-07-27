@@ -66,6 +66,7 @@
         @update:current-page="itemSelector.handlePageChange"
         @update:selected-language="(lang) => itemSelector.selectedLanguage.value = lang"
         @update:sort="(field, direction) => itemSelector.updateSort(field, direction)"
+        @update:items-per-page="(value) => itemSelector.updateItemsPerPage(value)"
     />
 
     <!-- Delete Dialog -->

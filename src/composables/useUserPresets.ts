@@ -28,6 +28,7 @@ export function useUserPresets() {
   const hideEmptyFieldsCache = ref<Record<string, boolean>>({});
   const sortFieldCache = ref<Record<string, string | null>>({});
   const sortDirectionCache = ref<Record<string, 'asc' | 'desc'>>({});
+  const itemsPerPageCache = ref<Record<string, number>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -75,6 +76,7 @@ export function useUserPresets() {
       hideEmptyFieldsCache.value = {};
       sortFieldCache.value = {};
       sortDirectionCache.value = {};
+      itemsPerPageCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -106,6 +108,10 @@ export function useUserPresets() {
             sortDirectionCache.value[actualCollection] = preset.layout_options.sortDirection;
           }
           
+          if (preset.layout_options.itemsPerPage !== undefined) {
+            itemsPerPageCache.value[actualCollection] = preset.layout_options.itemsPerPage;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
@@ -116,6 +122,7 @@ export function useUserPresets() {
             hideEmptyFields: preset.layout_options.hideEmptyFields,
             sortField: preset.layout_options.sortField,
             sortDirection: preset.layout_options.sortDirection,
+            itemsPerPage: preset.layout_options.itemsPerPage,
             presetId: preset.id
           });
         }
@@ -135,7 +142,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc' }): Promise<void> {
+  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc', itemsPerPage?: number }): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -188,6 +195,12 @@ export function useUserPresets() {
         layoutOptions.sortDirection = sortDirectionCache.value[collection];
       }
       
+      if (data.itemsPerPage !== undefined) {
+        layoutOptions.itemsPerPage = data.itemsPerPage;
+      } else if (itemsPerPageCache.value[collection] !== undefined) {
+        layoutOptions.itemsPerPage = itemsPerPageCache.value[collection];
+      }
+      
       const presetData = {
         collection: presetCollection,
         layout_options: layoutOptions,
@@ -234,6 +247,9 @@ export function useUserPresets() {
       }
       if (data.sortDirection !== undefined) {
         sortDirectionCache.value[collection] = data.sortDirection;
+      }
+      if (data.itemsPerPage !== undefined) {
+        itemsPerPageCache.value[collection] = data.itemsPerPage;
       }
       
     } catch (err) {
@@ -428,6 +444,34 @@ export function useUserPresets() {
   );
   
   /**
+   * Get items per page for a specific collection
+   */
+  function getItemsPerPage(collection: string): number {
+    return itemsPerPageCache.value[collection] || 100;
+  }
+  
+  /**
+   * Save items per page for a collection
+   */
+  async function saveItemsPerPage(collection: string, itemsPerPage: number): Promise<void> {
+    itemsPerPageCache.value[collection] = itemsPerPage;
+    
+    try {
+      await debouncedSaveItemsPerPage(collection, itemsPerPage);
+    } catch (err) {
+      logWarn('Failed to persist items per page setting', { collection, itemsPerPage });
+    }
+  }
+  
+  /**
+   * Debounced save function for items per page
+   */
+  const debouncedSaveItemsPerPage = debounce(
+    (collection: string, itemsPerPage: number) => savePresetData(collection, { itemsPerPage }), 
+    500
+  );
+  
+  /**
    * Migrate data from localStorage to presets
    */
   async function migrateFromLocalStorage(): Promise<void> {
@@ -494,6 +538,7 @@ export function useUserPresets() {
     hideEmptyFieldsCache,
     sortFieldCache,
     sortDirectionCache,
+    itemsPerPageCache,
     loading,
     error,
     
@@ -512,6 +557,8 @@ export function useUserPresets() {
     getSortField,
     getSortDirection,
     saveSortSettings,
+    getItemsPerPage,
+    saveItemsPerPage,
     initialize
   };
 }

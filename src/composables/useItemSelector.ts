@@ -34,7 +34,7 @@ export function useItemSelector(api: any) {
 
   // Pagination state
   const currentPage = ref(1);
-  const itemsPerPage = ref(10);
+  const itemsPerPage = ref(100);
   const totalItems = ref(0);
   
   // Sorting state
@@ -630,6 +630,15 @@ export function useItemSelector(api: any) {
     currentPage.value = 1;
     debouncedLoadItems();
   }
+  
+  /**
+   * Update items per page
+   */
+  function updateItemsPerPage(value: number) {
+    itemsPerPage.value = value;
+    currentPage.value = 1;
+    debouncedLoadItems();
+  }
 
   /**
    * Handle page changes
@@ -740,6 +749,7 @@ export function useItemSelector(api: any) {
     handlePageChange,
     getTranslatedFieldValue,
     isFieldTranslatable,
-    updateSort
+    updateSort,
+    updateItemsPerPage
   };
 }
