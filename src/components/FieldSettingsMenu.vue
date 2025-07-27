@@ -65,33 +65,14 @@
             </v-list-item>
             <v-divider/>
             
-            <!-- Language Selector (if translations available) -->
-            <template v-if="translationInfo?.hasTranslations">
-              <v-list-item disabled>
-                <v-list-item-content>
-                  <div class="field-selector-header">Language</div>
-                </v-list-item-content>
-              </v-list-item>
-              <v-list-item>
-                <v-list-item-content>
-                  <v-select
-                      :model-value="selectedLanguage"
-                      :items="availableLanguages || []"
-                      item-text="name"
-                      item-value="code"
-                      @update:model-value="$emit('change-language', $event)"
-                  />
-                </v-list-item-content>
-              </v-list-item>
-              <v-divider/>
-            </template>
+
             
             <v-list-item disabled>
               <v-list-item-content>
                 <div class="field-selector-header">Display Options</div>
               </v-list-item-content>
             </v-list-item>
-            <v-divider/>
+
             <v-list-item clickable @click="$emit('toggle-show-ids')">
               <v-list-item-icon>
                 <v-checkbox
@@ -133,7 +114,37 @@
         
         <!-- Right Column: Field Selection -->
         <div class="settings-column settings-column-right">
+
+
+
+
           <v-list class="field-selector-list">
+
+
+            <!-- Language Selector (if translations available) -->
+            <template v-if="translationInfo?.hasTranslations">
+              <v-list-item disabled>
+                <v-list-item-content>
+                  <div class="field-selector-header">Language</div>
+                </v-list-item-content>
+              </v-list-item>
+              <v-list-item>
+                <v-list-item-content>
+                  <v-select
+                      :model-value="selectedLanguage"
+                      :items="availableLanguages || []"
+                      item-text="name"
+                      item-value="code"
+                      @update:model-value="$emit('change-language', $event)"
+                  />
+                </v-list-item-content>
+              </v-list-item>
+              <v-divider/>
+            </template>
+
+
+
+
             <v-list-item disabled>
               <v-list-item-content>
                 <div class="field-selector-header">
@@ -143,6 +154,7 @@
               </v-list-item-content>
             </v-list-item>
             <v-divider/>
+
             <div class="field-list-scrollable">
               <v-list-item
                   v-for="field in availableFields"
@@ -288,8 +300,6 @@ function capitalizeField(fieldName: string): string {
 
 .settings-columns {
   display: flex;
-  height: 400px;
-  max-height: 70vh;
 }
 
 .settings-column {
@@ -315,7 +325,9 @@ function capitalizeField(fieldName: string): string {
   gap: 8px;
   justify-content: space-between;
   font-weight: 600;
-  color: var(--foreground-subdued);
+  color: var(--foreground-normal);
+  cursor: auto;
+
 }
 
 .field-selector-title {
