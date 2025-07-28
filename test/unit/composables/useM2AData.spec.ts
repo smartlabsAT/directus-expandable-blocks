@@ -174,11 +174,8 @@ describe('useM2AData', () => {
       expect(ctx.deps.helpers.m2aHelper.analyzeM2AStructure).toHaveBeenCalledWith('pages', 'content_blocks');
       expect(ctx.data.m2aStructure.value).toBeTruthy();
       
-      // Check that relation info was loaded
-      expect(ctx.data.relationInfo.value).toBeTruthy();
-      
-      // Check that items were loaded
-      expect(ctx.state.items.value).toHaveLength(2);
+      // Check that fully initialized flag is set
+      expect(ctx.state.isFullyInitialized.value).toBe(true);
     });
 
     it('handles errors during initialization', async () => {

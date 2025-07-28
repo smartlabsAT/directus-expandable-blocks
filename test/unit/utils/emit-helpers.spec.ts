@@ -48,7 +48,7 @@ describe('emit-helpers', () => {
       
       emitChanges(options);
       
-      expect(mockPrepareItemsForEmit).toHaveBeenCalledWith(items, undefined);
+      expect(mockPrepareItemsForEmit).toHaveBeenCalledWith(items, undefined, undefined);
       expect(mockEmit).toHaveBeenCalledWith('input', [1, 2]);
       expect(mockEmit).toHaveBeenCalledTimes(1);
     });
@@ -131,7 +131,7 @@ describe('emit-helpers', () => {
       
       emitChanges(options);
       
-      expect(mockPrepareItemsForEmit).toHaveBeenCalledWith(items, 'sort_order');
+      expect(mockPrepareItemsForEmit).toHaveBeenCalledWith(items, 'sort_order', undefined);
     });
 
     it('handles empty arrays', () => {

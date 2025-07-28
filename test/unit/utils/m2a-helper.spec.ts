@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { M2AHelper } from '@/utils/m2a-helper';
 
 // Mock logger
-vi.mock('@/utils/logger', () => ({
+vi.mock('@/utils/logger-wrapper', () => ({
   logger: {
     debug: vi.fn(),
-    warn: vi.fn()
+    warn: vi.fn(),
+    error: vi.fn()
   }
 }));
 

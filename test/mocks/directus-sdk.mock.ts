@@ -38,6 +38,21 @@ export const useStores = vi.fn(() => ({
     }),
     getField: vi.fn()
   }),
+  useUserStore: () => ({
+    currentUser: {
+      value: {
+        id: 1,
+        email: 'test@example.com',
+        first_name: 'Test',
+        last_name: 'User',
+        role: {
+          id: 1,
+          name: 'Administrator'
+        }
+      }
+    },
+    isAdmin: true
+  }),
   useRelationsStore: () => ({
     getRelationsForField: vi.fn((collection: string, field: string) => {
       return [{
@@ -52,6 +67,14 @@ export const useStores = vi.fn(() => ({
       }];
     })
   }),
+  usePermissionsStore: () => ({
+    permissions: [],
+    hasPermission: vi.fn().mockReturnValue(true)
+  }),
+  usePresetsStore: () => ({
+    save: vi.fn().mockResolvedValue({}),
+    getPresetForUser: vi.fn().mockReturnValue(null)
+  }),
   useCollectionsStore: () => ({
     getCollection: vi.fn((collection: string) => ({
       collection,
@@ -65,6 +88,33 @@ export const useStores = vi.fn(() => ({
   useNotificationsStore: () => ({
     add: vi.fn()
   })
+}));
+
+// Export individual stores for direct import
+export const useUserStore = vi.fn(() => ({
+  currentUser: {
+    value: {
+      id: 1,
+      email: 'test@example.com',
+      first_name: 'Test',
+      last_name: 'User',
+      role: {
+        id: 1,
+        name: 'Administrator'
+      }
+    }
+  },
+  isAdmin: true
+}));
+
+export const usePermissionsStore = vi.fn(() => ({
+  permissions: [],
+  hasPermission: vi.fn().mockReturnValue(true)
+}));
+
+export const usePresetsStore = vi.fn(() => ({
+  save: vi.fn().mockResolvedValue({}),
+  getPresetForUser: vi.fn().mockReturnValue(null)
 }));
 
 // Mock defineInterface
