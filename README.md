@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/npm/l/directus-extension-expandable-blocks?style=flat-square)](https://github.com/smartlabsAT/directus-expandable-blocks/blob/master/LICENSE)
 [![Directus 11+](https://img.shields.io/badge/Directus-11%2B-64f?style=flat-square&logo=directus)](https://directus.io)
 
-A powerful M2A (Many-to-Any) interface for Directus with inline expandable editing that seamlessly integrates with Directus' native save system.
+A powerful M2A (Many-to-Any) bundle extension for Directus with inline expandable editing, integrated API endpoints, and seamless integration with Directus' native save system.
 
 [📚 Documentation](https://github.com/smartlabsAT/directus-expandable-blocks/wiki) • 
 [🐛 Report Bug](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=bug_report.md) • 
@@ -62,15 +62,21 @@ This means you get all the benefits of a sophisticated block editor while mainta
 - **Native Integration**: Uses Directus' save system - no custom API calls
 - **Smart Dirty State**: Only sends changed blocks to the server
 - **Status Management**: Quick status changes with visual indicators
-- **Visual Feedback**: See which blocks have unsaved changes
+- **Visual Feedback**: See which blocks have unsaved changes (NEW indicator)
 - **Compact & Full View Modes**: Adaptive display options
 - **Keyboard Navigation**: Full keyboard support
+- **Add Existing Items**: Select and link existing items from other collections
+- **Item Search**: Advanced search with field-specific queries
 
 ### Advanced Functionality
 - **Nested M2A Support**: Handle complex nested relationships
 - **Custom Field Filtering**: Show only specific fields in edit mode
 - **Template System**: Pre-configured content templates
 - **Status Management**: Built-in content status workflows
+- **Role-Based Permissions**: Granular control based on user roles
+- **Translation Support**: Full support for Directus translation fields
+- **Usage Tracking**: See where items are used across collections
+- **Inline Item Editing**: Edit linked items without leaving the interface
 
 ### Configuration Options
 - Enable/disable sorting
@@ -79,6 +85,10 @@ This means you get all the benefits of a sophisticated block editor while mainta
 - Compact display mode
 - Maximum block limits
 - Custom field filtering
+- Role-based permissions
+- Allowed collections for existing items
+- Collection name visibility
+- Translation field support
 
 ## 📦 Installation
 
@@ -92,10 +102,16 @@ npm install directus-extension-expandable-blocks
 
 The extension will be automatically loaded by Directus when you restart your instance.
 
+### Via pnpm
+
+```bash
+pnpm add directus-extension-expandable-blocks
+```
+
 ### Manual Installation
 
 1. Download the latest release from [GitHub Releases](https://github.com/smartlabsAT/directus-expandable-blocks/releases)
-2. Extract to your Directus `extensions/interfaces/` directory
+2. Extract to your Directus `extensions/` directory (not `extensions/interfaces/` - this is a bundle extension)
 3. Restart Directus
 
 ### Docker Installation
@@ -136,11 +152,23 @@ In the interface configuration panel, you can set:
   - 📂 Start Expanded - Blocks open by default
   - 🎯 Accordion Mode - Only one block open at a time
   - 📱 Compact Mode - Condensed view for many blocks
+  - 🏷️ Show Collection Names - Display collection type on blocks
+  - 🆔 Show Item IDs - Display unique identifiers
   
-- **Permissions**
+- **Permissions & Actions**
   - 🗑️ Allow Delete - Users can remove blocks
   - 📋 Allow Duplicate - Users can copy blocks
+  - 🔗 Allow Link Existing - Users can add existing items
+  - 📑 Allow Duplicate Existing - Users can duplicate linked items
   - 🔢 Max Blocks - Limit number of blocks (empty = unlimited)
+
+- **Collections & Relations**
+  - 📚 Allowed Collections - Which collections can be created as new blocks
+  - 🔍 Allowed Existing Collections - Which collections can be linked as existing items
+
+- **Role-Based Permissions**
+  - 🔒 Configure permissions per user role
+  - 👤 Granular control over create, read, update, delete operations
 
 #### 4️⃣ Save and Use
 
@@ -253,41 +281,67 @@ This means:
 
 ## ⚙️ Configuration Options
 
+### Display Settings
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enableSorting` | boolean | `true` | Allow drag & drop reordering |
 | `showItemId` | boolean | `true` | Display item IDs in headers |
+| `showCollectionName` | boolean | `true` | Show collection type on blocks |
 | `startExpanded` | boolean | `false` | Start with all blocks expanded |
 | `accordionMode` | boolean | `false` | Only one block expanded at a time |
 | `compactMode` | boolean | `false` | Use compact display |
+
+### Permissions & Actions
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
 | `maxBlocks` | number | `null` | Maximum number of blocks |
 | `isAllowedDelete` | boolean | `true` | Allow block deletion |
 | `isAllowedDuplicate` | boolean | `true` | Allow block duplication |
+| `allowLinkExisting` | boolean | `true` | Allow linking existing items |
+| `allowDuplicateExisting` | boolean | `true` | Allow duplicating linked items |
+
+### Collections Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `collection` | array | `[]` | Collections allowed for new blocks |
+| `allowedCollectionsExisting` | array | `[]` | Collections allowed for linking existing items |
+
+### Role-Based Permissions
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rolesCanCreate` | array | `[]` | Roles that can create new blocks |
+| `rolesCanUpdate` | array | `[]` | Roles that can update blocks |
+| `rolesCanDelete` | array | `[]` | Roles that can delete blocks |
+| `rolesCanSort` | array | `[]` | Roles that can reorder blocks |
 
 
 ## 🧪 Testing
 
-The extension includes comprehensive test coverage:
+The extension includes comprehensive unit test coverage:
 
 ```bash
 # Unit tests
-npm run test
+npm run test -- --run  # Important: use --run to avoid watch mode
 
-# E2E tests  
-npm run test:e2e
+# Unit tests with UI
+npm run test:ui
 
 # Test coverage
 npm run test:coverage
 
-# Watch mode
-npm run dev
+# Type checking
+npm run type-check
 ```
 
 ## 📝 Development
 
 ```bash
-# Install dependencies
-npm install
+# Install dependencies (we use pnpm)
+pnpm install
 
 # Development build with watching
 npm run dev
@@ -295,9 +349,26 @@ npm run dev
 # Production build
 npm run build
 
-# Link for local development
-npm run link
+# Type checking
+npm run type-check
+
+# Create a new release
+npm run release:patch  # Bump patch version
+npm run release:minor  # Bump minor version
+npm run release:major  # Bump major version
 ```
+
+### Bundle Extension Structure
+
+This is a bundle extension that includes:
+- **Interface Extension** (`expandable-blocks`): The main UI component
+- **API Endpoint Extension** (`items-with-relations`): Backend API for enhanced functionality
+
+### API Endpoints
+
+The extension provides API endpoints under `/expandable-blocks-api/`:
+- `GET /expandable-blocks-api/:collection/search` - Search items with relations
+- `POST /expandable-blocks-api/:collection/items` - Get items with full relation data
 
 ### 📚 Architecture Documentation
 

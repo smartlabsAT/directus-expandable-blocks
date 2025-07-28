@@ -6,27 +6,34 @@ For the complete and detailed roadmap, please visit our **[GitHub Wiki Roadmap](
 
 ## 🚀 Current Development
 
+### ✅ Recently Released
+- **v1.1.0** - Bundle Extension with Add Existing Items (Released)
+  - ✅ Converted to bundle extension architecture
+  - ✅ Add existing items from other collections
+  - ✅ Advanced search with field-specific queries
+  - ✅ Translation support
+  - ✅ Role-based permissions
+  - ✅ API endpoints for enhanced functionality
+
 ### 🏗️ Active Development
-- **v2.0.0** - AI-Powered Content Generation (Q3 2025)
-  - Status: 85% complete on `feature/ai-assistant` branch
-  - [Track Progress](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/6)
+- **v1.2.0** - Performance & Polish
+  - Status: Planning
+  - Focus: Performance optimization for large datasets
+  - [Track Progress](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/2)
 
 ### 📅 Upcoming Releases
 
-| Version | Feature | Target | Status |
-|---------|---------|--------|--------|
-| v2.0.0 | AI-Powered Features | Q3 2025 | In Development |
-| v3.0.0 | Enhanced UI/UX | Q4 2025 | Planning |
-| v4.0.0 | Developer Experience | Q1 2026 | Research |
-| v5.0.0 | Performance & Scaling | Q3 2026 | Research |
+| Version | Feature | Target  | Status |
+|---------|---------|---------|--------|
+| v1.2.0 | Performance Optimization | Q4 2025 | Planning |
+| v2.0.0 | AI-Powered Features | Q1 2026 | Research |
 
 ## 🎯 GitHub Milestones
 
 Track our progress through [GitHub Milestones](https://github.com/smartlabsAT/directus-expandable-blocks/milestones):
-- [v2.0.0 - AI Features](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/6)
-- [v3.0.0 - UI/UX](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/7)
-- [v4.0.0 - Developer Tools](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/8)
-- [v5.0.0 - Performance](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/9)
+- [v1.2.0 - Performance](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/2)
+- [v2.0.0 - AI Features](https://github.com/smartlabsAT/directus-expandable-blocks/milestone/4)
+
 
 ## 🔧 Maintenance & Compatibility
 

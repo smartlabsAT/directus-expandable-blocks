@@ -6,9 +6,9 @@ Thank you for your interest in contributing to the Directus Expandable Blocks ex
 
 1. **Fork** the repository
 2. **Clone** your fork: `git clone https://github.com/your-username/directus-expandable-blocks.git`
-3. **Install** dependencies: `npm install`
-4. **Start** development: `npm run dev`
-5. **Test** your changes: `npm test`
+3. **Install** dependencies: `pnpm install` (we use pnpm for package management)
+4. **Start** development: `npm run dev` (automatic rebuild watcher)
+5. **Test** your changes: `npm run test -- --run`
 
 ## 🌟 Ways to Contribute
 
@@ -35,63 +35,57 @@ Ready to code? Here's how:
 git clone https://github.com/smartlabsAT/directus-expandable-blocks.git
 cd directus-expandable-blocks
 
-# Install dependencies
-npm install
+# Install dependencies (we use pnpm)
+pnpm install
 
-# Start development server
+# Start development server (automatic rebuild watcher)
 npm run dev
 
-# Run tests
-npm test
+# Run tests (use --run to avoid watch mode)
+npm run test -- --run
+
+# Build the extension (required for API testing)
+npm run build
+
+# Type checking
+npm run type-check
 ```
 
 #### Branch Strategy
 - **main**: Stable release branch
-- **feature/ai-assistant**: AI features development
+- **develop**: Active development branch
 - **feature/your-feature**: Your feature branch
+- **hotfix/issue-number**: Critical bug fixes
 
 #### Coding Standards
-- **TypeScript**: All code must be typed
-- **ESLint**: Follow our linting rules
-- **Prettier**: Use consistent formatting
+- **TypeScript**: All code must be typed (strict mode)
+- **Logging**: Use the logger wrapper, NEVER console.log directly
+- **Code Reuse**: ALWAYS search for existing functions before creating new ones
+- **Directus Native**: Use Directus functionality when available
 - **Tests**: Add tests for new features
 - **Documentation**: Update docs for public APIs
+- **Git Commits**: Clean commit messages, NO AI signatures
 
 ## 🧪 Testing
 
 ### Running Tests
 ```bash
-# Run all tests (unit + type checking)
-npm run test              
-
-# Run unit tests only
-npm run test:unit         
-
-# Generate coverage report
-npm run test:coverage     
+# Run all tests (IMPORTANT: use --run to avoid watch mode)
+npm run test -- --run     
 
 # Interactive test UI
 npm run test:ui           
 
+# Generate coverage report
+npm run test:coverage     
+
 # Type checking
-npm run type-check        # Run vue-tsc and tsc
-npx tsc --noEmit         # Run TypeScript compiler only
-npx vue-tsc --noEmit     # Run Vue TypeScript compiler only
+npm run type-check        
 ```
 
 ### E2E Tests
-```bash
-# Run E2E tests locally
-npm run test:e2e          
 
-# Interactive E2E UI
-npm run test:e2e:ui       
-
-# Debug E2E tests
-npm run test:e2e:debug    
-```
-
-**Note**: E2E tests are currently disabled in CI due to Docker networking complexities. They run successfully locally but require proper Directus instance setup.
+**Note**: E2E tests have been removed from the project. All testing is now done through comprehensive unit tests with Vitest.
 
 ### CI/CD Testing
 Our GitHub Actions workflow runs:
@@ -102,14 +96,22 @@ Our GitHub Actions workflow runs:
 
 ### Manual Testing
 1. Build the extension: `npm run build`
-2. Test in real Directus instance
-3. Verify all interface options work:
+2. Restart Directus: `docker compose restart directus`
+3. Test in real Directus instance
+4. Verify all interface options work:
    - Drag & drop sorting
    - Save and Stay functionality
    - Discard all changes
    - Block dirty state indicators
-4. Test with different collections and field types
-5. Check responsive design
+   - Add existing items functionality
+   - Item search and filtering
+   - Translation support
+   - Role-based permissions
+5. Test API endpoints:
+   - `/expandable-blocks-api/:collection/search`
+   - `/expandable-blocks-api/:collection/items`
+6. Test with different collections and field types
+7. Check responsive design and drawer width adjustments
 
 ## 📝 Pull Request Process
 
@@ -149,10 +151,10 @@ Brief description of changes
 ## 🎯 Priority Areas
 
 ### High Priority
-- 🤖 **AI Features**: Help complete the AI assistant
 - 🐛 **Bug Fixes**: Critical issues and edge cases
 - 📱 **Mobile Support**: Responsive design improvements
 - ♿ **Accessibility**: WCAG compliance enhancements
+- 🔧 **Performance**: Large dataset optimizations
 
 ### Medium Priority
 - 🎨 **UI/UX**: Visual improvements and animations
@@ -180,12 +182,11 @@ Brief description of changes
 
 ## 💬 Communication
 
-### Discord Community
-Join our [Discord server](https://discord.gg/directus-expandable-blocks) for:
-- Real-time discussions
-- Development coordination
-- Community support
-- Feature brainstorming
+### GitHub Issues & Discussions
+Use [GitHub Issues](https://github.com/smartlabsAT/directus-expandable-blocks/issues) for:
+- Bug reports
+- Feature requests
+- Technical questions
 
 ### GitHub Discussions
 Use [GitHub Discussions](https://github.com/smartlabsAT/directus-expandable-blocks/discussions) for:

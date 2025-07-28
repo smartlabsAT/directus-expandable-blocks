@@ -62,21 +62,39 @@ CREATE TABLE content_gallery (
      type: 'm2a',
      interface: 'expandable-blocks',
      options: {
+       // Display Options
        enableSorting: true,
        startExpanded: false,
        accordionMode: false,
        showItemId: true,
+       showCollectionName: true,
        compactMode: false,
+       
+       // Permissions & Actions
        isAllowedDelete: true,
        isAllowedDuplicate: true,
+       allowLinkExisting: true,
+       allowDuplicateExisting: true,
        maxBlocks: null,
-       allowedCollections: [
+       
+       // Collections Configuration
+       collection: [
          'content_hero',
          'content_text',
          'content_gallery',
          'content_video',
          'content_cta'
-       ]
+       ],
+       allowedCollectionsExisting: [
+         'shared_content_library',
+         'content_templates'
+       ],
+       
+       // Role-Based Permissions (optional)
+       rolesCanCreate: ['admin', 'editor'],
+       rolesCanUpdate: ['admin', 'editor', 'contributor'],
+       rolesCanDelete: ['admin'],
+       rolesCanSort: ['admin', 'editor']
      }
    }
    ```
@@ -87,13 +105,22 @@ CREATE TABLE content_gallery (
    {
      isAllowedDelete: false,     // Cannot delete blocks
      isAllowedDuplicate: true,   // Can duplicate
-     maxBlocks: 10               // Limit to 10 blocks
+     allowLinkExisting: true,    // Can add from library
+     allowDuplicateExisting: false, // Cannot duplicate library items
+     maxBlocks: 10,              // Limit to 10 blocks
+     
+     // Role-based restrictions
+     rolesCanDelete: ['admin'],
+     rolesCanCreate: ['admin', 'editor'],
+     rolesCanSort: ['admin', 'editor']
    }
    
    // For admins - full permissions
    {
      isAllowedDelete: true,
      isAllowedDuplicate: true,
+     allowLinkExisting: true,
+     allowDuplicateExisting: true,
      maxBlocks: null             // Unlimited
    }
    ```
@@ -308,6 +335,73 @@ CREATE TABLE content_gallery (
 }
 ```
 
+## Example 6: Using Add Existing Items Feature
+
+### Shared Content Library Setup
+
+```javascript
+{
+  field: 'page_sections',
+  interface: 'expandable-blocks',
+  options: {
+    // Allow both new creation and linking existing
+    collection: ['content_text', 'content_image', 'content_video'],
+    allowedCollectionsExisting: [
+      'shared_content_library',  // Pre-made content blocks
+      'content_templates',       // Reusable templates
+      'global_sections'          // Site-wide sections
+    ],
+    
+    allowLinkExisting: true,
+    allowDuplicateExisting: true, // Clone library items
+    
+    // Configure item selector
+    itemSelectorOptions: {
+      showSearch: true,
+      showFieldSelection: true,
+      defaultFields: ['title', 'preview', 'category'],
+      itemsPerPage: 20,
+      enableTableView: true
+    }
+  }
+}
+```
+
+### Search and Filter Examples
+
+```javascript
+// Advanced search with field-specific queries
+"title:Hero AND category:homepage"
+"status:published OR featured:true"
+"created_date:>2024-01-01"
+
+// Simple search across all fields
+"hero banner"
+"contact form"
+```
+
+## Example 7: Translation Support
+
+### Multi-language Content Blocks
+
+```javascript
+{
+  field: 'localized_content',
+  interface: 'expandable-blocks',
+  options: {
+    enableTranslations: true,
+    collection: ['content_translated'],
+    
+    // Translation-specific options
+    translationOptions: {
+      defaultLanguage: 'en-US',
+      showLanguageSelector: true,
+      showTranslationIndicators: true
+    }
+  }
+}
+```
+
 ## Best Practices
 
 ### 1. Performance Optimization
@@ -317,7 +411,14 @@ CREATE TABLE content_gallery (
 {
   accordionMode: true,      // Only one expanded
   startExpanded: false,     // Start collapsed
-  compactMode: true        // Reduce visual space
+  compactMode: true,       // Reduce visual space
+  
+  // Optimize item selector for large datasets
+  itemSelectorOptions: {
+    itemsPerPage: 50,      // Paginate results
+    enableTableView: true,  // Faster scanning
+    cacheSearch: true      // Cache search results
+  }
 }
 ```
 
@@ -327,21 +428,40 @@ CREATE TABLE content_gallery (
 // For critical content, limit destructive actions
 {
   isAllowedDelete: false,   // Prevent deletion
-  maxBlocks: 5              // Limit complexity
+  maxBlocks: 5,             // Limit complexity
+  
+  // Helpful UI options
+  showCollectionName: true, // Clear block type indication
+  showItemId: false,        // Hide technical IDs
+  
+  // Guide users with permissions
+  rolesCanDelete: ['admin'], // Only admins can delete
+  permissionMessages: {
+    noDelete: 'Contact an admin to remove blocks',
+    readOnly: 'You have view-only access to this block'
+  }
 }
 ```
 
 ### 3. Content Types
 
 ```javascript
-// Group related collections
+// Separate new vs existing collections
 {
-  allowedCollections: [
+  // Collections for creating new blocks
+  collection: [
     'content_text',         // Basic content
     'content_image',        // Media
     'content_video',
     'content_embed',        // External
     'content_code'
+  ],
+  
+  // Collections for linking existing items
+  allowedCollectionsExisting: [
+    'shared_components',    // Reusable components
+    'brand_assets',         // Company assets
+    'legal_disclaimers'     // Compliance content
   ]
 }
 ```
@@ -430,6 +550,21 @@ validateBlocks(blocks) {
 - Parent item is saved (not in create mode)
 - User has create/update permissions
 - No validation errors in console
+- Check role-based permissions in interface options
+
+### Scenario 5: Can't add existing items
+**Check**:
+- `allowLinkExisting` is set to true
+- `allowedCollectionsExisting` includes target collections
+- User has read permission on source collection
+- Collections are properly configured in M2A relationship
+
+### Scenario 6: Search not finding items
+**Solutions**:
+- Use field-specific search: `title:searchterm`
+- Check if fields are included in API search configuration
+- Verify translation fields are properly indexed
+- Try simple search without operators first
 
 ## Example 6: Development Environment Setup
 
@@ -521,15 +656,53 @@ When developing with or extending the Expandable Blocks extension:
 import type { 
   ExpandableBlocksOptions,
   JunctionRecord 
-} from '@/extensions/interfaces/expandable-blocks/src/types';
+} from 'directus-extension-expandable-blocks/types';
 
 const customOptions: ExpandableBlocksOptions = {
   enableSorting: true,
   accordionMode: false,
   compactMode: true,
-  allowedCollections: ['my_custom_blocks']
+  collection: ['my_custom_blocks'],
+  allowedCollectionsExisting: ['shared_blocks'],
+  allowLinkExisting: true,
+  
+  // Role-based permissions
+  rolesCanCreate: ['admin', 'editor'],
+  rolesCanUpdate: ['admin', 'editor', 'contributor'],
+  rolesCanDelete: ['admin'],
+  rolesCanSort: ['admin', 'editor']
 };
 </script>
+```
+
+### API Usage Example
+
+```javascript
+// Using the bundle's API endpoints
+const searchItems = async (collection, query) => {
+  const response = await fetch(
+    `/expandable-blocks-api/${collection}/search?` + 
+    new URLSearchParams({
+      q: query,
+      limit: 20,
+      fields: ['id', 'title', 'status']
+    })
+  );
+  return response.json();
+};
+
+// Get items with full relations
+const getItemsWithRelations = async (collection, ids) => {
+  const response = await fetch(
+    `/expandable-blocks-api/${collection}/items`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, depth: 2 })
+    }
+  );
+  return response.json();
+};
 ```
 
 This comprehensive example guide should help you implement Expandable Blocks effectively in your Directus projects!

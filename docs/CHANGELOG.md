@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - TBD
+
+### Added
+- **Bundle Extension Architecture**: Converted to bundle extension with interface and API endpoint
+- **Add Existing Items**: Select and link existing items from other collections
+  - Advanced search with field-specific queries and tag-based filtering
+  - Configurable field display in item selector
+  - Pagination and bulk selection support
+  - Inline item editing without leaving the interface
+- **Translation Support**: Full support for Directus translation fields
+  - Language selector in item selector
+  - Translation field indicators
+  - Proper loading and display of translated values
+- **Role-Based Permissions**: Granular permission control based on user roles
+  - Configure create, read, update, delete permissions per role
+  - Respect Directus collection permissions
+  - Visual indicators for read-only blocks
+- **Usage Tracking**: See where items are used across collections
+  - Usage warnings with intelligent filtering
+  - Breadcrumbs and deeplinks to usage locations
+- **Enhanced Search**: Advanced search capabilities
+  - Field-specific search with AND/OR operators
+  - Tag-based search interface with drag & drop
+  - Search result count display
+  - Remember last search functionality
+- **Improved UI/UX**:
+  - Adjustable drawer width with persistent settings
+  - Table view in item selector with sticky headers
+  - Items per page selector with persistent preferences
+  - Server-side sorting with persistent settings
+  - Hide empty fields option
+  - Redesigned settings menu with two-column layout
+  - Visual NEW indicator for unsaved blocks
+- **API Endpoints**: New backend API for enhanced functionality
+  - `/expandable-blocks-api/:collection/search` - Search items with relations
+  - `/expandable-blocks-api/:collection/items` - Get items with full relation data
+  - Efficient data loading with caching
+  - Permission-based filtering
+
+### Changed
+- **Architecture**: Complete refactor to modular component structure
+  - Split interface.vue into reusable Vue components
+  - Extracted composables for better code organization
+  - Centralized state management
+  - Improved TypeScript types organization
+- **Development**: Enhanced development workflow
+  - Use pnpm for package management
+  - Automatic rebuild watcher for development
+  - Comprehensive unit test coverage
+  - Improved logging system (never use console.log directly)
+- **Build System**: Updated to bundle extension type
+  - Interface and API endpoint in single package
+  - Shared code between frontend and backend
+  - Optimized build output
+
+### Fixed
+- **TypeScript Errors**: Resolved all TypeScript type errors across the codebase
+- **Save Flow**: Improved save flow and unsaved changes handling
+- **Permission Checks**: Proper permission validation for all operations
+- **Translation Fields**: Correctly handle translation field metadata
+- **Search Performance**: Resolved search input lag in item selector
+- **Memory Leaks**: Fixed potential memory leaks in watchers
+
+### Technical Improvements
+- Migrated to @directus/types for better type safety
+- Added comprehensive logging system with scoped loggers
+- Improved error handling and user feedback
+- Enhanced performance with singleton cache
+- Better code reuse with extracted helper functions
+- Comprehensive documentation in GitHub Wiki
+
 ## [1.0.8] - 2025-07-17
 
 ### Fixed
@@ -179,6 +252,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart content improvement tools
 - Context-aware AI suggestions
 
+[Unreleased]: https://github.com/smartlabsAT/directus-expandable-blocks/compare/v1.0.8...HEAD
+[1.1.0]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.1.0
 [1.0.8]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.8
 [1.0.7]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.7
 [1.0.6]: https://github.com/smartlabsAT/directus-expandable-blocks/releases/tag/v1.0.6
