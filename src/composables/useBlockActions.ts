@@ -124,7 +124,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       isInternalUpdate,
       source,
       sortField: getSortField(),
-      debugData: { itemCount: itemsArray.length, ...extraDebugData }
+      debugData: { itemCount: itemsArray.length, ...extraDebugData },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
   }
 
@@ -195,7 +196,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       prepareItemsForEmit,
       isInternalUpdate,
       source: 'updateItem',
-      sortField: getSortField()
+      sortField: getSortField(),
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
   }
 
@@ -255,7 +257,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
           defaultData: defaultData
         },
         totalItemsCount: items.value.length
-      }
+      },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
     
     notifyInfo('Block Added', 'New block added. Save to persist changes.');
@@ -268,6 +271,52 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     itemToDelete.value = { item, index };
     deleteDialog.value = true;
     logDebug('Delete dialog shown for item', { itemId: getItemId(item) });
+  }
+
+  /**
+   * Unlink item without deleting the actual content
+   * Only removes the junction record from the list
+   */
+  function unlinkItem(item: JunctionRecord, index: number): void {
+    const itemId = getItemId(item);
+    
+    // Remove from expanded items
+    expandedItems.value = expandedItems.value.filter(id => id !== itemId);
+    
+    // Remove from block states
+    removeBlockState(String(itemId));
+    
+    // Remove from items array
+    const updatedItems = [...items.value];
+    updatedItems.splice(index, 1);
+    
+    // Update sort values
+    updateSortValues(updatedItems);
+    
+    items.value = updatedItems;
+    
+    // Emit changes to activate save button
+    emitHelper({
+      items: updatedItems,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source: 'unlinkItem',
+      sortField: getSortField(),
+      debugData: {
+        function: 'unlinkItem',
+        unlinkedItem: {
+          id: item.id,
+          collection: item.collection,
+          itemId: itemId
+        },
+        remainingItemsCount: updatedItems.length
+      },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
+    });
+    
+    logDebug('Item unlinked', { itemId, remainingItems: updatedItems.length });
+    notifySuccess('Unlinked', 'Block unlinked successfully');
   }
 
   /**
@@ -338,7 +387,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
             junctionCollection: relationInfo.value?.junctionCollection,
             foreignKeyField: relationInfo.value?.foreignKeyField
           }
-        }
+        },
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
       });
       
       itemToDelete.value = null;
@@ -430,7 +480,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
             tempId: dupKey,
             collection: collection
           }
-        })
+        }),
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
       });
       
       notifySuccess('Duplicated', 'Block duplicated. Save to persist changes.');
@@ -509,7 +560,8 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
             collection: item.collection,
             itemType: typeof item.item
           }
-        })
+        }),
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
       });
       
       // Don't show notification - status not saved yet
@@ -569,11 +621,79 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         blockId,
         index,
         isRestored
-      })
+      }),
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
     });
     
     // Show notification
     notifySuccess('Changes Discarded', 'Block reverted to last saved state');
+  }
+
+  /**
+   * Create junction entries for selected items
+   */
+  function createJunctionEntries(
+    collection: string,
+    selectedItems: ItemRecord[],
+    options: {
+      idPrefix: string;
+      processItem?: (item: ItemRecord) => ItemRecord;
+    }
+  ): JunctionRecord[] {
+    return selectedItems.map((selectedItem, index) => {
+      // Process item if needed (e.g., for copying)
+      const itemToAdd = options.processItem ? options.processItem(selectedItem) : selectedItem;
+      
+      // Create new junction entry
+      const newItem: JunctionRecord = {
+        id: `${options.idPrefix}${Date.now()}_${index}`,
+        collection: collection,
+        item: itemToAdd
+      };
+      
+      // Add foreign key and sort value
+      addJunctionMetadata(
+        newItem,
+        getForeignKeyField(),
+        props.primaryKey ? getPrimaryKeyValue() : undefined,
+        relationInfo.value?.meta?.sort_field,
+        items.value.length + index
+      );
+      
+      return newItem;
+    });
+  }
+
+  /**
+   * Add junction entries to the items list and emit changes
+   */
+  function addItemsToList(
+    junctionEntries: JunctionRecord[],
+    source: string,
+    debugData: Record<string, any>
+  ): void {
+    // Add all new entries to items array
+    items.value = [...items.value, ...junctionEntries];
+    
+    // Auto-expand the first new item
+    if (junctionEntries.length > 0) {
+      expandedItems.value.push(getItemId(junctionEntries[0]));
+    }
+    
+    // Emit changes
+    emitHelper({
+      items: items.value,
+      emit,
+      prepareItemsForEmit,
+      isInternalUpdate,
+      source,
+      sortField: getSortField(),
+      debugData: {
+        ...debugData,
+        totalItemsCount: items.value.length
+      },
+      canUpdateItemFn: ctx.permissions?.canUpdateItem
+    });
   }
 
   /**
@@ -591,6 +711,97 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     }));
   }
 
+  /**
+   * Add existing items from another collection
+   * @param collection - The collection name
+   * @param selectedItems - Array of full item objects to add
+   */
+  function addExistingItems(collection: string, selectedItems: ItemRecord[]): void {
+    if (props.disabled) return;
+    
+    if (!isValidPrimaryKey(props.primaryKey)) {
+      notifyWarning('Save Required', 'Please save the item first before adding blocks.');
+      return;
+    }
+    
+    if (!selectedItems || selectedItems.length === 0) {
+      return;
+    }
+    
+    logAction('addExistingItems', {
+      collection,
+      itemCount: selectedItems.length,
+      itemIds: selectedItems.map(item => item.id)
+    });
+    
+    // Create junction entries using helper
+    const newJunctionEntries = createJunctionEntries(collection, selectedItems, {
+      idPrefix: 'existing_'
+    });
+    
+    // Add items to list and emit changes
+    addItemsToList(newJunctionEntries, 'ADD EXISTING - addExistingItems', {
+      function: 'addExistingItems',
+      collection: collection,
+      addedCount: selectedItems.length
+    });
+    
+    logDebug('Added existing items', {
+      collection,
+      count: selectedItems.length,
+      totalItems: items.value.length
+    });
+  }
+
+  /**
+   * Add items as new copies (duplicates)
+   * @param collection - The collection name
+   * @param selectedItems - Array of full item objects to copy
+   */
+  function addAsNewItems(collection: string, selectedItems: ItemRecord[]): void {
+    if (props.disabled) return;
+    
+    if (!isValidPrimaryKey(props.primaryKey)) {
+      notifyWarning('Save Required', 'Please save the item first before adding blocks.');
+      return;
+    }
+    
+    if (!selectedItems || selectedItems.length === 0) {
+      return;
+    }
+    
+    logAction('addAsNewItems', {
+      collection,
+      itemCount: selectedItems.length,
+      itemIds: selectedItems.map(item => item.id)
+    });
+    
+    // Create junction entries using helper with copy processing
+    const newJunctionEntries = createJunctionEntries(collection, selectedItems, {
+      idPrefix: 'new_',
+      processItem: (item) => {
+        const itemCopy = cleanItemMetadata(item);
+        addCopySuffix(itemCopy);
+        return itemCopy;
+      }
+    });
+    
+    // Add items to list and emit changes
+    addItemsToList(newJunctionEntries, 'ADD AS NEW - addAsNewItems', {
+      function: 'addAsNewItems',
+      collection: collection,
+      copiedCount: selectedItems.length
+    });
+    
+    logDebug('Added items as copies', {
+      collection,
+      count: selectedItems.length,
+      totalItems: items.value.length
+    });
+    
+    notifyInfo('Items Copied', `${selectedItems.length} item(s) added as copies. Save to persist changes.`);
+  }
+
   return {
     // UI Actions
     toggleExpand,
@@ -598,7 +809,10 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     
     // CRUD Operations
     addNewItem,
+    addExistingItems,
+    addAsNewItems,
     updateItem,
+    unlinkItem,
     confirmDeleteItem,
     duplicateItem,
     discardChanges,

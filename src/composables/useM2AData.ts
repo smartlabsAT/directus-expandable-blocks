@@ -23,7 +23,7 @@ export function useM2AData(
   const { getItemId, isNewItem, updateOriginalState, markBlockDirty } = ctx.stateFns;
   const { api, props, stores: { relationsStore, fieldsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
   const { mergedOptions } = ctx.ui;
-  const { relationInfo, allowedCollections, m2aStructure } = ctx.data;
+  const { relationInfo, allowedCollections, allowedCollectionsForExisting, m2aStructure } = ctx.data;
 
   // Computed property for allowed collections map
   const allowedCollectionsMap = computed(() => {
@@ -161,6 +161,56 @@ export function useM2AData(
     } else {
       logger.warn('No allowed collections found for field:', props.field);
       allowedCollections.value = [];
+    }
+  }
+
+  /**
+   * Load allowed collections for existing blocks (linking/duplicating)
+   */
+  async function loadAllowedCollectionsForExisting() {
+    const fieldOptions = mergedOptions.value || {};
+    
+    
+    // If allowedCollectionsForExisting is specified, use it
+    if (fieldOptions.allowedCollectionsForExisting && Array.isArray(fieldOptions.allowedCollectionsForExisting) && fieldOptions.allowedCollectionsForExisting.length > 0) {
+      const collections = fieldOptions.allowedCollectionsForExisting;
+      
+      try {
+        const mappedCollections = await Promise.all(
+          collections.map(async (col: string) => {
+            try {
+              const response = await api.get(`/collections/${col}`);
+              const collectionData = response.data.data;
+              return {
+                collection: col,
+                name: collectionData.meta?.display_name || collectionData.name || col,
+                icon: collectionData.meta?.icon || 'box',
+                singleton: collectionData.meta?.singleton || false
+              };
+            } catch (error) {
+              logger.warn(`Failed to load collection details for ${col}:`, error);
+              return {
+                collection: col,
+                name: col,
+                icon: 'box',
+                singleton: false
+              };
+            }
+          })
+        );
+        allowedCollectionsForExisting.value = mappedCollections;
+      } catch (error) {
+        logger.error('Error loading collection details for existing:', error);
+        allowedCollectionsForExisting.value = collections.map(col => ({
+          collection: col,
+          name: col,
+          icon: 'box',
+          singleton: false
+        }));
+      }
+    } else {
+      // If not specified, no collections are allowed for existing blocks
+      allowedCollectionsForExisting.value = [];
     }
   }
 
@@ -528,6 +578,9 @@ export function useM2AData(
       // Load allowed collections
       await loadAllowedCollections();
       
+      // Load allowed collections for existing
+      await loadAllowedCollectionsForExisting();
+      
       // Load relation info
       await loadRelationInfo();
       
@@ -551,6 +604,7 @@ export function useM2AData(
     // M2A Structure
     analyzeM2AStructure,
     loadAllowedCollections,
+    loadAllowedCollectionsForExisting,
     loadRelationInfo,
     
     // Initialize

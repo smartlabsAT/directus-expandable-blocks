@@ -20,6 +20,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "src/**/*.vue", "src/**/*.d.ts"],
+  "include": ["src/**/*", "src/**/*.vue", "src/**/*.d.ts", "src/api/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

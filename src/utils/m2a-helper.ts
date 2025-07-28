@@ -1,5 +1,6 @@
-import { logger } from './logger';
+import { logger } from './logger-wrapper';
 import { isNotNullish } from './validation';
+import { METADATA_FIELDS } from './helpers';
 import type { M2AFieldInfo } from '../types';
 
 export type { M2AFieldInfo };
@@ -54,7 +55,7 @@ export class M2AHelper {
           allowedCollections = fieldConfig.meta.options.allowedCollections;
         }
       } catch (e) {
-        console.log('Could not get field options:', e);
+        logger.debug('Could not get field options:', e);
       }
     }
 
@@ -88,7 +89,7 @@ export class M2AHelper {
           }
         }
       } catch (error) {
-        console.warn(`Could not analyze ${allowedCollection}:`, error);
+        logger.warn(`Could not analyze ${allowedCollection}:`, error);
       }
     }
 
@@ -105,7 +106,7 @@ export class M2AHelper {
     maxDepth: number = 3
   ): Promise<any[]> {
     if (depth >= maxDepth) {
-      console.warn('Max nesting depth reached');
+      logger.warn('Max nesting depth reached');
       return [];
     }
 
@@ -173,7 +174,7 @@ export class M2AHelper {
 
       return records;
     } catch (error) {
-      console.error(`Error loading M2A data for ${fieldInfo.collection}.${fieldInfo.field}:`, error);
+      logger.error(`Error loading M2A data for ${fieldInfo.collection}.${fieldInfo.field}:`, error);
       throw error; // Re-throw to match test expectations
     }
   }
@@ -190,7 +191,7 @@ export class M2AHelper {
       // Process each field
       fields.forEach((field: any) => {
         // Skip system fields
-        if (['id', 'user_created', 'user_updated', 'date_created', 'date_updated'].includes(field.field)) {
+        if (METADATA_FIELDS.includes(field.field)) {
           return;
         }
         

@@ -40,7 +40,7 @@ export function isNotNullish<T>(value: T | null | undefined): value is T {
 export function isTemporaryId(id: string | number | undefined): boolean {
   if (!id) return true;
   const idStr = String(id);
-  return idStr.startsWith('temp_') || idStr.startsWith('idx_') || idStr.startsWith('new_') || idStr.startsWith('dup_');
+  return idStr.startsWith('temp_') || idStr.startsWith('idx_') || idStr.startsWith('new_') || idStr.startsWith('dup_') || idStr.startsWith('existing_');
 }
 
 /**

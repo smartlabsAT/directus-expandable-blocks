@@ -1,16 +1,17 @@
 import type { Ref } from 'vue';
 import { nextTick } from 'vue';
-import { logger } from './logger';
+import { logger } from './logger-wrapper';
 import type { JunctionRecord } from '../types';
 
 export interface EmitOptions {
   items: JunctionRecord[];
   emit: (event: 'input', value: any[]) => void;
-  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string) => any[];
+  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string, canUpdateItemFn?: (item: JunctionRecord) => boolean) => any[];
   isInternalUpdate: Ref<boolean>;
   source: string;
   sortField?: string;
   debugData?: Record<string, any>;
+  canUpdateItemFn?: (item: JunctionRecord) => boolean;
 }
 
 /**
@@ -30,14 +31,15 @@ export function emitChanges(options: EmitOptions): void {
     isInternalUpdate, 
     source, 
     sortField,
-    debugData = {} 
+    debugData = {},
+    canUpdateItemFn
   } = options;
 
   // Set internal update flag to prevent watch from processing this as external change
   isInternalUpdate.value = true;
   
   // Prepare items for emit
-  const emitValue = prepareItemsForEmit(items, sortField);
+  const emitValue = prepareItemsForEmit(items, sortField, canUpdateItemFn);
   
   // Log the action with context
   logger.log(`🔄 EMIT - ${source}:`, {
@@ -62,9 +64,10 @@ export function emitChanges(options: EmitOptions): void {
 export function emitSaveChanges(
   items: JunctionRecord[],
   emit: (event: 'input', value: any[]) => void,
-  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string) => any[],
+  prepareItemsForEmit: (items: JunctionRecord[], sortField?: string, canUpdateItemFn?: (item: JunctionRecord) => boolean) => any[],
   isInternalUpdate: Ref<boolean>,
-  source: string = 'SAVE STATE'
+  source: string = 'SAVE STATE',
+  canUpdateItemFn?: (item: JunctionRecord) => boolean
 ): void {
   emitChanges({
     items,
@@ -75,6 +78,7 @@ export function emitSaveChanges(
     debugData: {
       timestamp: new Date().toISOString(),
       operation: 'save'
-    }
+    },
+    canUpdateItemFn
   });
 }

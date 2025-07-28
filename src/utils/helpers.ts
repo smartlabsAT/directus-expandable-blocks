@@ -3,7 +3,7 @@
  */
 
 import type { JunctionRecord, ItemRecord, CollectionInfo } from '../types';
-import { deepEqual } from './state-helpers';
+import { deepEqual, deepClone } from './state-helpers';
 import { isTemporaryId } from './validation';
 
 /**
@@ -104,10 +104,13 @@ export function parseAllowedCollections(
  * Get the actual item from a junction record
  * Junction records can have nested items, this extracts the actual item data
  * @param item - The junction record or item
- * @returns The actual item data
+ * @returns The actual item data or item ID
  */
-export function getActualItem(item: JunctionRecord | ItemRecord): any {
-  return (item as JunctionRecord).item || item;
+export function getActualItem(item: JunctionRecord | ItemRecord): string | number | ItemRecord {
+  if ('item' in item && item.item !== undefined) {
+    return item.item;
+  }
+  return item;
 }
 
 /**
@@ -130,41 +133,6 @@ export function getItemCollection(item: JunctionRecord | ItemRecord): string | u
   }
   
   return undefined;
-}
-
-/**
- * Deep clone an object
- */
-export function deepClone<T>(obj: T): T {
-  // Handle primitive types and null
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-  
-  // Handle undefined
-  if (obj === undefined) {
-    return obj;
-  }
-  
-  // Handle Date
-  if (obj instanceof Date) {
-    return new Date(obj.getTime()) as any;
-  }
-  
-  // Handle Array
-  if (Array.isArray(obj)) {
-    return obj.map(item => deepClone(item)) as any;
-  }
-  
-  // Handle Object
-  const clonedObj = {} as any;
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      clonedObj[key] = deepClone(obj[key]);
-    }
-  }
-  
-  return clonedObj;
 }
 
 /**
@@ -193,5 +161,5 @@ export function addJunctionMetadata(
   }
 }
 
-// Re-export deepEqual for backward compatibility
-export { deepEqual };
+// Re-export deepEqual and deepClone for backward compatibility
+export { deepEqual, deepClone };

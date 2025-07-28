@@ -17,6 +17,9 @@
           :fields="getFieldsForItem(item)"
           :disabled="disabled"
           :compact-mode="compactMode"
+          :can-read="canReadItem(item)"
+          :can-update="canUpdateItem(item)"
+          :usage-data="getBlockUsageData(item)"
           @toggle-expand="$emit('toggle-expand', getItemId(item))"
           @update-item="$emit('update-item', index, $event)"
         >
@@ -26,33 +29,40 @@
               :disabled="disabled"
               :collection-icon="getCollectionIcon(item)"
               :is-new="isNewItem(item)"
-              :is-dirty="isBlockDirty(getItemId(item), item.item)"
+              :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
               :title="getItemTitle(item)"
               :collection-name="getCollectionName(item)"
               :show-item-id="showItemId"
+              :show-collection-name="showCollectionName"
               :item-id="getActualItemId(item)"
               :is-expanded="expandedItems.includes(getItemId(item))"
+              :usage-count="getBlockUsageData(item)?.usageCount || 0"
+              :usage-data="getBlockUsageData(item)"
+              :has-any-usage-indicator="hasAnyUsageIndicator"
+              :can-read="canReadItem(item)"
               @toggle-expand="$emit('toggle-expand', getItemId(item))"
             >
               <template #status>
                 <block-status
-                  v-if="hasStatusField(item)"
-                  :has-status="true"
+                  v-if="hasStatusField(item) || canReadItem(item) === false"
+                  :has-status="hasStatusField(item) && canReadItem(item) !== false"
                   :compact-mode="compactMode"
-                  :current-status="getItemStatus(item)"
-                  :status-label="getStatusLabel(getItemStatus(item))"
+                  :current-status="canReadItem(item) === false ? 'unknown' : getItemStatus(item)"
+                  :status-label="canReadItem(item) === false ? '—' : getStatusLabel(getItemStatus(item))"
                   :statuses="availableStatuses"
+                  :allow-change="allowStatusChange && canUpdateItem(item)"
                   @update-status="$emit('update-status', item, index, $event)"
                 />
               </template>
 
               <template #actions>
                 <block-actions
-                  :allow-duplicate="allowDuplicate"
-                  :allow-delete="allowDelete"
-                  :is-dirty="isBlockDirty(getItemId(item), item.item)"
+                  :allow-duplicate="allowDuplicate && canUpdateItem(item)"
+                  :allow-delete="allowDelete && canDeleteItem(item)"
+                  :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
+                  @unlink="$emit('unlink', item, index)"
                   @delete="$emit('delete', item, index)"
                 />
               </template>
@@ -99,8 +109,10 @@ interface Props {
   disabled: boolean;
   compactMode: boolean;
   showItemId: boolean;
+  showCollectionName: boolean;
   allowDuplicate: boolean;
   allowDelete: boolean;
+  allowStatusChange: boolean;
   availableStatuses: Array<{ value: string; label: string }>;
   expandableBlocks: any; // The entire expandableBlocks instance
 }
@@ -120,6 +132,7 @@ const emit = defineEmits<{
   'update-status': [item: JunctionRecord, index: number, status: string];
   'duplicate': [item: JunctionRecord, index: number];
   'discard-changes': [item: JunctionRecord, index: number];
+  'unlink': [item: JunctionRecord, index: number];
   'delete': [item: JunctionRecord, index: number];
   'sort': [];
 }>();
@@ -139,5 +152,19 @@ const getStatusLabel = (status: string) => props.expandableBlocks.getStatusLabel
 const hasNestedM2A = (item: JunctionRecord) => props.expandableBlocks.hasNestedM2A(item);
 const getM2AFields = (item: JunctionRecord) => props.expandableBlocks.getM2AFields(item);
 const formatFieldName = (fieldName: string) => props.expandableBlocks.formatFieldName(fieldName);
+const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBlockUsageData(item);
+const canReadItem = (item: JunctionRecord) => props.expandableBlocks.canReadItem(item);
+const canUpdateItem = (item: JunctionRecord) => props.expandableBlocks.canUpdateItem(item);
+const canDeleteItem = (item: JunctionRecord) => props.expandableBlocks.canDeleteItem(item);
+
+// Check if any block has usage indicators
+const hasAnyUsageIndicator = computed(() => {
+  if (!props.modelValue || props.modelValue.length === 0) return false;
+  
+  return props.modelValue.some(item => {
+    const usageData = getBlockUsageData(item);
+    return usageData && usageData.usageCount > 0;
+  });
+});
 </script>
 

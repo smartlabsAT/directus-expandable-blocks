@@ -41,6 +41,8 @@ $expanded-border-width: 5px;
       border-left: $expanded-border-width solid var(--theme--sidebar--section--toggle--background);
       margin-top: -5px;
       padding: 15px;
+      position: relative;
+      overflow: visible;
     }
 
     .v-form.grid {
@@ -57,6 +59,40 @@ $expanded-border-width: 5px;
 
       &:hover {
         background: var(--background-page);
+      }
+    }
+  }
+  
+  // Read-only state (no update permissions)
+  &.read-only {
+    .block-header {
+      background: var(--background-subdued);
+      opacity: 0.9;
+    }
+    
+    .block-content {
+      background: var(--background-normal-alt);
+      
+      :deep(.v-form) {
+        opacity: 0.8;
+      }
+    }
+  }
+  
+  // No permission state (no read permissions)
+  &.no-permission {
+    .block-header {
+      background: var(--background-normal-alt);
+      opacity: 0.7;
+      cursor: not-allowed;
+      
+      &:hover {
+        background: var(--background-normal-alt);
+      }
+      
+      .block-title {
+        color: var(--foreground-subdued);
+        font-style: italic;
       }
     }
   }
@@ -212,9 +248,12 @@ $expanded-border-width: 5px;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: absolute;
+  left: 50px;
 }
 
 .block-actions {
+  position: relative;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -252,6 +291,12 @@ $expanded-border-width: 5px;
   margin: 0;
 }
 
+.button-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .add-block-container v-button {
   width: 100%;
   max-width: 400px;
@@ -283,10 +328,643 @@ $expanded-border-width: 5px;
   color: var(--foreground-subdued);
 }
 
-.empty-state v-icon {
-  margin-bottom: 16px;
+// Item Selector Drawer Styles - Directus Conform
+.item-selector-drawer {
+  // Default width, will be overridden by inline style
+}
+
+// v-drawer content styles (not nested)
+.drawer-collection-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--primary-10);
+  border-radius: 8px;
+
+  .v-icon {
+    --v-icon-color: var(--primary);
+  }
+}
+
+.header-content {
+  flex: 1;
+}
+
+.header-name {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--foreground-normal);
+}
+
+.header-count {
+  font-size: 14px;
   color: var(--foreground-subdued);
 }
+
+// Main Content Body
+.drawer-collection-body {
+  padding-left: var(--content-padding);
+  padding-right: var(--content-padding);
+
+  display: flex;
+  flex-direction: column;
+
+  .search-container {
+    padding: 16px 0;
+    background-color: var(--background-page);
+    border-bottom: 1px solid var(--border-subdued);
+
+    .search-input {
+      width: 100%;
+    }
+
+    // Rotating help icon
+    .v-icon.rotated {
+      transform: rotate(180deg);
+      transition: transform 0.3s ease;
+    }
+
+    // Help icon hover state
+    .v-icon[name="help_outline"] {
+      cursor: help;
+
+      &:hover {
+        color: var(--theme--primary);
+      }
+    }
+  }
+
+  // Search Help Panel
+  .search-help-panel {
+    margin-top: 12px;
+    background: var(--theme--background-subdued);
+    border: 1px solid var(--theme--border-subdued);
+    border-radius: var(--theme--border-radius);
+    overflow: hidden;
+  }
+
+  .search-help-content {
+    padding: 16px;
+  }
+
+  .search-help-section {
+    &:not(:last-child) {
+      margin-bottom: 20px;
+    }
+
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+
+  // Field chips in help
+  .field-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .field-chip {
+    background: var(--theme--background);
+    border: 1px solid var(--theme--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--theme--primary-background);
+      border-color: var(--theme--primary);
+      transform: translateY(-1px);
+    }
+
+    .v-icon {
+      margin-right: 4px;
+      color: var(--theme--primary);
+    }
+
+    .field-type {
+      margin-left: 4px;
+      font-size: 11px;
+      color: var(--theme--foreground-subdued);
+      opacity: 0.7;
+    }
+  }
+
+  // Operators grid
+  .operators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .operator-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background: var(--theme--background);
+    border: 1px solid var(--theme--border-color);
+    border-radius: var(--theme--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--theme--primary-background);
+      border-color: var(--theme--primary);
+    }
+
+    .operator-button {
+      min-width: 40px;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .operator-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .operator-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme--foreground);
+    }
+
+    .operator-example {
+      font-size: 11px;
+      color: var(--theme--foreground-subdued);
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .search-operators-table {
+    width: 100%;
+    font-size: 12px;
+
+    tr {
+      td {
+        padding: 4px 8px 4px 0;
+
+        &:first-child {
+          width: 60px;
+          font-family: var(--theme--fonts--monospace--font-family);
+        }
+
+        &:nth-child(2) {
+          color: var(--theme--foreground-subdued);
+        }
+
+        &:last-child {
+          text-align: right;
+          opacity: 0.7;
+        }
+
+        code {
+          background: var(--theme--background-normal);
+          padding: 2px 4px;
+          border-radius: 2px;
+          font-size: 11px;
+        }
+      }
+    }
+  }
+
+  .search-help-tips {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--theme--border-subdued);
+    font-size: 12px;
+    color: var(--theme--foreground-subdued);
+
+    strong {
+      color: var(--theme--foreground);
+    }
+  }
+
+  // Logical operators
+  .logical-operators-grid {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .logical-operator-button {
+    min-width: 60px;
+    padding: 4px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    border: 1px solid;
+    border-radius: var(--theme--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: none;
+    text-transform: uppercase;
+    
+    &.and-button {
+      background-color: var(--theme--success-background);
+      color: var(--theme--success);
+      border-color: var(--theme--success);
+      
+      &:hover,
+      &.active {
+        background-color: var(--theme--success);
+        color: var(--white);
+      }
+    }
+    
+    &.or-button {
+      background-color: var(--theme--info-background);
+      color: var(--theme--info);
+      border-color: var(--theme--info);
+      
+      &:hover,
+      &.active {
+        background-color: var(--theme--info);
+        color: var(--white);
+      }
+    }
+  }
+
+  .logical-examples {
+    font-size: 12px;
+    
+    p {
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+    
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    li {
+      margin-bottom: 4px;
+      color: var(--theme--foreground-subdued);
+    }
+    
+    code {
+      background: var(--theme--background);
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-size: 11px;
+    }
+    
+    &.info-note {
+      color: var(--theme--info);
+      font-style: italic;
+      
+      .v-icon {
+        margin-right: 4px;
+      }
+    }
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    color: var(--foreground-subdued);
+    gap: 16px;
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+
+  // v-list component is used for items
+  .items-list {
+    // Styles are handled by v-list component
+  }
+
+  // v-notice is used for empty state
+  .v-notice {
+    margin: 80px 24px;
+  }
+
+  .search-info-bar {
+    position: sticky;
+    top: 59px;
+    z-index: 10;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: var(--background-normal-alt);
+    border-bottom: 1px solid var(--border-subdued);
+    gap: 16px;
+    border-radius: var(--theme--border-radius);
+
+    .results-info {
+      font-size: 12px;
+      color: var(--foreground-subdued);
+
+      span {
+        font-weight: 600;
+      }
+    }
+
+    .v-pagination {
+      margin: 0;
+    }
+
+    .search-pagination {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .page-info {
+        font-size: 12px;
+        color: var(--foreground-subdued);
+        margin: 0 8px;
+      }
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      // Settings button - gleiche Größe wie Pagination
+      > .v-button {
+        height: 36px !important;
+        width: 36px !important;
+
+        .v-icon {
+          --v-icon-size: 18px; // Etwas größeres Icon
+        }
+      }
+    }
+
+    .selection-info-inline {
+      //margin-left: 8px;
+
+      a.deselect-link {
+        color: var(--primary) !important;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color var(--fast);
+        margin: 0 4px;
+
+        &:hover {
+          color: var(--primary-75) !important;
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
+  // v-list component is used for items
+  .items-list {
+    .custom-list-item {
+      // Checkbox alignment
+      .v-list-item-icon {
+        align-self: flex-start !important;
+        padding-top: 8px !important; // Gleiche Höhe wie Titel
+      }
+
+      // Content container
+      .v-list-item-content {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+    }
+
+    // Titel-Zeile mit fester Positionierung
+    .item-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 45px; // Mindesthöhe
+      padding: 8px 0 ; // Vertikaler Padding
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--foreground-subdued);
+        flex-shrink: 0;
+        margin-right: -2px;
+
+        &.status-published {
+          background: var(--theme--primary);
+        }
+
+        &.status-draft {
+          background: var(--theme--foreground);
+        }
+
+        &.status-archived {
+          background: var(--theme--warning);
+        }
+      }
+    }
+
+    .item-title {
+      font-weight: 600;
+      color: var(--theme--foreground);
+      line-height: 24px; // Feste Zeilenhöhe
+    }
+
+    .item-id-badge {
+      --v-chip-color: var(--theme--foreground-subdued);
+      --v-chip-background-color: var(--theme--background-accent);
+      font-family: var(--theme--fonts--monospace--font-family);
+      font-size: 11px;
+      flex-shrink: 0; // Verhindert Schrumpfen
+    }
+
+    // Additional fields
+    .item-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      margin-top: -4px; // Reduziert Abstand zum Titel
+      padding-bottom: 8px;
+    }
+
+    .field-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .field-label {
+      color: var(--theme--foreground-subdued);
+      font-weight: 500;
+    }
+
+    .field-value {
+      color: var(--theme--foreground);
+    }
+
+    // Boolean badges
+    .boolean-true {
+      --v-chip-background-color: var(--theme--success-background);
+      --v-chip-color: var(--theme--success);
+    }
+
+    .boolean-false {
+      --v-chip-background-color: var(--theme--danger-background);
+      --v-chip-color: var(--theme--danger);
+    }
+
+
+    .usage-indicator {
+      margin-left: auto; // Rechtsbündig
+
+      .usage-chip {
+        --v-chip-background-color: var(--theme--warning-background);
+        --v-chip-color: var(--theme--warning);
+        cursor: pointer;
+
+        &:hover {
+          --v-chip-background-color: var(--theme--warning);
+          --v-chip-color: var(--white);
+        }
+
+        .v-icon {
+          margin-right: 4px;
+        }
+      }
+    }
+
+    .usage-warning {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--theme--warning);
+
+      .v-icon {
+        --v-icon-color: var(--theme--warning);
+      }
+    }
+
+    .usage-details {
+      padding: 12px;
+      min-width: 300px;
+      max-width: 400px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .usage-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+    }
+
+    .usage-item {
+      margin-top: 12px;
+
+      &:first-child {
+        margin-top: 8px;
+      }
+    }
+
+    .usage-collection {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+      font-size: 13px;
+
+      strong {
+        color: var(--theme--foreground);
+      }
+
+      .usage-count {
+        color: var(--theme--foreground-subdued);
+        font-size: 12px;
+      }
+    }
+
+    .usage-list {
+      padding-left: 20px;
+      font-size: 12px;
+      color: var(--theme--foreground-subdued);
+    }
+
+    .usage-entry {
+      padding: 2px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .usage-more {
+      padding: 2px 0;
+      font-style: italic;
+      color: var(--theme--foreground-subdued);
+    }
+
+  }
+
+
+
+}
+
+// Menu content height fix - global scope with higher specificity
+.expandable-blocks .v-menu-content,
+.expandable-blocks-interface .v-menu-content,
+.v-menu-content {
+  height: auto !important;
+  max-height: none !important;
+}
+
+// Field selector styles
+.field-selector-header {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--theme--foreground-subdued);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-selector-title {
+  font-weight: 600 !important;
+  font-size: 14px;
+}
+
+// Disabled header item styling
+.v-list-item[disabled] {
+  pointer-events: none;
+  background-color: var(--theme--background-subdued);
+
+  .v-list-item-content {
+    padding: 8px 16px;
+  }
+}
+
+// Removed - drawer footer is now handled by v-drawer's actions-append slot
+
+// Empty state icons are handled by v-notice component
 
 .drag-ghost {
   opacity: 0.5;
@@ -295,6 +973,7 @@ $expanded-border-width: 5px;
 
 // Status display with nested styles
 .status-display {
+  width:80px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -302,6 +981,15 @@ $expanded-border-width: 5px;
   border-radius: var(--border-radius);
   font-size: 12px;
   transition: background-color $transition-fast;
+  
+  &.status-readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    
+    &:hover {
+      background-color: transparent;
+    }
+  }
 
   &.clickable {
     cursor: pointer;
@@ -309,6 +997,10 @@ $expanded-border-width: 5px;
     &:hover {
       background-color: var(--background-normal-alt);
     }
+  }
+  
+  &.status-placeholder {
+    opacity: 0.5;
   }
 }
 
@@ -330,6 +1022,11 @@ $expanded-border-width: 5px;
 
   &.status-archived {
     background: var(--theme--warning);
+  }
+  
+  &.status-unknown {
+    background: var(--border-normal);
+    opacity: 0.5;
   }
 }
 
@@ -362,10 +1059,10 @@ $expanded-border-width: 5px;
   right: 0;
   bottom: 0;
   background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0) 100%
+                  90deg,
+                  rgba(255, 255, 255, 0) 0%,
+                  rgba(255, 255, 255, 0.2) 50%,
+                  rgba(255, 255, 255, 0) 100%
   );
   animation: shimmer 1.5s infinite;
 }
@@ -447,12 +1144,12 @@ $expanded-border-width: 5px;
 
 .expand-enter-to {
   opacity: 1;
-  max-height: 2000px;
+  max-height: 1000px; // Increased to accommodate forms with notices
 }
 
 .expand-leave-from {
   opacity: 1;
-  max-height: 2000px;
+  max-height: 1000px; // Increased to accommodate forms with notices
 }
 
 .expand-leave-to {
@@ -480,6 +1177,20 @@ $expanded-border-width: 5px;
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 8px;
+}
+
+/* Fix v-notice positioning within block-content */
+.block-content :deep(.v-notice) {
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Ensure v-form empty state notice is properly positioned */
+.block-content :deep(.v-form .v-notice) {
+  position: relative !important;
+  margin: 16px 0 !important;
+  transform: none !important;
 }
 
 /* Status dropdown styles */
@@ -576,8 +1287,49 @@ $expanded-border-width: 5px;
   .block-item.expanded {
     box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.4);
   }
-  
+
   .block-item.has-changes::after {
     box-shadow: 0 0 0 2px var(--background-normal);
+  }
+}
+
+.close-outline {
+  background: red !important;
+  border-left: 1px dashed gray;
+  padding-left: 1px;
+  border-radius: 0 var(--theme--border-radius) var(--theme--border-radius) 0;
+  right: -10px;
+}
+
+/* Table View Styles */
+.item-selector-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--background-page);
+  
+  .table-header {
+    background: var(--background-page);
+    border-bottom: 2px solid var(--border-normal);
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    
+    .header-row {
+      background: var(--background-normal-alt);
+      min-height: 48px;
+    }
+
+
+
+  }
+  .table-header.is-sticky {
+    position: sticky;
+    top: 125px;
+    z-index: 2;
+  }
+  .table-body {
+    flex: 1;
+    overflow: auto;
+    background: var(--background-page);
   }
 }

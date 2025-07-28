@@ -21,7 +21,6 @@
     "cms"
   ],
   "type": "module",
-  "main": "dist/index.js",
   "files": [
     "dist/",
     "README.md",
@@ -32,14 +31,27 @@
     "node": ">=16"
   },
   "directus:extension": {
-    "type": "interface",
-    "path": "dist/index.js",
-    "source": "src/index.ts",
+    "type": "bundle",
+    "path": {
+      "app": "dist/index.js",
+      "api": "dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "interface",
+        "name": "expandable-blocks",
+        "source": "src/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "items-with-relations",
+        "source": "src/api/api.ts"
+      }
+    ],
     "host": "^11.0.0"
   },
   "scripts": {
     "build": "directus-extension build",
-    "build-dev": "directus-extension build --sourcemap --no-minify",
     "dev": "directus-extension build -w --no-minify",
     "link": "directus-extension link",
     "type-check": "tsc --noEmit",
@@ -57,11 +69,12 @@
     "release:major": "npm version major"
   },
   "devDependencies": {
-    "@directus/extensions-sdk": "10.1.11",
+    "@directus/extensions-sdk": "^11.0.0",
     "@directus/types": "^13.2.0",
     "@playwright/test": "^1.40.1",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/vue": "^8.0.1",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.10.5",
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
@@ -73,6 +86,7 @@
     "vue": "^3.3.11"
   },
   "dependencies": {
+    "lodash-es": "^4.17.21",
     "vuedraggable": "^4.1.0"
   }
 }

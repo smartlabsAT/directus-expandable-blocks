@@ -6,7 +6,7 @@
  */
 
 import { Ref } from 'vue';
-import { logger } from './logger';
+import { logger } from './logger-wrapper';
 
 /**
  * Deep equality check for objects

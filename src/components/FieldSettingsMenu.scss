@@ -1,0 +1,57 @@
+.field-selector-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  font-weight: 600;
+  color: var(--foreground-subdued);
+}
+
+.field-selector-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-name {
+  flex: 1;
+}
+
+.translation-icon {
+  color: var(--primary);
+  opacity: 0.7;
+}
+
+.translation-icon:hover {
+  opacity: 1;
+}
+
+/* Dynamic height for field selector menu */
+.field-selector-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 70vh;
+}
+
+/* Custom scrollbar styling */
+.field-selector-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.field-selector-list::-webkit-scrollbar-track {
+  background: var(--background-subdued);
+}
+
+.field-selector-list::-webkit-scrollbar-thumb {
+  background: var(--border-normal);
+  border-radius: 2px;
+}
+
+.field-selector-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-normal-alt);
+}
+
+/* Language selector */
+.v-select {
+  min-height: 36px;
+}

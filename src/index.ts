@@ -1,12 +1,25 @@
 import { defineInterface } from '@directus/extensions-sdk';
 import InterfaceComponent from './interface.vue';
+import type { DirectusRelation, DirectusField, DirectusCollection, DirectusStores } from './types/directus';
 
 // ExtensionOptionsContext is not available in @directus/types, define it locally
 interface ExtensionOptionsContext {
-  relations?: any;
-  field?: any;
-  collections?: any;
-  stores?: any;
+  relations?: {
+    m2o?: {
+      collection?: string;
+      field?: string;
+      related_collection?: string | null;
+      schema?: any;
+      meta?: {
+        one_allowed_collections?: string[];
+        [key: string]: any;
+      } | null;
+    };
+    [key: string]: any;
+  };
+  field?: DirectusField | any;
+  collections?: DirectusCollection[];
+  stores?: DirectusStores | any;
 }
 
 export default defineInterface({
@@ -19,7 +32,7 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field, collections, stores }: ExtensionOptionsContext & { stores?: any }) => {
+  options: ({ relations, field, collections, stores }: any) => {
     
     // Handle both ref and non-ref cases
     const rels = relations || {};
@@ -98,6 +111,23 @@ export default defineInterface({
     
     // Base options that are always available
     const baseOptions: any[] = [
+      // Display Options Group
+      {
+        field: 'display_divider',
+        name: 'Display Options',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'visibility',
+            color: '#00C897',
+            title: 'Display Options',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      },
       {
         field: 'enableSorting',
         name: 'Enable Sorting',
@@ -125,6 +155,22 @@ export default defineInterface({
           },
           width: 'half',
           note: 'Shows the actual item ID (not junction ID) in the block header'
+        },
+        schema: {
+          default_value: true
+        }
+      },
+      {
+        field: 'showCollectionName',
+        name: 'Show Collection Name',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Display the collection name in block headers'
+          },
+          width: 'half',
+          note: 'Shows the collection name for each block'
         },
         schema: {
           default_value: true
@@ -198,36 +244,22 @@ export default defineInterface({
         }
       },
       */
+      
+      // Limits & Restrictions Group
       {
-        field: 'isAllowedDelete',
-        name: 'Allow Delete',
-        type: 'boolean',
+        field: 'limits_divider',
+        name: 'Limits & Restrictions',
+        type: 'alias',
         meta: {
-          interface: 'boolean',
+          interface: 'presentation-divider',
           options: {
-            label: 'Allow users to delete blocks'
+            icon: 'rule',
+            color: '#E35169',
+            title: 'Limits & Restrictions',
+            inlineTitle: false
           },
-          width: 'half',
-          note: 'When disabled, users cannot delete existing blocks'
-        },
-        schema: {
-          default_value: true
-        }
-      },
-      {
-        field: 'isAllowedDuplicate',
-        name: 'Allow Duplicate',
-        type: 'boolean',
-        meta: {
-          interface: 'boolean',
-          options: {
-            label: 'Allow users to duplicate blocks'
-          },
-          width: 'half',
-          note: 'When disabled, users cannot duplicate existing blocks'
-        },
-        schema: {
-          default_value: true
+          special: ['alias', 'no-data'],
+          width: 'full'
         }
       },
       {
@@ -251,6 +283,24 @@ export default defineInterface({
 
     // Only show allowed collections option if M2A is already configured
     if (!isNewField) {
+      // Collection Configuration Group
+      baseOptions.push({
+        field: 'collections_divider',
+        name: 'Collection Configuration',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'folder',
+            color: '#6644FF',
+            title: 'Collection Configuration',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
       baseOptions.push({
         field: 'allowedCollections',
         name: 'Allowed Collections',
@@ -262,6 +312,235 @@ export default defineInterface({
             choices: allowedChoices
           } as any,
           note: getCollectionNote()
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      // Add allowed collections for existing blocks option
+      baseOptions.push({
+        field: 'allowedCollectionsForExisting',
+        name: 'Allowed Collections for Existing Blocks',
+        type: 'json',
+        meta: {
+          width: 'full',
+          interface: 'select-multiple-checkbox',
+          options: {
+            choices: allowedChoices
+          } as any,
+          note: 'Collections that can be linked or duplicated from existing items. Leave empty to use the same as "Allowed Collections".'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      // Add link/duplicate options for existing blocks
+      baseOptions.push({
+        field: 'allowLinkExisting',
+        name: 'Allow Link Existing',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow linking to existing blocks'
+          },
+          width: 'half',
+          note: 'When enabled, users can add references to existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      baseOptions.push({
+        field: 'allowDuplicateExisting',
+        name: 'Allow Duplicate Existing',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow duplicating existing blocks'
+          },
+          width: 'half',
+          note: 'When enabled, users can create copies of existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      // Permissions Group
+      baseOptions.push({
+        field: 'permissions_divider',
+        name: 'Permissions',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'lock',
+            color: '#FFA439',
+            title: 'Permissions & Actions',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
+      baseOptions.push({
+        field: 'isAllowedDelete',
+        name: 'Allow Delete',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow users to delete blocks'
+          },
+          width: 'half',
+          note: 'When disabled, users cannot delete existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      baseOptions.push({
+        field: 'isAllowedDuplicate',
+        name: 'Allow Duplicate',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Allow users to duplicate blocks'
+          },
+          width: 'half',
+          note: 'When disabled, users cannot duplicate existing blocks'
+        },
+        schema: {
+          default_value: true
+        }
+      });
+      
+      // Role-based Permissions Group
+      baseOptions.push({
+        field: 'role_permissions_divider',
+        name: 'Role-based Permissions',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-divider',
+          options: {
+            icon: 'admin_panel_settings',
+            color: '#9C27B0',
+            title: 'Role-based Permissions',
+            inlineTitle: false
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
+      baseOptions.push({
+        field: 'role_permissions_info',
+        name: 'Role Permissions Info',
+        type: 'alias',
+        meta: {
+          interface: 'presentation-notice',
+          options: {
+            icon: 'info',
+            color: 'blue-grey',
+            text: 'Configure which roles can perform specific actions. Leave empty to allow all roles (default behavior). Administrators always have full access.'
+          },
+          special: ['alias', 'no-data'],
+          width: 'full'
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanChangeStatus',
+        name: 'Roles Can Change Status',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can change block status (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanSort',
+        name: 'Roles Can Sort',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can reorder blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanAddBlocks',
+        name: 'Roles Can Add Blocks',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can add new blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanDelete',
+        name: 'Roles Can Delete',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can delete blocks (e.g. editor, moderator)'
+        },
+        schema: {
+          default_value: null
+        }
+      });
+      
+      baseOptions.push({
+        field: 'rolesCanDuplicate',
+        name: 'Roles Can Duplicate',
+        type: 'json',
+        meta: {
+          interface: 'tags',
+          options: {
+            placeholder: 'Enter role name...',
+            iconRight: 'vpn_key'
+          },
+          width: 'half',
+          note: 'Enter role names that can duplicate blocks (e.g. editor, moderator)'
         },
         schema: {
           default_value: null

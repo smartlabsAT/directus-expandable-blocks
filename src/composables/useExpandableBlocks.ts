@@ -1,14 +1,15 @@
-import { ref, computed, nextTick, type Ref } from 'vue';
+import { ref, computed, nextTick, type Ref, type ComputedRef } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
-import { deepClone, deepEqual } from '../utils/helpers';
-import { logDebug, logError } from '../utils/logger-wrapper';
+import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
+import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 import { isItemObject } from '../utils/validation';
 import { useBlockState } from './useBlockState';
 import { useBlockActions } from './useBlockActions';
 import { useM2AData } from './useM2AData';
 import { useBlockWatchers } from './useBlockWatchers';
 import { useUIHelpers } from './useUIHelpers';
+import { usePermissionChecks } from './usePermissionChecks';
 import type { 
   ExpandableBlocksOptions, 
   JunctionRecord, 
@@ -18,7 +19,8 @@ import type {
   DirectusFieldsStore,
   DirectusRelationsStore,
   DirectusCollectionsStore,
-  DirectusNotificationsStore
+  DirectusNotificationsStore,
+  DirectusPermissionsStore
 } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -40,11 +42,12 @@ export function useExpandableBlocks(
   // API and stores
   const api = useApi();
   const stores = useStores();
-  const { useFieldsStore, useRelationsStore, useCollectionsStore, useNotificationsStore } = stores;
+  const { useFieldsStore, useRelationsStore, useCollectionsStore, useNotificationsStore, usePermissionsStore } = stores;
   const fieldsStore = useFieldsStore() as DirectusFieldsStore;
   const relationsStore = useRelationsStore() as DirectusRelationsStore;
   const collectionsStore = useCollectionsStore() as DirectusCollectionsStore;
   const notificationsStore = useNotificationsStore() as DirectusNotificationsStore;
+  const permissionsStore = usePermissionsStore ? usePermissionsStore() : null;
 
   // Initialize M2A Helper
   const m2aHelper = new M2AHelper(api, stores);
@@ -53,6 +56,7 @@ export function useExpandableBlocks(
   const relationInfo = ref<RelationInfo | null>(null);
   const m2aStructure = ref<M2AFieldInfo | null>(null);
   const allowedCollections = ref<CollectionInfo[]>([]);
+  const allowedCollectionsForExisting = ref<CollectionInfo[]>([]);
   const deleteDialog = ref(false);
   const itemToDelete = ref<{ item: JunctionRecord; index: number } | null>(null);
   const mergedOptions = ref<ExpandableBlocksOptions>({});
@@ -63,6 +67,9 @@ export function useExpandableBlocks(
     { value: 'draft', label: 'Draft' },
     { value: 'archived', label: 'Archived' }
   ];
+  
+  // Usage data state
+  const blockUsageData = ref<Record<string, any>>({});
 
   // Computed properties
   const sortable = computed(() => mergedOptions.value?.enableSorting !== false);
@@ -76,6 +83,13 @@ export function useExpandableBlocks(
 
   const shouldShowItemId = computed(() => {
     const value = mergedOptions.value?.showItemId;
+    if (value === false) return false;
+    if (value === undefined) return true;
+    return value;
+  });
+
+  const shouldShowCollectionName = computed(() => {
+    const value = mergedOptions.value?.showCollectionName;
     if (value === false) return false;
     if (value === undefined) return true;
     return value;
@@ -159,9 +173,15 @@ export function useExpandableBlocks(
     data: {
       relationInfo,
       allowedCollections,
+      allowedCollectionsForExisting,
       m2aStructure,
       values,
       initialValues
+    },
+    permissions: {
+      canUpdateItem,
+      canReadItem,
+      canDeleteItem
     }
   };
 
@@ -170,6 +190,125 @@ export function useExpandableBlocks(
   const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
   const watchers = useBlockWatchers(ctx, updateOriginalItemOrder, clearStateTracking, m2aData.loadFullItemData, m2aData.processPasteData);
   const uiHelpers = useUIHelpers(ctx);
+  const permissions = usePermissionChecks(computed(() => mergedOptions.value));
+  
+  // Computed collections filtered by permissions
+  const allowedCollectionsWithPermissions = computed(() => {
+    if (!permissionsStore) return allowedCollections.value;
+    
+    // Filter collections where user has create permission
+    return allowedCollections.value.filter(collection => {
+      const hasCreatePermission = permissionsStore.hasPermission(collection.collection, 'create');
+      if (!hasCreatePermission) {
+        logDebug('User has no create permission for collection', { collection: collection.collection });
+      }
+      return hasCreatePermission;
+    });
+  });
+  
+  const allowedCollectionsForExistingWithPermissions = computed(() => {
+    if (!permissionsStore) return allowedCollectionsForExisting.value;
+    
+    // Filter collections where user has read permission AND either create or update permission
+    // This ensures users can actually do something with the items they select
+    return allowedCollectionsForExisting.value.filter(collection => {
+      const hasReadPermission = permissionsStore.hasPermission(collection.collection, 'read');
+      if (!hasReadPermission) {
+        logDebug('User has no read permission for collection', { collection: collection.collection });
+        return false;
+      }
+      
+      // Check if user can either create (for duplicate) or update (for link) items
+      const hasCreatePermission = permissionsStore.hasPermission(collection.collection, 'create');
+      const hasUpdatePermission = permissionsStore.hasPermission(collection.collection, 'update');
+      
+      if (!hasCreatePermission && !hasUpdatePermission) {
+        logDebug('User has read but no create/update permission for collection', { 
+          collection: collection.collection,
+          permissions: { read: true, create: hasCreatePermission, update: hasUpdatePermission }
+        });
+        return false;
+      }
+      
+      return true;
+    });
+  });
+  
+  // Check if user can read a specific collection
+  function canReadCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canRead = permissionsStore.hasPermission(collection, 'read');
+    if (!canRead) {
+      logDebug('User has no read permission for collection', { collection });
+    }
+    return canRead;
+  }
+  
+  // Check if user can update a specific collection
+  function canUpdateCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canUpdate = permissionsStore.hasPermission(collection, 'update');
+    if (!canUpdate) {
+      logDebug('User has no update permission for collection', { collection });
+    }
+    return canUpdate;
+  }
+  
+  // Check if user can read a specific item
+  function canReadItem(item: JunctionRecord): boolean {
+    const collection = item.collection;
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can read', { item });
+      return true;
+    }
+    
+    return canReadCollection(collection);
+  }
+  
+  // Check if user can update a specific item
+  function canUpdateItem(item: JunctionRecord): boolean {
+    // M2A structure: item.collection contains the target collection name
+    const collection = item.collection;
+    
+    logDebug('Checking update permission for item', { 
+      collection,
+      itemStructure: {
+        hasCollection: !!item.collection,
+        hasItem: !!item.item,
+        collectionValue: item.collection
+      }
+    });
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can update', { item });
+      return true;
+    }
+    
+    return canUpdateCollection(collection);
+  }
+  
+  // Check if user can delete a specific collection
+  function canDeleteCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canDelete = permissionsStore.hasPermission(collection, 'delete');
+    if (!canDelete) {
+      logDebug('User has no delete permission for collection', { collection });
+    }
+    return canDelete;
+  }
+  
+  // Check if user can delete a specific item
+  function canDeleteItem(item: JunctionRecord): boolean {
+    const collection = item.collection;
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can delete', { item });
+      return true;
+    }
+    
+    return canDeleteCollection(collection);
+  }
 
   /**
    * Load all options from field configuration
@@ -247,6 +386,122 @@ export function useExpandableBlocks(
     }
   }
 
+  /**
+   * Load usage data for existing blocks
+   */
+  async function loadBlockUsageData() {
+    try {
+      // Get all existing item IDs grouped by collection
+      const itemsByCollection = new Map<string, (string | number)[]>();
+      
+      items.value.forEach(item => {
+        if (!isNewItem(item)) {
+          const collection = item.collection;
+          const itemId = getActualItemId(item);
+          
+          if (collection && itemId) {
+            if (!itemsByCollection.has(collection)) {
+              itemsByCollection.set(collection, []);
+            }
+            itemsByCollection.get(collection)!.push(itemId);
+          }
+        }
+      });
+      
+      // Load usage data for each collection
+      const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
+        try {
+          const response = await api.post(
+            `/expandable-blocks-api/${collection}/detail`,
+            { ids, fields: '*' }
+          );
+          
+          // Store usage data by item ID
+          const currentParentId = props.primaryKey;
+          
+          response.data.data.forEach((item: any) => {
+            if (item.usage_summary?.total_count > 0) {
+              // Group locations by parent entity
+              const locationsByParent = new Map<string, any>();
+              
+              item.usage_locations.forEach((location: any) => {
+                const parentKey = `${location.collection}:${location.id}`;
+                if (!locationsByParent.has(parentKey)) {
+                  locationsByParent.set(parentKey, {
+                    collection: location.collection,
+                    id: location.id,
+                    count: 0,
+                    locations: []
+                  });
+                }
+                const parent = locationsByParent.get(parentKey);
+                parent.count++;
+                parent.locations.push(location);
+              });
+              
+              // Calculate usage counts
+              let externalCount = 0;
+              let internalCount = 0;
+              const externalLocations: any[] = [];
+              
+              locationsByParent.forEach((parent) => {
+                if (parent.id === currentParentId) {
+                  // Internal usages: count - 1 (for current instance)
+                  internalCount = Math.max(0, parent.count - 1);
+                } else {
+                  // External usages: full count
+                  externalCount += parent.count;
+                  externalLocations.push(...parent.locations);
+                }
+              });
+              
+              const totalCount = externalCount + internalCount;
+              
+              // Only store if there are other usages
+              if (totalCount > 0) {
+                blockUsageData.value[`${collection}:${item.id}`] = {
+                  usageCount: totalCount,
+                  externalCount,
+                  internalCount,
+                  externalLocations,
+                  usageSummary: {
+                    ...item.usage_summary,
+                    total_count: totalCount
+                  }
+                };
+              }
+            }
+          });
+        } catch (error) {
+          logError(`Error loading usage data for ${collection}`, error);
+        }
+      });
+      
+      await Promise.all(usagePromises);
+      
+      logDebug('Loaded block usage data', {
+        totalBlocksWithUsage: Object.keys(blockUsageData.value).length,
+        data: blockUsageData.value
+      });
+    } catch (error) {
+      logError('Error loading block usage data', error);
+    }
+  }
+  
+  /**
+   * Get usage data for a specific block
+   */
+  function getBlockUsageData(item: JunctionRecord) {
+    const collection = item.collection;
+    const itemId = getActualItemId(item);
+    
+    if (!collection || !itemId || isNewItem(item)) {
+      return null;
+    }
+    
+    return blockUsageData.value[`${collection}:${itemId}`] || null;
+  }
+
   // Return consolidated API
   return {
     // State
@@ -256,6 +511,7 @@ export function useExpandableBlocks(
     relationInfo,
     m2aStructure,
     allowedCollections,
+    allowedCollectionsForExisting,
     deleteDialog,
     itemToDelete,
     isInitialLoad,
@@ -263,25 +519,40 @@ export function useExpandableBlocks(
     blockOriginalStates,
     originalItemOrder,
     availableStatuses,
+    blockUsageData,
     
     // Computed
     sortable,
     saveButtonWouldBeActive,
     shouldShowItemId,
+    shouldShowCollectionName,
     canAddMoreBlocks,
     allowedCollectionsMap: m2aData.allowedCollectionsMap,
+    allowedCollectionsWithPermissions,
+    allowedCollectionsForExistingWithPermissions,
     
     // Core methods
     initialize,
     getItemId,
     isNewItem,
     isBlockDirty,
+    loadBlockUsageData,
+    getBlockUsageData,
+    canReadCollection,
+    canUpdateCollection,
+    canDeleteCollection,
+    canReadItem,
+    canUpdateItem,
+    canDeleteItem,
     
     // Actions from blockActions
     toggleExpand: blockActions.toggleExpand,
     showDeleteDialog: blockActions.showDeleteDialog,
     addNewItem: blockActions.addNewItem,
+    addExistingItems: blockActions.addExistingItems,
+    addAsNewItems: blockActions.addAsNewItems,
     updateItem: blockActions.updateItem,
+    unlinkItem: blockActions.unlinkItem,
     confirmDeleteItem: blockActions.confirmDeleteItem,
     duplicateItem: blockActions.duplicateItem,
     discardChanges: blockActions.discardChanges,
@@ -294,6 +565,9 @@ export function useExpandableBlocks(
     // From useM2AData (for interface.vue if needed)
     loadFullItemData: m2aData.loadFullItemData,
     processLoadedRecords: m2aData.processLoadedRecords,
-    processPasteData: m2aData.processPasteData
+    processPasteData: m2aData.processPasteData,
+    
+    // Permissions
+    ...permissions
   };
 }
