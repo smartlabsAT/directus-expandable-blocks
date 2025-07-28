@@ -399,9 +399,8 @@ function getUserDisplayName(user: any): string {
 }
 
 .title-cell {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 200px;
-  max-width: 400px;
 }
 
 .field-cell {
@@ -413,6 +412,8 @@ function getUserDisplayName(user: any): string {
 .actions-cell {
   min-width: 150px;
   flex-shrink: 0;
+  flex-grow: 0;
+  margin-left: auto;
   justify-content: flex-end;
   text-align: right;
   padding-right: 16px;
