@@ -330,7 +330,7 @@ $expanded-border-width: 5px;
 
 // Item Selector Drawer Styles - Directus Conform
 .item-selector-drawer {
-  --v-drawer-max-width: 856px;
+  // Default width, will be overridden by inline style
 }
 
 // v-drawer content styles (not nested)

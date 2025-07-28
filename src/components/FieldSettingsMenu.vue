@@ -166,6 +166,29 @@
                 <v-list-item-title>Remember last search</v-list-item-title>
               </v-list-item-content>
             </v-list-item>
+            
+            <v-divider/>
+            <v-list-item disabled>
+              <v-list-item-content>
+                <div class="field-selector-header">
+                  <v-icon name="straighten" small />
+                  Drawer Width
+                </div>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-content>
+                <v-slider
+                    :model-value="drawerWidth"
+                    :min="600"
+                    :max="1400"
+                    :step="25"
+                    :thumb-label="true"
+                    @update:model-value="$emit('update:drawer-width', $event)"
+                />
+                <div class="slider-value">{{ drawerWidth }}px</div>
+              </v-list-item-content>
+            </v-list-item>
           </v-list>
         </div>
         
@@ -281,6 +304,7 @@ interface Props {
   itemsPerPage?: number;
   viewMode?: 'list' | 'table';
   rememberSearch?: boolean;
+  drawerWidth?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -294,7 +318,8 @@ const props = withDefaults(defineProps<Props>(), {
   sortDirection: 'asc',
   itemsPerPage: 100,
   viewMode: 'table',
-  rememberSearch: false
+  rememberSearch: false,
+  drawerWidth: 856
 });
 
 defineEmits<{
@@ -308,6 +333,7 @@ defineEmits<{
   'update:items-per-page': [value: number];
   'change-view-mode': [mode: 'list' | 'table'];
   'toggle-remember-search': [];
+  'update:drawer-width': [width: number];
 }>();
 
 // Computed properties
@@ -447,6 +473,14 @@ function capitalizeField(fieldName: string): string {
 /* Language selector */
 .v-select {
   min-height: 44px;
+}
+
+/* Slider value display */
+.slider-value {
+  text-align: center;
+  font-size: 12px;
+  color: var(--foreground-subdued);
+  margin-top: 4px;
 }
 
 /* Sort controls */

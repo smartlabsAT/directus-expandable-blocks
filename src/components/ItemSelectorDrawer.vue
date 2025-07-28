@@ -1,7 +1,6 @@
 <template>
   <v-drawer
       :model-value="open"
-      class="item-selector-drawer"
       @update:model-value="$emit('close')"
       @cancel="handleClose"
       :icon="collectionIcon"
@@ -74,6 +73,7 @@
               :show-last-update="showLastUpdate"
               :view-mode="viewMode"
               :remember-search="rememberSearch"
+              :drawer-width="drawerWidth"
               @toggle-field="toggleFieldDisplay"
               @change-language="handleLanguageChange"
               @toggle-show-ids="toggleShowIds"
@@ -84,6 +84,7 @@
               @update:items-per-page="updateItemsPerPage"
               @change-view-mode="handleViewModeChange"
               @toggle-remember-search="toggleRememberSearch"
+              @update:drawer-width="updateDrawerWidth"
           />
         </div>
       </div>
@@ -261,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted} from 'vue';
+import {ref, computed, watch, onMounted, nextTick} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import ItemSearchPanel from './ItemSearchPanel.vue';
 import FieldDisplay from './FieldDisplay.vue';
@@ -343,6 +344,7 @@ const sortDirection = ref<'asc' | 'desc'>('asc');
 const itemsPerPageLocal = ref(100);
 const viewMode = ref<'list' | 'table'>('table');
 const rememberSearch = ref(false);
+const drawerWidth = ref(856);
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
 const editingItem = ref<any>(null);
@@ -377,6 +379,7 @@ const totalPages = computed(() => {
   if (!props.totalItems || !props.itemsPerPage) return 1;
   return Math.ceil(props.totalItems / props.itemsPerPage);
 });
+
 
 // Combine available fields with translation fields
 const allAvailableFields = computed(() => {
@@ -770,6 +773,20 @@ async function toggleRememberSearch() {
   }
 }
 
+async function updateDrawerWidth(width: number) {
+  drawerWidth.value = width;
+  
+  // Save to presets if collection is set
+  if (props.collection) {
+    try {
+      await userPresets.saveDrawerWidth(props.collection, width);
+      logger.debug('Saved drawer width preference', { collection: props.collection, drawerWidth: width });
+    } catch (err) {
+      logger.error('Failed to save drawer width preference', err);
+    }
+  }
+}
+
 function formatRelativeTime(dateString: string): string {
   if (!dateString) return '';
   
@@ -851,6 +868,7 @@ watch(() => props.open, async (isOpen) => {
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
       viewMode.value = userPresets.getViewMode(props.collection);
       rememberSearch.value = userPresets.getRememberSearch(props.collection);
+      drawerWidth.value = userPresets.getDrawerWidth(props.collection);
       
       // Load last search if remember search is enabled
       if (rememberSearch.value) {
@@ -876,7 +894,8 @@ watch(() => props.open, async (isOpen) => {
         itemsPerPage: itemsPerPageLocal.value,
         viewMode: viewMode.value,
         rememberSearch: rememberSearch.value,
-        lastSearch: searchQuery.value
+        lastSearch: searchQuery.value,
+        drawerWidth: drawerWidth.value
       });
     }
   }
@@ -970,6 +989,21 @@ watch(searchQuery, async (newQuery) => {
   }
 });
 
+// Watch drawer width and apply it to the actual drawer element
+watch([() => props.open, drawerWidth], ([isOpen, width]) => {
+  if (isOpen) {
+    // Wait for next tick to ensure drawer is rendered
+    nextTick(() => {
+      // Find the drawer element in the DOM
+      const drawer = document.querySelector('.v-drawer');
+      if (drawer) {
+        (drawer as HTMLElement).style.maxWidth = `${width}px`;
+        logger.debug('Applied drawer width directly to element', { width });
+      }
+    });
+  }
+}, { immediate: true });
+
 // Initialize presets on mount
 onMounted(async () => {
   try {
@@ -995,6 +1029,7 @@ onMounted(async () => {
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
       viewMode.value = userPresets.getViewMode(props.collection);
       rememberSearch.value = userPresets.getRememberSearch(props.collection);
+      drawerWidth.value = userPresets.getDrawerWidth(props.collection);
       
       // Load last search if remember search is enabled
       if (rememberSearch.value) {
@@ -1011,13 +1046,14 @@ onMounted(async () => {
 });
 </script>
 
+
 <style scoped>
+/* Translation icon in field labels */
+
 /* Bold text in search info */
 .results-info strong {
   font-weight: 800;
 }
-
-/* Translation icon in field labels */
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
@@ -1091,4 +1127,8 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
 }
+</style>
+
+<style>
+/* Dynamic drawer width styles */
 </style>

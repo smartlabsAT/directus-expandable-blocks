@@ -33,6 +33,7 @@ export function useUserPresets() {
   const viewModeCache = ref<Record<string, 'list' | 'table'>>({});
   const rememberSearchCache = ref<Record<string, boolean>>({});
   const lastSearchCache = ref<Record<string, string>>({});
+  const drawerWidthCache = ref<Record<string, number>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -85,6 +86,7 @@ export function useUserPresets() {
       viewModeCache.value = {};
       rememberSearchCache.value = {};
       lastSearchCache.value = {};
+      drawerWidthCache.value = {};
       presetIds.value = {};
       
       presets.forEach((preset: any) => {
@@ -134,6 +136,10 @@ export function useUserPresets() {
           
           if (preset.layout_options.lastSearch !== undefined) {
             lastSearchCache.value[actualCollection] = preset.layout_options.lastSearch;
+          }
+          
+          if (preset.layout_options.drawerWidth !== undefined) {
+            drawerWidthCache.value[actualCollection] = preset.layout_options.drawerWidth;
           }
           
           presetIds.value[actualCollection] = preset.id;
@@ -251,6 +257,12 @@ export function useUserPresets() {
         layoutOptions.lastSearch = lastSearchCache.value[collection];
       }
       
+      if (data.drawerWidth !== undefined) {
+        layoutOptions.drawerWidth = data.drawerWidth;
+      } else if (drawerWidthCache.value[collection] !== undefined) {
+        layoutOptions.drawerWidth = drawerWidthCache.value[collection];
+      }
+      
       const presetData = {
         collection: presetCollection,
         layout_options: layoutOptions,
@@ -312,6 +324,9 @@ export function useUserPresets() {
       }
       if (data.lastSearch !== undefined) {
         lastSearchCache.value[collection] = data.lastSearch;
+      }
+      if (data.drawerWidth !== undefined) {
+        drawerWidthCache.value[collection] = data.drawerWidth;
       }
       
     } catch (err) {
@@ -691,6 +706,34 @@ export function useUserPresets() {
     (collection: string, lastSearch: string) => savePresetData(collection, { lastSearch }), 
     1000 // Longer debounce for search to avoid too many saves
   );
+  
+  /**
+   * Get drawer width for a specific collection
+   */
+  function getDrawerWidth(collection: string): number {
+    return drawerWidthCache.value[collection] || 856; // Default width
+  }
+  
+  /**
+   * Save drawer width for a collection
+   */
+  async function saveDrawerWidth(collection: string, drawerWidth: number): Promise<void> {
+    drawerWidthCache.value[collection] = drawerWidth;
+    
+    try {
+      await debouncedSaveDrawerWidth(collection, drawerWidth);
+    } catch (err) {
+      logWarn('Failed to persist drawer width', { collection, drawerWidth });
+    }
+  }
+  
+  /**
+   * Debounced save function for drawer width
+   */
+  const debouncedSaveDrawerWidth = debounce(
+    (collection: string, drawerWidth: number) => savePresetData(collection, { drawerWidth }), 
+    300 // Shorter debounce for smoother UX
+  );
 
   /**
    * Initialize presets (load and migrate if needed)
@@ -720,6 +763,7 @@ export function useUserPresets() {
     viewModeCache,
     rememberSearchCache,
     lastSearchCache,
+    drawerWidthCache,
     loading,
     error,
     
@@ -750,6 +794,10 @@ export function useUserPresets() {
     saveRememberSearch,
     getLastSearch,
     saveLastSearch,
+    
+    // Drawer Width Methods
+    getDrawerWidth,
+    saveDrawerWidth,
     
     initialize
   };
