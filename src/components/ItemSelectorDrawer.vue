@@ -36,13 +36,13 @@
       <div class="search-info-bar">
         <div class="results-info">
           <span v-if="searchQuery">
-            Showing {{ totalItems }} results for "{{ searchQuery }}"
+            Showing <strong>{{ totalItems }}</strong> results for <strong>"{{ searchQuery }}"</strong>
           </span>
           <span v-else-if="totalItems !== null">
-            {{ totalItems }} {{ totalItems === 1 ? 'item' : 'items' }}
+            <strong>{{ totalItems }}</strong> {{ totalItems === 1 ? 'item' : 'items' }}
           </span>
           <span v-if="selectedItems.length > 0" class="selection-info-inline">
-            - {{ selectedItems.length }} selected
+            - <strong>{{ selectedItems.length }}</strong> selected
             (<a class="deselect-link" @click="deselectAll">Deselect all</a>)
           </span>
         </div>
@@ -1012,6 +1012,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Bold text in search info */
+.results-info strong {
+  font-weight: 800;
+}
+
 /* Translation icon in field labels */
 .field-translation-icon {
   color: var(--primary);
