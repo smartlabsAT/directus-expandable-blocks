@@ -1,7 +1,7 @@
 <template>
   <div class="item-selector-table-wrapper">
     <!-- Table Header (Sticky) -->
-    <div class="table-header">
+    <div class="table-header" :class="{ 'is-sticky': displayFields.length > 0 }">
       <div class="table-row header-row">
         <!-- Checkbox Column -->
         <div class="table-cell checkbox-cell">
@@ -320,12 +320,15 @@ function getUserDisplayName(user: any): string {
 
 /* Table Header */
 .table-header {
-  position: sticky;
-  top: 125px;
-  z-index: 2;
   background: var(--background-normal);
   border-bottom: 2px solid var(--border-normal);
   box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.table-header.is-sticky {
+  position: sticky;
+  top: 125px;
+  z-index: 2;
 }
 
 .header-row {

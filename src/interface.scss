@@ -1310,9 +1310,6 @@ $expanded-border-width: 5px;
   background: var(--background-page);
   
   .table-header {
-    position: sticky;
-    top: 0;
-    z-index: 3;
     background: var(--background-page);
     border-bottom: 2px solid var(--border-normal);
     box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.1);
@@ -1321,8 +1318,15 @@ $expanded-border-width: 5px;
       background: var(--background-normal-alt);
       min-height: 48px;
     }
+
+
+
   }
-  
+  .table-header.is-sticky {
+    position: sticky;
+    top: 125px;
+    z-index: 2;
+  }
   .table-body {
     flex: 1;
     overflow: auto;
