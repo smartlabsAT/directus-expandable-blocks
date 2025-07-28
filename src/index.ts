@@ -4,10 +4,22 @@ import type { DirectusRelation, DirectusField, DirectusCollection, DirectusStore
 
 // ExtensionOptionsContext is not available in @directus/types, define it locally
 interface ExtensionOptionsContext {
-  relations?: DirectusRelation[];
-  field?: DirectusField;
+  relations?: {
+    m2o?: {
+      collection?: string;
+      field?: string;
+      related_collection?: string | null;
+      schema?: any;
+      meta?: {
+        one_allowed_collections?: string[];
+        [key: string]: any;
+      } | null;
+    };
+    [key: string]: any;
+  };
+  field?: DirectusField | any;
   collections?: DirectusCollection[];
-  stores?: DirectusStores;
+  stores?: DirectusStores | any;
 }
 
 export default defineInterface({
@@ -20,7 +32,7 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field, collections, stores }: ExtensionOptionsContext) => {
+  options: ({ relations, field, collections, stores }: any) => {
     
     // Handle both ref and non-ref cases
     const rels = relations || {};

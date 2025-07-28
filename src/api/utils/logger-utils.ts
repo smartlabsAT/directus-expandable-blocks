@@ -1,8 +1,20 @@
 import type { Logger, DirectusServices } from '../types/directus-api';
 
 /**
- * Utility to get logger from services or fallback to console
+ * No-op logger implementation for when no logger is available
+ */
+const noOpLogger: Logger = {
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {},
+  trace: () => {},
+  fatal: () => {}
+};
+
+/**
+ * Utility to get logger from services or fallback to no-op logger
  */
 export function getLogger(services?: DirectusServices): Logger {
-  return services?.logger || console;
+  return services?.logger || noOpLogger;
 }

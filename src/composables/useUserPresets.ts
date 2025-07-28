@@ -3,6 +3,21 @@ import { useApi } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 
+interface LayoutOptions {
+  displayFields?: string[];
+  selectedLanguage?: string;
+  showIds?: boolean;
+  hideEmptyFields?: boolean;
+  sortField?: string | null;
+  sortDirection?: 'asc' | 'desc';
+  itemsPerPage?: number;
+  showLastUpdate?: boolean;
+  viewMode?: 'list' | 'table';
+  rememberSearch?: boolean;
+  lastSearch?: string;
+  drawerWidth?: number;
+}
+
 interface ExpandableBlocksPreset {
   id?: number | string;
   user: string;
@@ -11,7 +26,7 @@ interface ExpandableBlocksPreset {
   search: string | null;
   layout: string | null;
   layout_query: any;
-  layout_options: any;
+  layout_options: LayoutOptions;
   refresh_interval: number | null;
   filter: any;
   icon: string;
@@ -174,7 +189,7 @@ export function useUserPresets() {
   /**
    * Save preset data for a collection
    */
-  async function savePresetData(collection: string, data: { displayFields?: string[], selectedLanguage?: string, showIds?: boolean, hideEmptyFields?: boolean, sortField?: string | null, sortDirection?: 'asc' | 'desc', itemsPerPage?: number, showLastUpdate?: boolean, viewMode?: 'list' | 'table' }): Promise<void> {
+  async function savePresetData(collection: string, data: LayoutOptions): Promise<void> {
     loading.value = true;
     error.value = null;
     
@@ -190,7 +205,7 @@ export function useUserPresets() {
       });
       
       // Merge with existing data
-      const layoutOptions: any = {};
+      const layoutOptions: LayoutOptions = {};
       if (data.displayFields !== undefined) {
         layoutOptions.displayFields = data.displayFields;
       } else if (displayFieldsCache.value[collection]) {

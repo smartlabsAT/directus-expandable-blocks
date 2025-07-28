@@ -104,10 +104,13 @@ export function parseAllowedCollections(
  * Get the actual item from a junction record
  * Junction records can have nested items, this extracts the actual item data
  * @param item - The junction record or item
- * @returns The actual item data
+ * @returns The actual item data or item ID
  */
-export function getActualItem(item: JunctionRecord | ItemRecord): ItemRecord {
-  return (item as JunctionRecord).item || item;
+export function getActualItem(item: JunctionRecord | ItemRecord): string | number | ItemRecord {
+  if ('item' in item && item.item !== undefined) {
+    return item.item;
+  }
+  return item;
 }
 
 /**
