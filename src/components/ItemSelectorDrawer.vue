@@ -211,7 +211,15 @@
           @usage-item-click="handleUsageItemClick"
       />
 
-      <!-- Error State -->
+      <!-- Search Issue State -->
+      <v-notice v-else-if="apiError && searchQuery" type="info" icon="info">
+        <div class="search-issue-content">
+          <div class="search-issue-title">No results found</div>
+          <div class="search-issue-hint">{{ formatSearchError(apiError) }}</div>
+        </div>
+      </v-notice>
+
+      <!-- API Error State (non-search related) -->
       <v-notice v-else-if="apiError" type="danger" icon="error">
         <div>{{ apiError }}</div>
       </v-notice>
@@ -598,6 +606,34 @@ function getDisplayFieldsForItem(item: any): string[] {
 function handleUsageItemClick(payload: { collection: string; item: any }) {
   // For now, just log it. In the future, this could navigate to the item
   logger.debug('Usage item clicked', payload);
+}
+
+function formatSearchError(error: string): string {
+  // Make technical error messages more user-friendly
+  if (error.includes('does not contain the "_ends_with" filter operator')) {
+    return 'Tip: The "$" operator cannot be used with number fields';
+  }
+  if (error.includes('does not contain the "_starts_with" filter operator')) {
+    return 'Tip: The "^" operator cannot be used with number fields';
+  }
+  if (error.includes('does not contain the "_contains" filter operator')) {
+    return 'Tip: The "~" operator cannot be used with number fields';
+  }
+  if (error.includes('Invalid query')) {
+    // Extract the specific issue if possible
+    const match = error.match(/"([^"]+)" field type does not contain the "([^"]+)" filter operator/);
+    if (match) {
+      const [, fieldType, operator] = match;
+      return `Tip: The "${operator}" operator is not supported for ${fieldType} fields`;
+    }
+    return 'Tip: Check your search syntax';
+  }
+  
+  // For other errors, return as-is but shortened if too long
+  if (error.length > 100) {
+    return error.substring(0, 97) + '...';
+  }
+  return error;
 }
 
 async function handleLanguageChange(language: string) {
@@ -1126,6 +1162,23 @@ onMounted(async () => {
   margin-left: 12px;
   display: flex;
   gap: 8px;
+}
+
+/* Search issue styling */
+.search-issue-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-issue-title {
+  font-weight: 500;
+}
+
+.search-issue-hint {
+  font-size: 13px;
+  color: var(--foreground-subdued);
+  font-style: italic;
 }
 </style>
 

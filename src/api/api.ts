@@ -179,13 +179,31 @@ export default defineEndpoint({
                     meta: itemsResult.meta
                 });
 
-            } catch (error) {
+            } catch (error: any) {
                 context.logger.error('Error in search endpoint:', error);
+                
+                // Extract meaningful error message
+                let errorMessage = 'Internal server error';
+                let errorCode = 'INTERNAL_SERVER_ERROR';
+                
+                if (error.response?.data?.errors?.[0]) {
+                    // Directus API error format
+                    errorMessage = error.response.data.errors[0].message;
+                    errorCode = error.response.data.errors[0].extensions?.code || errorCode;
+                } else if (error.errors?.[0]?.message) {
+                    // Our custom error format
+                    errorMessage = error.errors[0].message;
+                    errorCode = error.errors[0].extensions?.code || errorCode;
+                } else if (error.message) {
+                    // Standard error message
+                    errorMessage = error.message;
+                }
+                
                 res.status(500).json({
                     errors: [{
-                        message: error instanceof Error ? error.message : 'Internal server error',
+                        message: errorMessage,
                         extensions: {
-                            code: 'INTERNAL_SERVER_ERROR'
+                            code: errorCode
                         }
                     }]
                 });

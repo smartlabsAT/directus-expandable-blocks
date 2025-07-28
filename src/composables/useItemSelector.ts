@@ -468,11 +468,25 @@ export function useItemSelector(api: any, allowedCollections?: string[]) {
         // Fire and forget - don't await
         loadItemDetails(itemIds);
       }
-    } catch (error) {
+    } catch (error: any) {
       logError('Error loading items', error);
       availableItems.value = [];
       totalItems.value = 0;
-      apiError.value = 'Die API ist nicht erreichbar. Bitte versuchen Sie es später erneut.';
+      
+      // Extract meaningful error message from API response
+      if (error.response?.data?.errors?.[0]?.message) {
+        // Our API error format
+        apiError.value = error.response.data.errors[0].message;
+      } else if (error.response?.data?.message) {
+        // Alternative error format
+        apiError.value = error.response.data.message;
+      } else if (error.message) {
+        // Generic error message
+        apiError.value = error.message;
+      } else {
+        // Fallback
+        apiError.value = 'Die API ist nicht erreichbar. Bitte versuchen Sie es später erneut.';
+      }
     } finally {
       loading.value = false;
     }

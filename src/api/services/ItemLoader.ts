@@ -109,9 +109,22 @@ export class ItemLoader {
       if (error instanceof InvalidCollectionError) {
         throw error;
       }
-      throw new DatabaseQueryError(
-        `Failed to load items from '${collection}': ${error.message || error}`
-      );
+      
+      // Extract more specific error message from Directus ItemsService
+      let errorMessage = `Failed to load items from '${collection}'`;
+      
+      if (error.errors?.[0]?.message) {
+        // Directus structured error (e.g., invalid filter operators)
+        errorMessage = error.errors[0].message;
+      } else if (error.response?.data?.errors?.[0]?.message) {
+        // Directus API response error
+        errorMessage = error.response.data.errors[0].message;
+      } else if (error.message) {
+        // Standard error with message
+        errorMessage = `${errorMessage}: ${error.message}`;
+      }
+      
+      throw new DatabaseQueryError(errorMessage);
     }
   }
 
