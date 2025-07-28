@@ -21,23 +21,23 @@ vi.mock('vuedraggable', () => ({
 const mockComponents = {
   'block-item': {
     template: '<div class="block-item"><slot name="header" /><slot name="nested-blocks" /></div>',
-    props: ['item', 'isExpanded', 'loading', 'fields', 'disabled', 'compactMode'],
+    props: ['item', 'isExpanded', 'loading', 'fields', 'disabled', 'compactMode', 'canRead', 'canUpdate', 'usageData'],
     emits: ['toggle-expand', 'update-item']
   },
   'block-header': {
     template: '<div class="block-header"><slot name="status" /><slot name="actions" /></div>',
-    props: ['sortable', 'disabled', 'collectionIcon', 'isNew', 'isDirty', 'title', 'collectionName', 'showItemId', 'itemId', 'isExpanded'],
+    props: ['sortable', 'disabled', 'collectionIcon', 'isNew', 'isDirty', 'title', 'collectionName', 'showItemId', 'showCollectionName', 'itemId', 'isExpanded', 'usageCount', 'usageData', 'hasAnyUsageIndicator', 'canRead'],
     emits: ['toggle-expand']
   },
   'block-status': {
     template: '<div class="block-status"></div>',
-    props: ['hasStatus', 'compactMode', 'currentStatus', 'statusLabel', 'statuses'],
+    props: ['hasStatus', 'compactMode', 'currentStatus', 'statusLabel', 'statuses', 'allowStatusChange'],
     emits: ['update-status']
   },
   'block-actions': {
     template: '<div class="block-actions"></div>',
-    props: ['allowDuplicate', 'allowDelete', 'isDirty'],
-    emits: ['duplicate', 'discard-changes', 'delete']
+    props: ['allowDuplicate', 'allowDelete', 'isDirty', 'canUnlink', 'canUpdate'],
+    emits: ['duplicate', 'discard-changes', 'delete', 'unlink']
   },
   'nested-blocks': {
     template: '<div class="nested-blocks"></div>',
@@ -74,7 +74,12 @@ const mockExpandableBlocks = {
   getStatusLabel: vi.fn((status) => status),
   hasNestedM2A: vi.fn(() => false),
   getM2AFields: vi.fn(() => ({})),
-  formatFieldName: vi.fn((name) => name)
+  formatFieldName: vi.fn((name) => name),
+  canReadItem: vi.fn(() => true),
+  canUpdateItem: vi.fn(() => true),
+  canDeleteItem: vi.fn(() => true),
+  getBlockUsageData: vi.fn(() => null),
+  hasAnyUsageIndicator: false
 };
 
 describe('BlockList.vue', () => {
@@ -91,8 +96,11 @@ describe('BlockList.vue', () => {
         disabled: false,
         compactMode: false,
         showItemId: false,
+        showCollectionName: true,
+        allowStatusChange: true,
         allowDuplicate: true,
         allowDelete: true,
+        allowUnlink: false,
         availableStatuses: [],
         expandableBlocks: mockExpandableBlocks,
         ...props

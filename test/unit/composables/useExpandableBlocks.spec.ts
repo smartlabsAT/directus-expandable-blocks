@@ -66,6 +66,18 @@ vi.mock('@/composables/useBlockWatchers', () => ({
   }))
 }));
 
+vi.mock('@/composables/usePermissionChecks', () => ({
+  usePermissionChecks: vi.fn(() => ({
+    canReadCollection: vi.fn().mockReturnValue(true),
+    canCreateInCollection: vi.fn().mockReturnValue(true),
+    canUpdateInCollection: vi.fn().mockReturnValue(true),
+    canDeleteInCollection: vi.fn().mockReturnValue(true),
+    canReadItem: vi.fn().mockReturnValue(true),
+    canUpdateItem: vi.fn().mockReturnValue(true),
+    canDeleteItem: vi.fn().mockReturnValue(true)
+  }))
+}));
+
 // Mock utilities
 vi.mock('@/utils/m2a-helper', () => ({
   M2AHelper: vi.fn()

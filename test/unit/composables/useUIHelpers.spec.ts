@@ -15,7 +15,8 @@ vi.mock('@/utils/helpers', () => ({
   extractItemTitle: vi.fn((item) => item.item?.title || item.title || 'Untitled'),
   getActualItemId: vi.fn((item) => item.item?.id || item.id),
   getActualItem: vi.fn((item) => item.item || item),
-  getItemCollection: vi.fn((item) => item.collection)
+  getItemCollection: vi.fn((item) => item.collection),
+  METADATA_FIELDS: ['user_created', 'date_created', 'user_updated', 'date_updated']
 }));
 
 // Mock validation

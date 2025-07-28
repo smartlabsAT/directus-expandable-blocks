@@ -41,8 +41,13 @@ describe('BlockHeader.vue', () => {
         title: 'Test Block',
         collectionName: 'Text Block',
         showItemId: true,
+        showCollectionName: true,
         itemId: 1,
         isExpanded: false,
+        usageCount: 0,
+        usageData: null,
+        hasAnyUsageIndicator: false,
+        canRead: true,
         ...props
       },
       global: {

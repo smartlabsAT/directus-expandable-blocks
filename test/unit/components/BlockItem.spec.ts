@@ -30,7 +30,10 @@ const defaultProps = {
     { field: 'content', type: 'text', name: 'Content' }
   ],
   disabled: false,
-  compactMode: false
+  compactMode: false,
+  canRead: true,
+  canUpdate: true,
+  usageData: null
 };
 
 describe('BlockItem.vue', () => {
