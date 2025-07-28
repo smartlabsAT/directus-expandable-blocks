@@ -57,6 +57,28 @@
       />
     </div>
   </v-drawer>
+
+  <!-- Unsaved Changes Dialog -->
+  <v-dialog v-model="confirmDialog" @esc="confirmDialog = false">
+    <v-sheet>
+      <v-notice type="warning" icon="warning">
+        You have unsaved changes
+      </v-notice>
+      
+      <div class="dialog-content">
+        <p>Are you sure you want to close without saving your changes?</p>
+      </div>
+      
+      <div class="dialog-actions">
+        <v-button secondary @click="confirmDialog = false">
+          Cancel
+        </v-button>
+        <v-button kind="danger" @click="forceClose">
+          Discard Changes
+        </v-button>
+      </div>
+    </v-sheet>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -94,6 +116,7 @@ const error = ref<string | null>(null);
 const item = ref<Record<string, any> | null>(null);
 const edits = ref<Record<string, any>>({});
 const validationErrors = ref<any[]>([]);
+const confirmDialog = ref(false);
 
 // Collection info
 const collectionInfo = computed(() => {
@@ -179,7 +202,10 @@ async function handleSave() {
     
     notifySuccess('Item updated successfully');
     emit('refresh');
-    handleClose();
+    
+    // Reset edits before closing to avoid unsaved changes warning
+    edits.value = {};
+    emit('update:model-value', false);
   } catch (err: any) {
     logger.error('Failed to save item', err);
     
@@ -195,11 +221,15 @@ async function handleSave() {
 
 function handleClose() {
   if (hasEdits.value) {
-    // TODO: Show confirmation dialog
-    const confirmed = confirm('You have unsaved changes. Are you sure you want to close?');
-    if (!confirmed) return;
+    // Show confirmation dialog
+    confirmDialog.value = true;
+  } else {
+    emit('update:model-value', false);
   }
-  
+}
+
+function forceClose() {
+  confirmDialog.value = false;
   emit('update:model-value', false);
 }
 
@@ -245,5 +275,19 @@ watch(
 .v-progress-circular {
   margin: 48px auto;
   display: block;
+}
+
+.dialog-content {
+  padding: var(--content-padding);
+  text-align: center;
+  color: var(--foreground-normal);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: var(--content-padding);
+  padding-top: 0;
 }
 </style>
