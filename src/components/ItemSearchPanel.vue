@@ -135,7 +135,7 @@
                 OR
               </button>
             </div>
-            <div class="logical-examples">
+            <!-- <div class="logical-examples">
               <p>Combine multiple search criteria:</p>
               <ul>
                 <li><code>title=Book AND status=published</code></li>
@@ -147,12 +147,12 @@
                   <v-icon name="info" x-small /> Default combination is AND
                 </li>
               </ul>
-            </div>
+            </div> -->
           </div>
 
-          <div class="search-help-tips">
+          <!-- <div class="search-help-tips">
             <strong>Tips:</strong> Click a field to start searching • Click an operator to add it • Use AND/OR to combine criteria
-          </div>
+          </div> -->
         </div>
       </div>
     </transition>
@@ -223,11 +223,11 @@ const searchOperators = [
   { symbol: '<=', name: 'Less or equal', example: 'stock<=20' },
   { symbol: '^', name: 'Starts with', example: 'name^John' },
   { symbol: '$', name: 'Ends with', example: 'email$@gmail.com' },
-  { symbol: '=%', name: 'Contains (alt)', example: 'name=%john%' },
-  { symbol: 'empty', name: 'Is empty', example: 'description=empty' },
-  { symbol: '!empty', name: 'Not empty', example: 'image!empty' },
-  { symbol: 'null', name: 'Is null', example: 'deleted_at=null' },
-  { symbol: '!null', name: 'Not null', example: 'image!null' }
+  // { symbol: '=%', name: 'Contains (alt)', example: 'name=%john%' },
+  // { symbol: 'empty', name: 'Is empty', example: 'description=empty' },
+  // { symbol: '!empty', name: 'Not empty', example: 'image!empty' },
+  // { symbol: 'null', name: 'Is null', example: 'deleted_at=null' },
+  // { symbol: '!null', name: 'Not null', example: 'image!null' }
 ];
 
 // Methods
