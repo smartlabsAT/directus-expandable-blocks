@@ -27,6 +27,9 @@ importers:
       '@testing-library/vue':
         specifier: ^8.0.1
         version: 8.1.0(@vue/compiler-sfc@3.5.17)(vue@3.5.17(typescript@5.8.3))
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.21
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -48,6 +51,9 @@ importers:
       happy-dom:
         specifier: ^12.10.3
         version: 12.10.3
+      knex:
+        specifier: ^3.1.0
+        version: 3.1.0
       sass:
         specifier: ^1.89.2
         version: 1.89.2
