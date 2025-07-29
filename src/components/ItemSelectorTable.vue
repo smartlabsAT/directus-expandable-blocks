@@ -1,8 +1,9 @@
 <template>
   <div class="item-selector-table-wrapper">
-    <!-- Table Header (Sticky) -->
-    <div class="table-header" :class="{ 'is-sticky': displayFields.length > 0 }">
-      <div class="table-row header-row">
+    <div class="table-scroll-container">
+      <!-- Table Header (Sticky) -->
+      <div class="table-header">
+        <div class="table-row header-row">
         <!-- Checkbox Column -->
         <div class="table-cell checkbox-cell">
           <v-checkbox
@@ -15,7 +16,7 @@
         
         <!-- Title Column -->
         <div class="table-cell title-cell">
-          <!-- Empty header or you can add an icon -->
+          <span class="field-header-label">Title</span>
         </div>
         
         <!-- Dynamic Field Columns -->
@@ -94,13 +95,15 @@
             class="table-cell field-cell"
             :class="`field-${field}`"
         >
-          <FieldDisplay
-              v-if="!hideEmptyFields || !isFieldEmpty(getTranslatedValue(item, field))"
-              :value="getTranslatedValue(item, field)"
-              :field="field"
-              :field-info="getFieldInfo(field)"
-              :max-length="getMaxLengthForField(field)"
-          />
+          <div class="cell-content">
+            <FieldDisplay
+                v-if="!hideEmptyFields || !isFieldEmpty(getTranslatedValue(item, field))"
+                :value="getTranslatedValue(item, field)"
+                :field="field"
+                :field-info="getFieldInfo(field)"
+                :max-length="getMaxLengthForField(field)"
+            />
+          </div>
         </div>
         
         <!-- Actions Column -->
@@ -134,6 +137,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
@@ -191,6 +195,16 @@ const allSelected = computed(() =>
 const someSelected = computed(() => 
   props.selectedItems.length > 0 && props.selectedItems.length < props.items.length
 );
+
+// Grid Template Columns - dynamically calculate column widths
+const gridTemplateColumns = computed(() => {
+  // Fixed columns: checkbox (48px) and actions (150px)
+  // Title column: flexible with minimum width of 250px
+  // Dynamic field columns: minmax(0, 200px) to allow shrinking
+  const fieldColumns = props.displayFields.map(() => 'minmax(0, 200px)').join(' ');
+  
+  return `48px minmax(250px, 1fr) ${fieldColumns} 150px`;
+});
 
 // Methods
 function isSelected(item: any): boolean {
@@ -314,24 +328,32 @@ function getUserDisplayName(user: any): string {
   display: flex;
   flex-direction: column;
   height: 100%;
-
   margin-top: 8px;
 }
 
-/* Table Header */
-.table-header {
-  background: var(--background-normal);
-  border-bottom: 2px solid var(--border-normal);
-  box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+/* Scroll Container - Now the main grid container */
+.table-scroll-container {
+  display: grid;
+  grid-template-columns: v-bind(gridTemplateColumns);
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  position: relative;
+  align-items: start; /* Align items to top */
 }
 
-.table-header.is-sticky {
-  position: sticky;
-  top: 125px;
-  z-index: 2;
+/* Table Header */
+/* Table sections use display: contents to pass grid to children */
+.table-header,
+.table-body {
+  display: contents;
 }
 
 .header-row {
+  display: contents;
+}
+
+.header-row > .table-cell {
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
@@ -340,83 +362,162 @@ function getUserDisplayName(user: any): string {
   background: var(--background-normal-alt);
 }
 
-/* Table Body */
-.table-body {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: auto;
+/* Header cells need sticky positioning */
+.header-row > .table-cell {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background-normal);
+  border-bottom: 2px solid var(--border-normal);
 }
 
-/* Table Rows */
+/* Header sticky columns need higher z-index */
+.header-row > .checkbox-cell,
+.header-row > .title-cell,
+.header-row > .actions-cell {
+  z-index: 15; /* Higher than regular header cells */
+  background: var(--background-normal-alt);
+}
+
+/* Table Rows also use display: contents */
 .table-row {
-  display: flex;
-  align-items: center;
+  display: contents;
+}
+
+/* Style row backgrounds on the cells instead */
+.item-row > .table-cell {
   min-height: 52px;
   border-bottom: 1px solid var(--border-subdued);
   transition: background-color 0.2s;
 }
 
-.item-row {
+/* Row styling via cells since rows use display: contents */
+.item-row > .table-cell {
   cursor: pointer;
 }
 
-/* Zebra striping - every second row */
-.item-row:nth-child(even) {
+/* Zebra striping - target cells of even rows */
+.table-body > .item-row:nth-of-type(even) > .table-cell {
   background-color: var(--theme--background-normal);
 }
 
-.item-row:hover {
+/* Hover state */
+.item-row:hover > .table-cell {
   background-color: var(--background-normal-alt);
 }
 
-.item-row.is-selected {
+/* Selected state */
+.item-row.is-selected > .table-cell {
   background-color: var(--primary-10);
 }
 
-.item-row.is-selected:hover {
+.item-row.is-selected:hover > .table-cell {
   background-color: var(--primary-25);
 }
 
-/* Table Cells */
+/* Table Cells - Now direct grid items */
 .table-cell {
   padding: 8px 12px;
   display: flex;
   align-items: center;
+  min-width: 0; /* CRITICAL: Allows cells to shrink below content width */
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative; /* For pseudo-elements */
 
   &.title-cell {
-    position: relative;
+    white-space: normal; /* Allow wrapping for title if needed */
   }
 }
 
+/* Ensure cells span full height */
+.item-row > .table-cell {
+  align-self: stretch;
+}
 
 
-/* Column Widths */
+
+/* Column Widths - Now handled by grid */
 .checkbox-cell {
-  width: 48px;
-  flex-shrink: 0;
   justify-content: center;
+  min-width: 0;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--background-page);
+  
+  /* Shadow on right edge */
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
+    pointer-events: none;
+  }
 }
 
 .title-cell {
-  flex: 1 1 auto;
-  min-width: 200px;
+  /* Min-width handled by grid template */
+  min-width: 0; /* Prevent grid blowout */
+  position: sticky;
+  left: 48px; /* Width of checkbox column */
+  z-index: 2;
+  background: var(--background-page);
+  
+  /* Shadow on right edge when scrolling */
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent);
+    pointer-events: none;
+  }
 }
 
 .field-cell {
-  flex: 0 1 200px;
-  min-width: 100px;
-  max-width: 250px;
+  /* Width handled by grid template */
+  min-width: 0; /* Allow shrinking */
+  max-width: 100%; /* Prevent overflow */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actions-cell {
-  min-width: 150px;
-  flex-shrink: 0;
-  flex-grow: 0;
-  margin-left: auto;
   justify-content: flex-end;
   text-align: right;
   padding-right: 16px;
+  min-width: 0;
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: var(--background-page);
+  
+  /* Shadow on left edge */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.1), transparent);
+    pointer-events: none;
+  }
+}
+
+/* Cell content wrapper for overflow control */
+.cell-content {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Field Header */
@@ -543,6 +644,24 @@ function getUserDisplayName(user: any): string {
 }
 
 .table-body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--border-normal-alt);
+}
+
+/* Horizontal scrollbar for the container */
+.table-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: var(--background-normal);
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-normal);
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
   background-color: var(--border-normal-alt);
 }
 </style>
