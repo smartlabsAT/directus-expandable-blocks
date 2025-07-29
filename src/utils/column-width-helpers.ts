@@ -176,14 +176,18 @@ export function calculateColumnWidth(
   userPreferences?: Record<string, number>
 ): string {
   const fieldType = getFieldTypeFromInfo(fieldInfo);
+  const defaultWidth = getDefaultFieldWidth(fieldType);
   
-  // Check user preferences first
-  if (userPreferences && userPreferences[fieldType]) {
-    return `minmax(0, ${userPreferences[fieldType]}px)`;
+  // Check user preferences first (relative percentage)
+  if (userPreferences && userPreferences[fieldType] !== undefined) {
+    const relativeWidth = userPreferences[fieldType];
+    const calculatedWidth = Math.round(defaultWidth * (1 + relativeWidth / 100));
+    // Ensure minimum width of 50px
+    const finalWidth = Math.max(50, calculatedWidth);
+    return `minmax(0, ${finalWidth}px)`;
   }
   
   // Use default width
-  const defaultWidth = getDefaultFieldWidth(fieldType);
   return `minmax(0, ${defaultWidth}px)`;
 }
 

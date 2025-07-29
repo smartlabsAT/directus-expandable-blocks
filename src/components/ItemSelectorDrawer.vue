@@ -85,6 +85,7 @@
               @change-view-mode="handleViewModeChange"
               @toggle-remember-search="toggleRememberSearch"
               @update:drawer-width="updateDrawerWidth"
+              @reset-column-widths="handleResetColumnWidths"
           />
         </div>
       </div>
@@ -194,6 +195,7 @@
       <!-- Items Table View -->
       <ItemSelectorTable
           v-else-if="items.length > 0 && viewMode === 'table'"
+          ref="tableRef"
           :items="items"
           :selected-items="selectedItems"
           :display-fields="displayFields"
@@ -355,6 +357,7 @@ const rememberSearch = ref(false);
 const drawerWidth = ref(856);
 const showSearchHelp = ref(false);
 const preferencesInitialized = ref(false);
+const tableRef = ref<InstanceType<typeof ItemSelectorTable> | null>(null);
 const editingItem = ref<any>(null);
 const editDrawerOpen = ref(false);
 
@@ -820,6 +823,14 @@ async function updateDrawerWidth(width: number) {
     } catch (err) {
       logger.error('Failed to save drawer width preference', err);
     }
+  }
+}
+
+// Reset all column widths to defaults
+function handleResetColumnWidths() {
+  logger.debug('Resetting all column widths');
+  if (tableRef.value) {
+    tableRef.value.resetAllColumnWidths();
   }
 }
 

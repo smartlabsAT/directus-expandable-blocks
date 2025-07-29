@@ -267,6 +267,22 @@
                 </v-list-item-content>
               </v-list-item>
             </div>
+            
+            <!-- Reset Column Widths -->
+            <v-divider/>
+            <v-list-item>
+              <v-list-item-content>
+                <v-button
+                    full-width
+                    secondary
+                    small
+                    @click="$emit('reset-column-widths')"
+                >
+                  <v-icon name="refresh" small />
+                  Reset all column widths
+                </v-button>
+              </v-list-item-content>
+            </v-list-item>
           </v-list>
         </div>
       </div>
@@ -334,6 +350,7 @@ defineEmits<{
   'change-view-mode': [mode: 'list' | 'table'];
   'toggle-remember-search': [];
   'update:drawer-width': [width: number];
+  'reset-column-widths': [];
 }>();
 
 // Computed properties

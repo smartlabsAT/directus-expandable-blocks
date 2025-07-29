@@ -24,7 +24,12 @@
             v-for="field in displayFields" 
             :key="field"
             class="table-cell field-cell"
-            :class="`field-${field}`"
+            :class="[
+              `field-${field}`,
+              { 'is-resizing': activeColumnSettings === field }
+            ]"
+            @mouseenter="hoveredField = field"
+            @mouseleave="hoveredField = null"
         >
           <span class="field-header-label">
             {{ getFieldLabel(field) }}
@@ -36,6 +41,17 @@
                 class="field-translation-icon"
             />
           </span>
+          <v-button
+              v-show="hoveredField === field || activeColumnSettings === field"
+              icon
+              x-small
+              secondary
+              class="column-settings-trigger"
+              @click="openColumnSettings(field, $event)"
+              v-tooltip.top="'Resize column'"
+          >
+            <v-icon name="swap_horiz" x-small />
+          </v-button>
         </div>
         
         <!-- Actions Column -->
@@ -93,7 +109,10 @@
             v-for="field in displayFields" 
             :key="field"
             class="table-cell field-cell"
-            :class="`field-${field}`"
+            :class="[
+              `field-${field}`,
+              { 'is-resizing': activeColumnSettings === field }
+            ]"
         >
           <div class="cell-content">
             <FieldDisplay
@@ -138,14 +157,27 @@
         </div>
       </div>
     </div>
+    
+    <!-- Column Width Popover -->
+    <ColumnWidthPopover
+        v-if="activeColumnSettings"
+        :model-value="!!activeColumnSettings"
+        :field="activeColumnSettings"
+        :field-info="getFieldInfo(activeColumnSettings)"
+        :current-width="userColumnWidths[activeColumnSettings] || 0"
+        :anchor="columnSettingsAnchor"
+        @update:model-value="val => !val && closeColumnSettings()"
+        @update-width="width => adjustColumnWidth(activeColumnSettings!, width)"
+    />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
+import ColumnWidthPopover from './ColumnWidthPopover.vue';
 import { extractItemTitle } from '../utils/helpers';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { calculateColumnWidth, getFieldTypeFromInfo } from '../utils/column-width-helpers';
@@ -186,7 +218,23 @@ const emit = defineEmits<{
   'toggle-all': [value: boolean];
   'open-edit': [item: any];
   'usage-item-click': [payload: { collection: string; item: any }];
+  'adjust-column-width': [field: string, relativeWidth: number];
+  'reset-column-widths': [];
 }>();
+
+// Local state
+const hoveredField = ref<string | null>(null);
+const activeColumnSettings = ref<string | null>(null);
+const columnSettingsAnchor = ref<HTMLElement | null>(null);
+
+// Debug log for activeColumnSettings changes
+import { watch } from 'vue';
+watch(activeColumnSettings, (newVal, oldVal) => {
+  logger.log('activeColumnSettings changed', { from: oldVal, to: newVal });
+});
+
+// User-defined column widths (relative percentages)
+const userColumnWidths = ref<Record<string, number>>({});
 
 // Computed
 const allSelected = computed(() => 
@@ -201,20 +249,18 @@ const someSelected = computed(() =>
 const gridTemplateColumns = computed(() => {
   // Fixed columns: checkbox (48px) and actions (150px)
   // Title column: flexible with minimum width of 250px
-  // Dynamic field columns: calculated based on field type
+  // Dynamic field columns: calculated based on field type and user preferences
   const fieldColumns = props.displayFields.map(field => {
     const fieldInfo = getFieldInfo(field);
+    const userWidth = userColumnWidths.value[field];
+    
+    if (userWidth !== undefined) {
+      // Apply user-defined relative width
+      return calculateColumnWidth(fieldInfo, { [getFieldTypeFromInfo(fieldInfo)]: userWidth });
+    }
+    
     return calculateColumnWidth(fieldInfo);
   }).join(' ');
-  
-  logger.log('Grid columns calculated:', {
-    displayFields: props.displayFields,
-    fieldColumns,
-    fieldTypes: props.displayFields.map(field => {
-      const fieldInfo = getFieldInfo(field);
-      return { field, type: getFieldTypeFromInfo(fieldInfo) };
-    })
-  });
   
   return `48px minmax(250px, 1fr) ${fieldColumns} 150px`;
 });
@@ -334,6 +380,57 @@ function getUserDisplayName(user: any): string {
   
   return 'Unknown';
 }
+
+// Column width adjustment methods
+function openColumnSettings(field: string, event: MouseEvent) {
+  logger.log('openColumnSettings called', { 
+    field, 
+    currentActive: activeColumnSettings.value,
+    eventTarget: event.target 
+  });
+  
+  activeColumnSettings.value = field;
+  columnSettingsAnchor.value = event.target as HTMLElement;
+  
+  logger.log('Settings state after open', {
+    activeColumnSettings: activeColumnSettings.value,
+    hasAnchor: !!columnSettingsAnchor.value
+  });
+}
+
+function closeColumnSettings() {
+  logger.log('closeColumnSettings called', {
+    wasActive: activeColumnSettings.value
+  });
+  
+  activeColumnSettings.value = null;
+  columnSettingsAnchor.value = null;
+}
+
+function adjustColumnWidth(field: string, relativeWidth: number) {
+  logger.log('adjustColumnWidth called', { field, relativeWidth });
+  
+  if (relativeWidth === 0) {
+    // Remove from userColumnWidths if reset to default
+    delete userColumnWidths.value[field];
+  } else {
+    userColumnWidths.value[field] = relativeWidth;
+  }
+  
+  emit('adjust-column-width', field, relativeWidth);
+}
+
+// Reset all column widths
+function resetAllColumnWidths() {
+  logger.log('Resetting all column widths');
+  userColumnWidths.value = {};
+  emit('reset-column-widths');
+}
+
+// Expose reset function for parent component
+defineExpose({
+  resetAllColumnWidths
+});
 </script>
 
 <style scoped>
@@ -538,11 +635,48 @@ function getUserDisplayName(user: any): string {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1;
+  padding-right: 28px; /* Space for absolute positioned button */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
+}
+
+/* Column Settings Button */
+.column-settings-trigger {
+  opacity: 0;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  
+  --v-button-background-color: var(--background-normal-alt);
+  --v-button-background-color-hover: var(--background-normal);
+}
+
+.field-cell:hover .column-settings-trigger {
+  opacity: 0.8;
+}
+
+.column-settings-trigger:hover {
+  opacity: 1 !important;
+}
+
+/* Ensure header cells can contain both label and button */
+.header-row > .field-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: visible; /* Allow button to be visible even in small columns */
 }
 
 /* Title Content Container */
@@ -639,6 +773,30 @@ function getUserDisplayName(user: any): string {
   .title-cell {
     min-width: 150px;
   }
+}
+
+/* Column resizing feedback */
+.field-cell.is-resizing {
+  background-color: var(--primary-10) !important;
+  position: relative;
+}
+
+/* Highlight entire column during resize */
+.field-cell.is-resizing::before {
+  content: '';
+  position: absolute;
+  top: -1000px;
+  bottom: -1000px;
+  left: 0;
+  right: 0;
+  background-color: var(--primary-5);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Header cell resizing state */
+.header-row > .field-cell.is-resizing {
+  background-color: var(--primary-25) !important;
 }
 
 /* Scrollbar styling */
