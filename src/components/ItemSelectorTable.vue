@@ -148,6 +148,7 @@ import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import { extractItemTitle } from '../utils/helpers';
 import { createScopedLogger } from '../utils/logger-wrapper';
+import { calculateColumnWidth, getFieldTypeFromInfo } from '../utils/column-width-helpers';
 
 // Create scoped logger
 const logger = createScopedLogger('ItemSelectorTable');
@@ -200,8 +201,20 @@ const someSelected = computed(() =>
 const gridTemplateColumns = computed(() => {
   // Fixed columns: checkbox (48px) and actions (150px)
   // Title column: flexible with minimum width of 250px
-  // Dynamic field columns: minmax(0, 200px) to allow shrinking
-  const fieldColumns = props.displayFields.map(() => 'minmax(0, 200px)').join(' ');
+  // Dynamic field columns: calculated based on field type
+  const fieldColumns = props.displayFields.map(field => {
+    const fieldInfo = getFieldInfo(field);
+    return calculateColumnWidth(fieldInfo);
+  }).join(' ');
+  
+  logger.log('Grid columns calculated:', {
+    displayFields: props.displayFields,
+    fieldColumns,
+    fieldTypes: props.displayFields.map(field => {
+      const fieldInfo = getFieldInfo(field);
+      return { field, type: getFieldTypeFromInfo(fieldInfo) };
+    })
+  });
   
   return `48px minmax(250px, 1fr) ${fieldColumns} 150px`;
 });
