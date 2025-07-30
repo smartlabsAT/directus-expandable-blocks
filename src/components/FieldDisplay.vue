@@ -154,15 +154,24 @@ const isSelectDropdown = computed(() =>
   fieldInterface.value === 'select-dropdown'
 );
 
+// Check if value contains HTML tags
+const containsHtml = computed(() => {
+  if (!props.value || typeof props.value !== 'string') return false;
+  // Simple check for HTML tags
+  return /<[^>]+>/.test(props.value);
+});
+
 const isWysiwyg = computed(() => {
   const result = fieldInterface.value === 'input-rich-text-html' || 
     fieldInterface.value === 'input-rich-text-md' ||
-    fieldDisplay.value === 'formatted-value';
+    fieldDisplay.value === 'formatted-value' ||
+    containsHtml.value; // Fallback: treat as WYSIWYG if it contains HTML
   
   if (props.field === 'description') {
     logger.debug('isWysiwyg check for description', {
       fieldInterface: fieldInterface.value,
       fieldDisplay: fieldDisplay.value,
+      containsHtml: containsHtml.value,
       result
     });
   }
