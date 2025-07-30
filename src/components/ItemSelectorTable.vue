@@ -723,12 +723,13 @@ defineExpose({
   &::after {
     content: '';
     position: absolute;
-    right: 0;
+    right: -3px;
     top: 0;
     bottom: 0;
     width: 4px;
     background: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
     pointer-events: none;
+    z-index: 4;
   }
 }
 
@@ -744,12 +745,13 @@ defineExpose({
   &::after {
     content: '';
     position: absolute;
-    right: 0;
+    right: -3px;
     top: 0;
     bottom: 0;
     width: 4px;
     background: linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent);
     pointer-events: none;
+    z-index: 3;
   }
 }
 
@@ -775,12 +777,13 @@ defineExpose({
   &::before {
     content: '';
     position: absolute;
-    left: 0;
+    left: -3px;
     top: 0;
     bottom: 0;
     width: 4px;
     background: linear-gradient(to left, rgba(0, 0, 0, 0.1), transparent);
     pointer-events: none;
+    z-index: 4;
   }
 }
 
