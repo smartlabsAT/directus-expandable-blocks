@@ -55,8 +55,8 @@
         </div>
         
         <!-- Actions Column -->
-        <div class="table-cell actions-cell">
-          <!-- Empty header for actions column -->
+        <div class="table-cell actions-cell header-actions-cell">
+          <v-icon name="more_horiz" small />
         </div>
       </div>
     </div>
@@ -297,7 +297,7 @@ const someSelected = computed(() =>
 
 // Grid Template Columns - dynamically calculate column widths
 const gridTemplateColumns = computed(() => {
-  // Fixed columns: checkbox (48px) and actions (150px)
+  // Fixed columns: checkbox (48px) and actions (dynamic based on showIds)
   // Title column: flexible with minimum width of 250px
   // Dynamic field columns: calculated based on field type and user preferences
   const fieldColumns = props.displayFields.map(field => {
@@ -312,7 +312,10 @@ const gridTemplateColumns = computed(() => {
     return calculateColumnWidth(fieldInfo);
   }).join(' ');
   
-  return `48px minmax(250px, 1fr) ${fieldColumns} 150px`;
+  // Actions column: 150px when showing IDs, 100px when not
+  const actionsWidth = props.showIds ? '150px' : '100px';
+  
+  return `48px minmax(250px, 1fr) ${fieldColumns} ${actionsWidth}`;
 });
 
 // Methods
@@ -532,6 +535,7 @@ defineExpose({
   letter-spacing: 0.05em;
   color: var(--foreground-subdued);
   background: var(--background-normal-alt);
+  min-height: 48px; /* Ensure consistent height */
 }
 
 /* Header cells need sticky positioning */
@@ -682,6 +686,13 @@ defineExpose({
     background: linear-gradient(to left, rgba(0, 0, 0, 0.1), transparent);
     pointer-events: none;
   }
+}
+
+/* Header actions cell - centered icon */
+.header-actions-cell {
+  justify-content: center;
+  text-align: center;
+  color: var(--foreground-subdued);
 }
 
 /* Cell content wrapper for overflow control */
