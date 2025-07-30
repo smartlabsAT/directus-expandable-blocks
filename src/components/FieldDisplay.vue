@@ -61,13 +61,53 @@
       <div 
           class="image-preview"
           v-tooltip.top="imageTooltipContent"
+          @click="showImageModal = true"
       >
         <img 
             :src="imageUrl" 
-            :alt="field"
+            :alt="getFilename || 'Image'"
             @error="handleImageError"
         />
       </div>
+      
+      <!-- Full size image modal -->
+      <v-dialog
+          v-model="showImageModal"
+          @esc="showImageModal = false"
+      >
+        <template #default>
+          <div class="image-modal-wrapper" @click="showImageModal = false">
+            <img 
+                :src="fullSizeImageUrl" 
+                :alt="getFilename || 'Image'"
+                class="full-size-image"
+                @click.stop
+            />
+            <v-button 
+                class="modal-close-button"
+                icon
+                rounded
+                secondary
+                @click="showImageModal = false"
+            >
+              <v-icon name="close" />
+            </v-button>
+          </div>
+        </template>
+      </v-dialog>
+    </div>
+    
+    <!-- File Field (non-image) -->
+    <div v-else-if="isFileField" class="file-field">
+      <v-button
+          small
+          secondary
+          @click="downloadFile"
+          v-tooltip.top="`Download ${getFilename}`"
+      >
+        <v-icon name="file_download" small />
+        <span class="file-name">{{ getFilename }}</span>
+      </v-button>
     </div>
 
     <!-- JSON Field -->
@@ -110,10 +150,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 
 const logger = createScopedLogger('FieldDisplay');
+
+// Modal state
+const showImageModal = ref(false);
 
 interface Props {
   value: any;
@@ -190,12 +233,39 @@ const isJsonField = computed(() =>
   (typeof props.value === 'object' && props.value !== null && !Array.isArray(props.value))
 );
 
-const isImageField = computed(() => 
-  fieldInterface.value === 'file-image' || 
-  fieldInterface.value === 'file' ||
-  (fieldType.value === 'uuid' && props.field.includes('image')) ||
-  (typeof props.value === 'string' && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(props.value))
-);
+const isImageField = computed(() => {
+  if (fieldInterface.value === 'file-image') return true;
+  if (fieldInterface.value === 'file' && isImageExtension(props.value)) return true;
+  if (fieldType.value === 'uuid' && props.field.includes('image')) return true;
+  if (typeof props.value === 'string' && isImageExtension(props.value)) return true;
+  return false;
+});
+
+const isFileField = computed(() => {
+  if (fieldInterface.value === 'file' && !isImageExtension(props.value)) return true;
+  if (fieldInterface.value === 'file-image' && !isImageExtension(props.value)) return true;
+  return false;
+});
+
+function isImageExtension(value: any): boolean {
+  // If it's an object, check the filename_download
+  if (typeof value === 'object' && value !== null) {
+    if (value.filename_download && typeof value.filename_download === 'string') {
+      return /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i.test(value.filename_download);
+    }
+    // If it has a type field that indicates it's an image
+    if (value.type && typeof value.type === 'string') {
+      return value.type.startsWith('image/');
+    }
+  }
+  
+  // String value check
+  if (typeof value === 'string') {
+    return /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/i.test(value);
+  }
+  
+  return false;
+}
 
 // Value processing
 const displayValue = computed(() => {
@@ -302,26 +372,72 @@ function formatDate(value: any): string {
 const imageUrl = computed(() => {
   if (!props.value) return '';
   
-  // If it's a UUID (Directus file), construct the URL
-  if (fieldType.value === 'uuid' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(props.value)) {
-    return `/assets/${props.value}?fit=cover&width=150&height=150&quality=80`;
+  // Check if value is an object with file information
+  if (typeof props.value === 'object' && props.value !== null) {
+    // Use the ID if available
+    if (props.value.id) {
+      return `/assets/${props.value.id}?fit=cover&width=300&height=300&quality=80`;
+    }
   }
   
-  // If it's already a URL
-  if (typeof props.value === 'string' && (props.value.startsWith('http') || props.value.startsWith('/'))) {
-    return props.value;
+  // If it's a UUID (Directus file), construct the URL
+  if (typeof props.value === 'string') {
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(props.value)) {
+      return `/assets/${props.value}?fit=cover&width=300&height=300&quality=80`;
+    }
+    
+    // If it's already a URL
+    if (props.value.startsWith('http') || props.value.startsWith('/')) {
+      return props.value;
+    }
   }
   
   return '';
 });
 
-const getImageFilename = computed(() => {
+const getFilename = computed(() => {
   if (!props.value) return '';
   
-  // Extract filename from URL or return the value
+  // Check if value is an object with file information
+  if (typeof props.value === 'object' && props.value !== null) {
+    // Directus file object structure
+    if (props.value.filename_download) {
+      return props.value.filename_download;
+    }
+    if (props.value.title) {
+      return props.value.title;
+    }
+    if (props.value.filename_disk) {
+      return props.value.filename_disk;
+    }
+  }
+  
+  // Check if we have file metadata in field options
+  if (props.fieldInfo?.options?.file) {
+    if (props.fieldInfo.options.file.filename_download) {
+      return props.fieldInfo.options.file.filename_download;
+    }
+  }
+  
+  // If it's a string value
   if (typeof props.value === 'string') {
-    const parts = props.value.split('/');
-    return parts[parts.length - 1] || props.value;
+    // Check if it's a UUID
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(props.value)) {
+      // Return null to indicate no filename available
+      return null;
+    }
+    
+    // Remove query parameters
+    const cleanUrl = props.value.split('?')[0];
+    const parts = cleanUrl.split('/');
+    const filename = parts[parts.length - 1] || props.value;
+    
+    // Decode URL encoded names
+    try {
+      return decodeURIComponent(filename);
+    } catch {
+      return filename;
+    }
   }
   
   return String(props.value);
@@ -330,16 +446,91 @@ const getImageFilename = computed(() => {
 const imageTooltipContent = computed(() => {
   if (!imageUrl.value) return '';
   
-  return {
-    content: `<img src="${imageUrl.value}" style="max-width: 300px; max-height: 300px;" />`,
-    html: true,
-    delay: 300
-  };
+  const filename = getFilename.value;
+  
+  // If no filename available (UUID), show simple tooltip
+  if (!filename) {
+    return 'Click to view full size';
+  }
+  
+  // Build informative tooltip
+  let tooltipLines = [`Filename: ${filename}`];
+  
+  // Add more metadata if available
+  if (props.fieldInfo?.options?.metadata) {
+    const metadata = props.fieldInfo.options.metadata;
+    if (metadata.width && metadata.height) {
+      tooltipLines.push(`Dimensions: ${metadata.width}×${metadata.height}px`);
+    }
+    if (metadata.filesize) {
+      tooltipLines.push(`Size: ${formatFileSize(metadata.filesize)}`);
+    }
+  }
+  
+  return tooltipLines.join('\n');
+});
+
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Full size image URL for modal
+const fullSizeImageUrl = computed(() => {
+  if (!props.value) return '';
+  
+  // Check if value is an object with file information
+  if (typeof props.value === 'object' && props.value !== null) {
+    if (props.value.id) {
+      return `/assets/${props.value.id}`;
+    }
+  }
+  
+  // If it's a UUID (Directus file), construct the full size URL
+  if (typeof props.value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(props.value)) {
+    return `/assets/${props.value}`;
+  }
+  
+  // For other URLs, remove any size parameters
+  if (typeof props.value === 'string' && (props.value.startsWith('http') || props.value.startsWith('/'))) {
+    return props.value.split('?')[0];
+  }
+  
+  return imageUrl.value;
 });
 
 function handleImageError(event: Event) {
   const img = event.target as HTMLImageElement;
   img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24"%3E%3Cpath fill="%23999" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/%3E%3C/svg%3E';
+}
+
+// Download file function
+function downloadFile() {
+  if (!props.value) return;
+  
+  let downloadUrl = '';
+  
+  // If it's a UUID (Directus file), construct the download URL
+  if (fieldType.value === 'uuid' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(props.value)) {
+    downloadUrl = `/assets/${props.value}?download`;
+  } else if (typeof props.value === 'string' && (props.value.startsWith('http') || props.value.startsWith('/'))) {
+    downloadUrl = props.value;
+  } else {
+    return;
+  }
+  
+  // Create a temporary link and trigger download
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = getFilename.value || 'download';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 </script>
 
@@ -467,18 +658,22 @@ function handleImageError(event: Event) {
 
 /* Image field */
 .image-field {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .image-preview {
-  width: 50px;
-  height: 50px;
+  width: 100%;
+  max-height: 120px;
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid var(--border-normal);
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+  background: var(--background-subdued);
 }
 
 .image-preview:hover {
@@ -488,7 +683,64 @@ function handleImageError(event: Event) {
 
 .image-preview img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 120px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Image modal */
+.image-modal-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.9);
+  cursor: pointer;
+}
+
+.full-size-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  object-fit: contain; /* Scale to fit while maintaining aspect ratio */
+  display: block;
+  cursor: default;
+  box-shadow: 0 5px 30px 0 rgba(0, 0, 0, 0.3);
+}
+
+.modal-close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--background-page) !important;
+  z-index: 10;
+  
+  &:hover {
+    background: var(--background-normal) !important;
+  }
+}
+
+/* File field */
+.file-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.file-field .v-button {
+  flex-shrink: 0;
+}
+
+.file-name {
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 </style>

@@ -40,12 +40,12 @@
             :class="[
               `field-${field}`,
               { 'is-resizing': activeColumnSettings === field },
-              { 'is-sortable': true },
+              { 'is-sortable': isFieldSortable(field) },
               { 'is-sorted': props.sortField === field }
             ]"
             @mouseenter="hoveredField = field"
             @mouseleave="hoveredField = null"
-            @click="handleHeaderClick(field)"
+            @click="isFieldSortable(field) && handleHeaderClick(field)"
         >
           <span class="field-header-label">
             <v-icon 
@@ -219,6 +219,19 @@ import { calculateColumnWidth, getFieldTypeFromInfo } from '../utils/column-widt
 
 // Create scoped logger
 const logger = createScopedLogger('ItemSelectorTable');
+
+// Field interfaces that should not be sortable
+const NON_SORTABLE_INTERFACES = [
+  'file',
+  'file-image',
+  'files',
+  'alias',
+  'presentation-divider',
+  'presentation-notice',
+  'group-detail',
+  'group-accordion',
+  'group-tabs'
+];
 
 interface Props {
   items: any[];
@@ -404,6 +417,23 @@ function getFieldInfo(field: string) {
   }
 
   return null;
+}
+
+function isFieldSortable(field: string): boolean {
+  const fieldInfo = getFieldInfo(field);
+  if (!fieldInfo) return true; // Default to sortable if no info
+  
+  // Check if the interface is in the non-sortable list
+  if (fieldInfo.interface && NON_SORTABLE_INTERFACES.includes(fieldInfo.interface)) {
+    return false;
+  }
+  
+  // JSON fields are also not sortable
+  if (fieldInfo.type === 'json') {
+    return false;
+  }
+  
+  return true;
 }
 
 function capitalizeField(fieldName: string): string {
@@ -859,8 +889,8 @@ defineExpose({
 }
 
 /* Sortable Headers */
-.header-field-cell,
-.header-title-cell {
+.header-field-cell.is-sortable,
+.header-title-cell.is-sortable {
   cursor: pointer;
   user-select: none;
   
@@ -869,6 +899,11 @@ defineExpose({
       font-weight: 700;
     }
   }
+}
+
+/* Non-sortable headers */
+.header-field-cell:not(.is-sortable) {
+  cursor: default;
 }
 
 /* Sort Icon */
