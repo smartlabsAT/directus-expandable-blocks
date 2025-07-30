@@ -102,9 +102,9 @@
     <span
         v-else
         class="field-value"
-        v-tooltip="displayValue.length > maxLength ? displayValue : null"
+        v-tooltip="displayValue"
     >
-      {{ truncatedValue }}
+      {{ displayValue }}
     </span>
   </div>
 </template>
@@ -336,13 +336,19 @@ function handleImageError(event: Event) {
 
 <style scoped>
 .field-display {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .field-value {
   color: var(--foreground-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* Boolean chips */
@@ -370,9 +376,15 @@ function handleImageError(event: Event) {
 
 /* WYSIWYG field */
 .wysiwyg-field {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.wysiwyg-field .field-value {
+  flex: 1;
 }
 
 .expand-button {
@@ -406,9 +418,11 @@ function handleImageError(event: Event) {
 
 /* JSON field */
 .json-field {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
+  min-width: 0;
 }
 
 .json-chip {

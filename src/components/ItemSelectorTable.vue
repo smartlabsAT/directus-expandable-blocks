@@ -28,7 +28,7 @@
                 small
                 class="sort-icon"
             />
-            Title
+            <span class="field-label-text">Title</span>
           </span>
         </div>
         
@@ -54,7 +54,7 @@
                 small
                 class="sort-icon"
             />
-            {{ getFieldLabel(field) }}
+            <span class="field-label-text">{{ getFieldLabel(field) }}</span>
             <v-icon 
                 v-if="isFieldTranslatable && isFieldTranslatable(field)" 
                 name="translate" 
@@ -760,7 +760,6 @@ defineExpose({
   min-width: 0; /* Allow shrinking */
   max-width: 100%; /* Prevent overflow */
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .actions-cell {
@@ -832,14 +831,22 @@ defineExpose({
   padding-right: 28px; /* Space for absolute positioned button */
   padding-left: 18px; /* Space for sort icon - slightly more */
   min-width: 0;
+  position: relative;
+}
+
+/* Field label text with ellipsis */
+.field-label-text {
   overflow: hidden;
   text-overflow: ellipsis;
-  position: relative;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 /* Special handling for title header label */
