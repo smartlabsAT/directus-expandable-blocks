@@ -49,7 +49,7 @@ const emit = defineEmits<{
 
 // Local state
 const isOpen = ref(false);
-const relativeWidth = ref(0);
+const relativeWidth = ref(props.currentWidth || 0);
 const activatorEl = ref<HTMLElement>();
 
 // Watch for prop changes
@@ -60,6 +60,12 @@ watch(() => props.modelValue, (newVal) => {
     // Reset to current width when opening
     relativeWidth.value = props.currentWidth || 0;
   }
+});
+
+// Watch for currentWidth changes
+watch(() => props.currentWidth, (newVal) => {
+  logger.log('currentWidth changed', { newVal, field: props.field });
+  relativeWidth.value = newVal || 0;
 });
 
 watch(isOpen, (newVal) => {

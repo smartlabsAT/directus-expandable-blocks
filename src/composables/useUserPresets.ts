@@ -16,6 +16,7 @@ interface LayoutOptions {
   rememberSearch?: boolean;
   lastSearch?: string;
   drawerWidth?: number;
+  columnWidths?: Record<string, number>;
 }
 
 interface ExpandableBlocksPreset {
@@ -49,6 +50,7 @@ export function useUserPresets() {
   const rememberSearchCache = ref<Record<string, boolean>>({});
   const lastSearchCache = ref<Record<string, string>>({});
   const drawerWidthCache = ref<Record<string, number>>({});
+  const columnWidthsCache = ref<Record<string, Record<string, number>>>({});
   const loading = ref(false);
   const error = ref<string | null>(null);
   const presetIds = ref<Record<string, number>>({});
@@ -80,6 +82,12 @@ export function useUserPresets() {
           },
           fields: ['id', 'collection', 'layout_options']
         }
+      });
+      
+      logDebug('API request sent', {
+        url: '/presets',
+        filter: 'expandable_blocks_fields_*',
+        requestedFields: ['id', 'collection', 'layout_options']
       });
       
       logDebug('Presets API response', { 
@@ -157,6 +165,10 @@ export function useUserPresets() {
             drawerWidthCache.value[actualCollection] = preset.layout_options.drawerWidth;
           }
           
+          if (preset.layout_options.columnWidths !== undefined) {
+            columnWidthsCache.value[actualCollection] = preset.layout_options.columnWidths;
+          }
+          
           presetIds.value[actualCollection] = preset.id;
           
           logDebug('Loaded preset for collection', { 
@@ -170,6 +182,10 @@ export function useUserPresets() {
             itemsPerPage: preset.layout_options.itemsPerPage,
             showLastUpdate: preset.layout_options.showLastUpdate,
             viewMode: preset.layout_options.viewMode,
+            columnWidths: preset.layout_options.columnWidths,
+            hasColumnWidths: !!preset.layout_options.columnWidths,
+            columnWidthsKeys: preset.layout_options.columnWidths ? Object.keys(preset.layout_options.columnWidths) : [],
+            fullLayoutOptions: preset.layout_options,
             presetId: preset.id
           });
         }
@@ -278,6 +294,12 @@ export function useUserPresets() {
         layoutOptions.drawerWidth = drawerWidthCache.value[collection];
       }
       
+      if (data.columnWidths !== undefined) {
+        layoutOptions.columnWidths = data.columnWidths;
+      } else if (columnWidthsCache.value[collection] !== undefined) {
+        layoutOptions.columnWidths = columnWidthsCache.value[collection];
+      }
+      
       const presetData = {
         collection: presetCollection,
         layout_options: layoutOptions,
@@ -286,6 +308,14 @@ export function useUserPresets() {
         layout: 'table'
       };
       
+      logDebug('Preparing to save preset', { 
+        collection,
+        presetCollection,
+        layoutOptions,
+        hasColumnWidths: !!layoutOptions.columnWidths,
+        columnWidthsKeys: layoutOptions.columnWidths ? Object.keys(layoutOptions.columnWidths) : []
+      });
+      
       let response;
       
       if (presetId) {
@@ -293,7 +323,12 @@ export function useUserPresets() {
         response = await api.patch(`/presets/${presetId}`, {
           layout_options: layoutOptions
         });
-        logDebug('Updated existing preset', { presetId, layoutOptions });
+        logDebug('Updated existing preset', { 
+          presetId, 
+          layoutOptions,
+          responseStatus: response?.status,
+          responseData: response?.data
+        });
       } else {
         // Create new preset
         response = await api.post('/presets', presetData);
@@ -342,6 +377,9 @@ export function useUserPresets() {
       }
       if (data.drawerWidth !== undefined) {
         drawerWidthCache.value[collection] = data.drawerWidth;
+      }
+      if (data.columnWidths !== undefined) {
+        columnWidthsCache.value[collection] = data.columnWidths;
       }
       
     } catch (err) {
@@ -749,6 +787,55 @@ export function useUserPresets() {
     (collection: string, drawerWidth: number) => savePresetData(collection, { drawerWidth }), 
     300 // Shorter debounce for smoother UX
   );
+  
+  /**
+   * Save column widths for a collection
+   */
+  async function saveColumnWidths(collection: string, columnWidths: Record<string, number>): Promise<void> {
+    columnWidthsCache.value[collection] = columnWidths;
+    
+    try {
+      await debouncedSaveColumnWidths(collection, columnWidths);
+    } catch (err) {
+      logWarn('Failed to persist column widths', { collection, columnWidths });
+    }
+  }
+  
+  /**
+   * Load column widths for a collection
+   */
+  function loadColumnWidths(collection: string): Record<string, number> {
+    const widths = columnWidthsCache.value[collection] || {};
+    logDebug('Loading column widths', {
+      collection,
+      widths,
+      hasWidths: Object.keys(widths).length > 0,
+      allCachedCollections: Object.keys(columnWidthsCache.value),
+      fullCache: columnWidthsCache.value
+    });
+    return widths;
+  }
+  
+  /**
+   * Clear column widths for a collection
+   */
+  async function clearColumnWidths(collection: string): Promise<void> {
+    delete columnWidthsCache.value[collection];
+    
+    try {
+      await savePresetData(collection, { columnWidths: {} });
+    } catch (err) {
+      logWarn('Failed to clear column widths', { collection });
+    }
+  }
+  
+  /**
+   * Debounced save function for column widths
+   */
+  const debouncedSaveColumnWidths = debounce(
+    (collection: string, columnWidths: Record<string, number>) => savePresetData(collection, { columnWidths }), 
+    500 // Debounce for column width changes
+  );
 
   /**
    * Initialize presets (load and migrate if needed)
@@ -779,6 +866,7 @@ export function useUserPresets() {
     rememberSearchCache,
     lastSearchCache,
     drawerWidthCache,
+    columnWidthsCache,
     loading,
     error,
     
@@ -813,6 +901,11 @@ export function useUserPresets() {
     // Drawer Width Methods
     getDrawerWidth,
     saveDrawerWidth,
+    
+    // Column Width Methods
+    saveColumnWidths,
+    loadColumnWidths,
+    clearColumnWidths,
     
     initialize
   };

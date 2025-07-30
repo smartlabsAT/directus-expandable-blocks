@@ -205,6 +205,7 @@ interface Props {
   showLastUpdate?: boolean;
   getTranslatedFieldValue?: (item: any, field: string) => string;
   isFieldTranslatable?: (field: string) => boolean;
+  userPresets?: any;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -228,13 +229,62 @@ const activeColumnSettings = ref<string | null>(null);
 const columnSettingsAnchor = ref<HTMLElement | null>(null);
 
 // Debug log for activeColumnSettings changes
-import { watch } from 'vue';
+import { watch, onMounted } from 'vue';
 watch(activeColumnSettings, (newVal, oldVal) => {
   logger.log('activeColumnSettings changed', { from: oldVal, to: newVal });
 });
 
 // User-defined column widths (relative percentages)
 const userColumnWidths = ref<Record<string, number>>({});
+
+// Load saved column widths on mount
+onMounted(() => {
+  logger.log('ItemSelectorTable mounted', {
+    hasUserPresets: !!props.userPresets,
+    collectionName: props.collectionName,
+    userPresetsType: typeof props.userPresets
+  });
+  
+  if (props.userPresets && props.collectionName) {
+    const savedWidths = props.userPresets.loadColumnWidths(props.collectionName);
+    logger.log('Attempting to load column widths', {
+      collection: props.collectionName,
+      savedWidths,
+      hasSavedWidths: savedWidths && Object.keys(savedWidths).length > 0
+    });
+    
+    if (savedWidths && Object.keys(savedWidths).length > 0) {
+      userColumnWidths.value = savedWidths;
+      logger.log('Applied saved column widths', { collection: props.collectionName, widths: savedWidths });
+    } else {
+      logger.log('No saved column widths found', { collection: props.collectionName });
+    }
+  } else {
+    logger.log('Cannot load column widths - missing userPresets or collectionName', {
+      hasUserPresets: !!props.userPresets,
+      collectionName: props.collectionName
+    });
+  }
+});
+
+// Save column widths when they change
+const saveColumnWidths = () => {
+  logger.log('saveColumnWidths called', {
+    hasUserPresets: !!props.userPresets,
+    collectionName: props.collectionName,
+    widthsToSave: userColumnWidths.value
+  });
+  
+  if (props.userPresets && props.collectionName) {
+    props.userPresets.saveColumnWidths(props.collectionName, userColumnWidths.value);
+    logger.log('Called saveColumnWidths on userPresets', { 
+      collection: props.collectionName, 
+      widths: userColumnWidths.value 
+    });
+  } else {
+    logger.log('Cannot save column widths - missing userPresets or collectionName');
+  }
+};
 
 // Computed
 const allSelected = computed(() => 
@@ -386,7 +436,9 @@ function openColumnSettings(field: string, event: MouseEvent) {
   logger.log('openColumnSettings called', { 
     field, 
     currentActive: activeColumnSettings.value,
-    eventTarget: event.target 
+    eventTarget: event.target,
+    currentWidth: userColumnWidths.value[field],
+    allWidths: userColumnWidths.value
   });
   
   activeColumnSettings.value = field;
@@ -394,7 +446,8 @@ function openColumnSettings(field: string, event: MouseEvent) {
   
   logger.log('Settings state after open', {
     activeColumnSettings: activeColumnSettings.value,
-    hasAnchor: !!columnSettingsAnchor.value
+    hasAnchor: !!columnSettingsAnchor.value,
+    widthForField: userColumnWidths.value[field] || 0
   });
 }
 
@@ -417,6 +470,9 @@ function adjustColumnWidth(field: string, relativeWidth: number) {
     userColumnWidths.value[field] = relativeWidth;
   }
   
+  // Save the changes
+  saveColumnWidths();
+  
   emit('adjust-column-width', field, relativeWidth);
 }
 
@@ -424,6 +480,12 @@ function adjustColumnWidth(field: string, relativeWidth: number) {
 function resetAllColumnWidths() {
   logger.log('Resetting all column widths');
   userColumnWidths.value = {};
+  
+  // Clear saved widths
+  if (props.userPresets && props.collectionName) {
+    props.userPresets.clearColumnWidths(props.collectionName);
+  }
+  
   emit('reset-column-widths');
 }
 
