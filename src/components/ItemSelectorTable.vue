@@ -77,6 +77,9 @@
           </v-button>
         </div>
         
+        <!-- Spacer Column -->
+        <div class="table-cell spacer-cell"></div>
+        
         <!-- Actions Column -->
         <div class="table-cell actions-cell header-actions-cell"
              :class="{ 
@@ -160,6 +163,9 @@
             />
           </div>
         </div>
+        
+        <!-- Spacer Column -->
+        <div class="table-cell spacer-cell"></div>
         
         <!-- Actions Column -->
         <div class="table-cell actions-cell">
@@ -391,7 +397,10 @@ const gridTemplateColumns = computed(() => {
   // Build template with or without title column
   const titleColumn = showTitleColumn.value ? ' minmax(250px, 1fr)' : '';
   
-  return `48px${titleColumn} ${fieldColumns} ${actionsWidth}`;
+  // Add spacer column to fill remaining space
+  const spacerColumn = ' 1fr';
+  
+  return `48px${titleColumn} ${fieldColumns}${spacerColumn} ${actionsWidth}`;
 });
 
 // Methods
@@ -799,6 +808,12 @@ defineExpose({
   min-width: 0; /* Allow shrinking */
   max-width: 100%; /* Prevent overflow */
   overflow: hidden;
+}
+
+/* Spacer Cell */
+.spacer-cell {
+  /* No content, just fills space */
+  min-width: 0;
 }
 
 .actions-cell {
