@@ -15,7 +15,8 @@
         </div>
         
         <!-- Title Column -->
-        <div class="table-cell title-cell header-title-cell"
+        <div v-if="showTitleColumn"
+             class="table-cell title-cell header-title-cell"
              :class="{ 
                'is-sortable': true,
                'is-sorted': isTitleFieldSorted 
@@ -118,7 +119,7 @@
         </div>
         
         <!-- Title Column with Status -->
-        <div class="table-cell title-cell">
+        <div v-if="showTitleColumn" class="table-cell title-cell">
           <div class="title-content">
             <div class="title-with-status">
               <span
@@ -362,10 +363,15 @@ const isTitleFieldSorted = computed(() => {
   return actualTitleField.value && props.sortField === actualTitleField.value;
 });
 
+// Computed: Check if we should show the title column
+const showTitleColumn = computed(() => {
+  return actualTitleField.value !== null;
+});
+
 // Grid Template Columns - dynamically calculate column widths
 const gridTemplateColumns = computed(() => {
   // Fixed columns: checkbox (48px) and actions (dynamic based on showIds)
-  // Title column: flexible with minimum width of 250px
+  // Title column: flexible with minimum width of 250px (only if title field exists)
   // Dynamic field columns: calculated based on field type and user preferences
   const fieldColumns = props.displayFields.map(field => {
     const fieldInfo = getFieldInfo(field);
@@ -382,7 +388,10 @@ const gridTemplateColumns = computed(() => {
   // Actions column: 150px when showing IDs, 100px when not
   const actionsWidth = props.showIds ? '150px' : '100px';
   
-  return `48px minmax(250px, 1fr) ${fieldColumns} ${actionsWidth}`;
+  // Build template with or without title column
+  const titleColumn = showTitleColumn.value ? ' minmax(250px, 1fr)' : '';
+  
+  return `48px${titleColumn} ${fieldColumns} ${actionsWidth}`;
 });
 
 // Methods

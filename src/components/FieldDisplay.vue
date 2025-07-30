@@ -24,6 +24,100 @@
       {{ selectedChoice?.text || props.value }}
     </v-chip>
 
+    <!-- Tags Field -->
+    <div v-else-if="isTagsField && props.value" class="tags-field">
+      <v-chip
+          v-for="(tag, index) in tagsArray"
+          :key="index"
+          x-small
+          class="tag-chip"
+      >
+        {{ tag }}
+      </v-chip>
+    </div>
+
+    <!-- Color Field -->
+    <div v-else-if="isColorField && props.value" class="color-field">
+      <div 
+          class="color-preview" 
+          :style="{ backgroundColor: props.value }"
+          v-tooltip.top="props.value"
+          @click.stop="showColorCode = !showColorCode"
+      ></div>
+      <span v-if="showColorCode" class="color-value">{{ props.value }}</span>
+    </div>
+
+    <!-- Icon Field -->
+    <div v-else-if="isIconField && props.value" class="icon-field">
+      <v-icon 
+          :name="props.value" 
+          small
+          class="icon-preview"
+          v-tooltip.top="props.value"
+      />
+    </div>
+
+    <!-- Rating Field -->
+    <div v-else-if="isRatingField" class="rating-field">
+      <v-icon 
+          v-for="star in maxStars"
+          :key="star"
+          :name="star <= props.value ? 'star' : 'star_outline'"
+          small
+          class="rating-star"
+          :class="{ filled: star <= props.value }"
+      />
+      <span class="rating-value">{{ props.value }}/{{ maxStars }}</span>
+    </div>
+
+    <!-- Slider/Range Field -->
+    <div v-else-if="isSliderField" class="slider-field">
+      <div class="slider-container">
+        <span class="slider-value-label">{{ props.value }}</span>
+        <div class="slider-track">
+          <div 
+              class="slider-fill" 
+              :style="{ width: sliderPercentage + '%' }"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Field -->
+    <div v-else-if="isUserField && props.value" class="user-field">
+      <div class="user-avatar" :style="{ backgroundColor: getUserColor() }">
+        {{ getUserInitials() }}
+      </div>
+      <span class="user-name">{{ getUserDisplayName() }}</span>
+    </div>
+
+    <!-- Relation Fields (M2O, O2M, M2M) -->
+    <div v-else-if="isRelationField" class="relation-field">
+      <!-- Single relation (M2O) -->
+      <div v-if="isSingleRelation && relationValue" class="relation-item">
+        <v-icon name="link" x-small class="relation-icon" />
+        <span class="relation-text">{{ getRelationDisplay(relationValue) }}</span>
+      </div>
+      
+      <!-- Multiple relations (O2M, M2M) -->
+      <div v-else-if="isMultipleRelation && relationArray.length > 0" class="relation-list">
+        <div 
+            v-for="(item, index) in relationArray.slice(0, 3)"
+            :key="index"
+            class="relation-item"
+        >
+          <v-icon name="link" x-small class="relation-icon" />
+          <span class="relation-text">{{ getRelationDisplay(item) }}</span>
+        </div>
+        <v-chip v-if="relationArray.length > 3" x-small class="relation-more">
+          +{{ relationArray.length - 3 }} more
+        </v-chip>
+      </div>
+      
+      <!-- Empty relation -->
+      <span v-else class="field-value empty">—</span>
+    </div>
+
     <!-- WYSIWYG Field -->
     <div v-else-if="isWysiwyg" class="wysiwyg-field">
       <span class="field-value">{{ strippedHtml }}</span>
@@ -157,6 +251,7 @@ const logger = createScopedLogger('FieldDisplay');
 
 // Modal state
 const showImageModal = ref(false);
+const showColorCode = ref(false);
 
 interface Props {
   value: any;
@@ -178,14 +273,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Debug logging
 watch(() => props.fieldInfo, (info) => {
-  if (props.field === 'description') {
-    logger.debug('FieldInfo for description field', {
-      field: props.field,
-      fieldInfo: info,
-      interface: info?.interface,
-      isWysiwyg: info?.interface === 'input-rich-text-html'
-    });
-  }
+  // Log all fields for debugging
+  logger.debug('FieldInfo for field', {
+    field: props.field,
+    fieldInfo: info,
+    interface: info?.interface,
+    type: info?.type,
+    display: info?.display,
+    value: props.value
+  });
 }, { immediate: true });
 
 // Field type detection
@@ -196,6 +292,64 @@ const fieldDisplay = computed(() => props.fieldInfo?.display);
 const isSelectDropdown = computed(() => 
   fieldInterface.value === 'select-dropdown'
 );
+
+// New field type detections
+const isTagsField = computed(() => 
+  fieldInterface.value === 'tags' || 
+  fieldInterface.value === 'select-multiple'
+);
+
+const isColorField = computed(() => 
+  fieldInterface.value === 'select-color' ||
+  fieldInterface.value === 'interface-color'
+);
+
+const isIconField = computed(() => 
+  fieldInterface.value === 'select-icon' ||
+  fieldInterface.value === 'interface-icon' ||
+  fieldInterface.value === 'icon'
+);
+
+const isRatingField = computed(() => 
+  fieldInterface.value === 'rating' ||
+  fieldInterface.value === 'interface-rating'
+);
+
+const isSliderField = computed(() => 
+  fieldInterface.value === 'slider' ||
+  fieldInterface.value === 'interface-slider' ||
+  fieldInterface.value === 'input-range'
+);
+
+const isUserField = computed(() => 
+  fieldInterface.value === 'select-dropdown-m2o' && 
+  (props.field === 'user_created' || 
+   props.field === 'user_updated' || 
+   props.field.includes('user') ||
+   props.fieldInfo?.collection === 'directus_users')
+);
+
+const isRelationField = computed(() => {
+  const relationType = props.fieldInfo?.type;
+  return relationType === 'm2o' || 
+         relationType === 'o2m' || 
+         relationType === 'm2m' ||
+         relationType === 'alias' ||
+         (fieldInterface.value && fieldInterface.value.includes('m2o'));
+});
+
+const isSingleRelation = computed(() => {
+  const relationType = props.fieldInfo?.type;
+  return relationType === 'm2o' || 
+         fieldInterface.value === 'select-dropdown-m2o';
+});
+
+const isMultipleRelation = computed(() => {
+  const relationType = props.fieldInfo?.type;
+  return relationType === 'o2m' || 
+         relationType === 'm2m' ||
+         relationType === 'alias';
+});
 
 // Check if value contains HTML tags
 const containsHtml = computed(() => {
@@ -277,6 +431,63 @@ const displayValue = computed(() => {
 const truncatedValue = computed(() => {
   if (displayValue.value.length <= props.maxLength) return displayValue.value;
   return displayValue.value.substring(0, props.maxLength) + '...';
+});
+
+// Tags array processing
+const tagsArray = computed(() => {
+  if (!props.value) return [];
+  if (Array.isArray(props.value)) return props.value;
+  if (typeof props.value === 'string') {
+    // Try to parse as JSON first
+    try {
+      const parsed = JSON.parse(props.value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+    // Otherwise split by comma
+    return props.value.split(',').map(tag => tag.trim()).filter(Boolean);
+  }
+  return [];
+});
+
+// Rating configuration
+const maxStars = computed(() => {
+  return props.fieldInfo?.options?.max_stars || 5;
+});
+
+// Slider configuration
+const sliderMin = computed(() => {
+  return props.fieldInfo?.options?.min || 0;
+});
+
+const sliderMax = computed(() => {
+  return props.fieldInfo?.options?.max || 100;
+});
+
+const sliderPercentage = computed(() => {
+  const min = sliderMin.value;
+  const max = sliderMax.value;
+  const value = Number(props.value) || 0;
+  return ((value - min) / (max - min)) * 100;
+});
+
+// Relation value processing
+const relationValue = computed(() => {
+  if (!props.value) return null;
+  // For M2O, value might be an ID or an object
+  if (typeof props.value === 'object' && !Array.isArray(props.value)) {
+    return props.value;
+  }
+  // If it's just an ID, return it wrapped
+  if (typeof props.value === 'string' || typeof props.value === 'number') {
+    return { id: props.value };
+  }
+  return null;
+});
+
+const relationArray = computed(() => {
+  if (!props.value) return [];
+  if (Array.isArray(props.value)) return props.value;
+  return [];
 });
 
 // Select dropdown choice
@@ -532,6 +743,92 @@ function downloadFile() {
   link.click();
   document.body.removeChild(link);
 }
+
+// User field helpers
+function getUserDisplayName(): string {
+  if (!props.value) return '';
+  
+  // If value is an object with user data
+  if (typeof props.value === 'object' && props.value !== null) {
+    if (props.value.first_name || props.value.last_name) {
+      return `${props.value.first_name || ''} ${props.value.last_name || ''}`.trim();
+    }
+    if (props.value.email) {
+      return props.value.email;
+    }
+    if (props.value.name) {
+      return props.value.name;
+    }
+  }
+  
+  // If it's just an ID or email
+  return String(props.value);
+}
+
+function getUserInitials(): string {
+  const name = getUserDisplayName();
+  if (!name) return '?';
+  
+  // If it's an email, use first letter
+  if (name.includes('@')) {
+    return name.charAt(0).toUpperCase();
+  }
+  
+  // Otherwise get initials from name
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return parts[0].charAt(0).toUpperCase() + parts[parts.length - 1].charAt(0).toUpperCase();
+  }
+  return name.charAt(0).toUpperCase();
+}
+
+function getUserColor(): string {
+  // Generate a consistent color based on the user value
+  const str = getUserDisplayName();
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 65%, 50%)`;
+}
+
+// Relation display helper
+function getRelationDisplay(item: any): string {
+  if (!item) return '';
+  
+  // If it's just an ID
+  if (typeof item === 'string' || typeof item === 'number') {
+    return `#${item}`;
+  }
+  
+  // If it's an object, try to find a display field
+  if (typeof item === 'object') {
+    // Common display fields in order of preference
+    const displayFields = ['title', 'name', 'label', 'email', 'username', 'id'];
+    
+    for (const field of displayFields) {
+      if (item[field]) {
+        return String(item[field]);
+      }
+    }
+    
+    // If no common field found, use the first string field
+    for (const key in item) {
+      if (typeof item[key] === 'string' && key !== 'id') {
+        return item[key];
+      }
+    }
+    
+    // Fallback to ID
+    if (item.id) {
+      return `#${item.id}`;
+    }
+  }
+  
+  return String(item);
+}
 </script>
 
 <style scoped>
@@ -626,8 +923,8 @@ function downloadFile() {
 }
 
 .json-chip {
-  background-color: var(--primary-25);
-  color: var(--primary);
+  background-color: var(--background-normal);
+  color: var(--foreground-subdued);
   font-family: monospace;
   font-size: 10px;
 }
@@ -742,5 +1039,201 @@ function downloadFile() {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+/* Tags field */
+.tags-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+}
+
+.tag-chip {
+  background-color: var(--background-normal);
+  color: var(--foreground-normal);
+}
+
+/* Color field */
+.color-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.color-preview {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid var(--border-normal);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-preview:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.color-value {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--foreground-subdued);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Icon field */
+.icon-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.icon-preview {
+  color: var(--foreground-normal);
+}
+
+/* Rating field */
+.rating-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rating-star {
+  color: var(--border-normal);
+}
+
+.rating-star.filled {
+  color: var(--warning);
+}
+
+.rating-value {
+  margin-left: 8px;
+  color: var(--foreground-subdued);
+  font-size: 12px;
+}
+
+/* Slider field */
+.slider-field {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.slider-container {
+  flex: 1;
+  position: relative;
+  padding-top: 20px;
+}
+
+.slider-value-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--foreground-normal);
+  font-weight: 600;
+  background: var(--background-page);
+  padding: 0 4px;
+}
+
+.slider-track {
+  height: 4px;
+  background-color: var(--background-normal);
+  border-radius: 2px;
+  position: relative;
+  width: 100%;
+}
+
+.slider-fill {
+  height: 100%;
+  background-color: var(--primary);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+/* User field */
+.user-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.user-name {
+  color: var(--foreground-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Relation field */
+.relation-field {
+  width: 100%;
+}
+
+.relation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.relation-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.relation-item:hover {
+  opacity: 0.8;
+}
+
+.relation-icon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.relation-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relation-more {
+  background-color: var(--background-normal);
+  color: var(--foreground-subdued);
+  margin-top: 4px;
+}
+
+.field-value.empty {
+  color: var(--foreground-subdued);
 }
 </style>
