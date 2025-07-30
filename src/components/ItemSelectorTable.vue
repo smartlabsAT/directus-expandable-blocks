@@ -21,7 +21,7 @@
                'is-sorted': isTitleFieldSorted 
              }"
              @click="handleTitleClick">
-          <span class="field-header-label">
+          <span class="field-header-label title-header-label">
             <v-icon 
                 v-if="isTitleFieldSorted"
                 :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
@@ -827,14 +827,25 @@ defineExpose({
   gap: 4px;
   flex: 1;
   padding-right: 28px; /* Space for absolute positioned button */
+  padding-left: 15px; /* Space for sort icon */
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative;
 }
 
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
+}
+
+/* Special handling for title header label - no left padding since it's at the start */
+.title-header-label {
+  padding-left: 0;
+  
+  .sort-icon {
+    left: -12px; /* Position icon to the left of the label */
+  }
 }
 
 /* Sortable Headers */
@@ -860,7 +871,10 @@ defineExpose({
 /* Sort Icon */
 .sort-icon {
   color: var(--primary);
-  margin-right: 2px;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Column Settings Button */
