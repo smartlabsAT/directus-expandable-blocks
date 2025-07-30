@@ -639,7 +639,7 @@ defineExpose({
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--background-normal);
+  background: var(--background-normal-alt) !important; /* Always grey background */
   border-bottom: 2px solid var(--border-normal);
 }
 
@@ -648,7 +648,6 @@ defineExpose({
 .header-row > .title-cell,
 .header-row > .actions-cell {
   z-index: 15; /* Higher than regular header cells */
-  background: var(--background-normal-alt);
 }
 
 /* Table Rows also use display: contents */
@@ -666,6 +665,7 @@ defineExpose({
 /* Row styling via cells since rows use display: contents */
 .item-row > .table-cell {
   cursor: pointer;
+  background-color: var(--theme--background); /* Explicit white background */
 }
 
 /* Zebra striping - target cells of even rows */
@@ -796,14 +796,6 @@ defineExpose({
   &.is-sortable {
     cursor: pointer;
     user-select: none;
-    
-    &:hover {
-      background-color: var(--background-normal) !important;
-    }
-    
-    &.is-sorted {
-      background-color: var(--background-accent) !important;
-    }
   }
 }
 
@@ -864,15 +856,8 @@ defineExpose({
 .header-title-cell {
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: var(--background-normal) !important;
-  }
   
   &.is-sorted {
-    background-color: var(--background-accent) !important;
-    
     .field-header-label {
       font-weight: 700;
     }
@@ -953,7 +938,7 @@ defineExpose({
   text-overflow: ellipsis;
   display: block;
   position: absolute;
-  top: 22px;
+  top: 29px;
   left: 27px;
 }
 
