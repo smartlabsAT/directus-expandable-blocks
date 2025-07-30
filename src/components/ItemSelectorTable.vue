@@ -903,6 +903,7 @@ defineExpose({
   justify-content: space-between;
   position: relative;
   overflow: visible; /* Allow button to be visible even in small columns */
+  padding: 8px 1px;
 }
 
 /* Title Content Container */
