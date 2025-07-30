@@ -271,15 +271,15 @@ export function useExpandableBlocks(
     // M2A structure: item.collection contains the target collection name
     const collection = item.collection;
     
-    logDebug('Checking update permission for item', { 
-      collection,
-      itemStructure: {
-        hasCollection: !!item.collection,
-        hasItem: !!item.item,
-        collectionValue: item.collection
-      }
-    });
-    
+    // logDebug('Checking update permission for item', {
+    //   collection,
+    //   itemStructure: {
+    //     hasCollection: !!item.collection,
+    //     hasItem: !!item.item,
+    //     collectionValue: item.collection
+    //   }
+    // });
+    //
     if (!collection) {
       logWarn('No collection found for item, assuming can update', { item });
       return true;

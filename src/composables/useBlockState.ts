@@ -88,7 +88,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
     }
     
     const isDirty = contentChanged || positionChanged;
-    logger.debug(`isBlockDirty result for ${blockId}: ${isDirty}`);
+    // logger.debug(`isBlockDirty result for ${blockId}: ${isDirty}`);
     
     return isDirty;
   }
@@ -155,7 +155,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
           }
           
           // No position change, just send ID
-          logger.debug(`Emitting ID only for no-permission block ${blockId}`);
+          // logger.debug(`Emitting ID only for no-permission block ${blockId}`);
           debugInfo.items.push({
             index,
             blockId,
@@ -201,7 +201,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
           }
           return item; // Full object for dirty blocks
         } else {
-          logger.debug(`Emitting ID only for clean block ${blockId}`);
+          // logger.debug(`Emitting ID only for clean block ${blockId}`);
           return item.id; // ID only for clean blocks (use item.id not blockId)
         }
       }
@@ -244,7 +244,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
     // Add debug info about dirty states
     const dirtyStates = Array.from(blockDirtyStates.value.entries());
     if (dirtyStates.length > 0) {
-      logger.debug('Current dirty states:', dirtyStates);
+      // logger.debug('Current dirty states:', dirtyStates);
     }
 
     // Add debug info about the result
@@ -269,7 +269,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
       if (itemIndex !== -1 && items.value[itemIndex].item) {
         items.value[itemIndex].item = deepClone(originalData);
         blockDirtyStates.value.set(blockId, false);
-        logger.debug(`Reset block ${blockId} to original state`);
+        // logger.debug(`Reset block ${blockId} to original state`);
       }
     }
   }
@@ -281,7 +281,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
    */
   function markBlockDirty(blockId: string, isDirty: boolean): void {
     blockDirtyStates.value.set(blockId, isDirty);
-    logger.debug(`Marked block ${blockId} as ${isDirty ? 'dirty' : 'clean'}`);
+    // logger.debug(`Marked block ${blockId} as ${isDirty ? 'dirty' : 'clean'}`);
   }
 
   /**
@@ -291,7 +291,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
     blockOriginalStates.value.clear();
     blockDirtyStates.value.clear();
     originalItemOrder.value = [];
-    logger.debug('Cleared all state tracking');
+    // logger.debug('Cleared all state tracking');
   }
 
   /**
@@ -301,7 +301,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
    */
   function updateOriginalState(blockId: string, state: any): void {
     blockOriginalStates.value.set(blockId, deepClone(state));
-    logger.debug(`Updated original state for block ${blockId}`);
+    // logger.debug(`Updated original state for block ${blockId}`);
   }
 
   /**
@@ -310,7 +310,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
    */
   function updateOriginalItemOrder(order: (string | number)[]): void {
     originalItemOrder.value = [...order];
-    logger.debug('Updated original item order:', order);
+    // logger.debug('Updated original item order:', order);
   }
 
   /**
@@ -321,7 +321,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
     blockOriginalStates.value.delete(blockId);
     blockDirtyStates.value.delete(blockId);
     originalItemOrder.value = originalItemOrder.value.filter(id => String(id) !== blockId);
-    logger.debug(`Removed state tracking for block ${blockId}`);
+    // logger.debug(`Removed state tracking for block ${blockId}`);
   }
 
   return {

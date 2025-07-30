@@ -81,7 +81,7 @@ export function useBlockWatchers(
               const itemId = String(item.id);
               if (item.item && itemId) {
                 blockOriginalStates.value.set(itemId, deepClone(item.item));
-                logger.debug(`Updated original state for block ${itemId} after save`);
+                // logger.debug(`Updated original state for block ${itemId} after save`);
               }
             });
             
@@ -103,7 +103,7 @@ export function useBlockWatchers(
               const itemId = String(item.id);
               if (item.item && itemId) {
                 blockOriginalStates.value.set(itemId, deepClone(item.item));
-                logger.debug(`Updated original state for block ${itemId} after save`);
+                // logger.debug(`Updated original state for block ${itemId} after save`);
               }
             });
             
