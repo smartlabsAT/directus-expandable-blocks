@@ -208,10 +208,13 @@
           :get-translated-field-value="getTranslatedFieldValue"
           :is-field-translatable="isFieldTranslatable"
           :user-presets="userPresets"
+          :sort-field="sortField"
+          :sort-direction="sortDirection"
           @toggle-selection="toggleSelection"
           @toggle-all="toggleAll"
           @open-edit="openEditDrawer"
           @usage-item-click="handleUsageItemClick"
+          @update-sort="handleSortUpdate"
       />
 
       <!-- Search Issue State -->
@@ -832,6 +835,27 @@ function handleResetColumnWidths() {
   logger.debug('Resetting all column widths');
   if (tableRef.value) {
     tableRef.value.resetAllColumnWidths();
+  }
+}
+
+async function handleSortUpdate(field: string | null, direction: 'asc' | 'desc') {
+  logger.debug('Table header sort update', { field, direction });
+  
+  if (field !== sortField.value) {
+    await updateSortField(field);
+  }
+  
+  if (direction !== sortDirection.value && field) {
+    sortDirection.value = direction;
+    if (props.collection) {
+      try {
+        await userPresets.saveSortSettings(props.collection, field, direction);
+        logger.debug('Saved sort settings from table header', { collection: props.collection, field, direction });
+        emit('update:sort', field, direction);
+      } catch (err) {
+        logger.error('Failed to save sort settings', err);
+      }
+    }
   }
 }
 

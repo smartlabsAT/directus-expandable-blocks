@@ -23,15 +23,24 @@
         <div 
             v-for="field in displayFields" 
             :key="field"
-            class="table-cell field-cell"
+            class="table-cell field-cell header-field-cell"
             :class="[
               `field-${field}`,
-              { 'is-resizing': activeColumnSettings === field }
+              { 'is-resizing': activeColumnSettings === field },
+              { 'is-sortable': true },
+              { 'is-sorted': props.sortField === field }
             ]"
             @mouseenter="hoveredField = field"
             @mouseleave="hoveredField = null"
+            @click="handleHeaderClick(field)"
         >
           <span class="field-header-label">
+            <v-icon 
+                v-if="props.sortField === field"
+                :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
+                x-small
+                class="sort-icon"
+            />
             {{ getFieldLabel(field) }}
             <v-icon 
                 v-if="isFieldTranslatable && isFieldTranslatable(field)" 
@@ -47,7 +56,7 @@
               x-small
               secondary
               class="column-settings-trigger"
-              @click="openColumnSettings(field, $event)"
+              @click.stop="openColumnSettings(field, $event)"
               v-tooltip.top="'Resize column'"
           >
             <v-icon name="swap_horiz" x-small />
@@ -206,12 +215,16 @@ interface Props {
   getTranslatedFieldValue?: (item: any, field: string) => string;
   isFieldTranslatable?: (field: string) => boolean;
   userPresets?: any;
+  sortField?: string | null;
+  sortDirection?: 'asc' | 'desc';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showIds: false,
   hideEmptyFields: false,
-  showLastUpdate: false
+  showLastUpdate: false,
+  sortField: null,
+  sortDirection: 'asc'
 });
 
 const emit = defineEmits<{
@@ -221,6 +234,7 @@ const emit = defineEmits<{
   'usage-item-click': [payload: { collection: string; item: any }];
   'adjust-column-width': [field: string, relativeWidth: number];
   'reset-column-widths': [];
+  'update-sort': [field: string | null, direction: 'asc' | 'desc'];
 }>();
 
 // Local state
@@ -492,6 +506,22 @@ function resetAllColumnWidths() {
   emit('reset-column-widths');
 }
 
+// Handle header click for sorting
+function handleHeaderClick(field: string) {
+  logger.log('Header clicked', { field, currentSortField: props.sortField, currentDirection: props.sortDirection });
+  
+  if (props.sortField !== field) {
+    // New field: sort ascending
+    emit('update-sort', field, 'asc');
+  } else if (props.sortDirection === 'asc') {
+    // Same field, ascending: switch to descending
+    emit('update-sort', field, 'desc');
+  } else {
+    // Same field, descending: disable sorting
+    emit('update-sort', null, 'asc');
+  }
+}
+
 // Expose reset function for parent component
 defineExpose({
   resetAllColumnWidths
@@ -718,6 +748,31 @@ defineExpose({
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
+}
+
+/* Sortable Headers */
+.header-field-cell {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: var(--background-normal) !important;
+  }
+  
+  &.is-sorted {
+    background-color: var(--background-accent) !important;
+    
+    .field-header-label {
+      font-weight: 700;
+    }
+  }
+}
+
+/* Sort Icon */
+.sort-icon {
+  color: var(--primary);
+  margin-right: 2px;
 }
 
 /* Column Settings Button */
