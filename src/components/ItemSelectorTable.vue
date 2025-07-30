@@ -25,7 +25,7 @@
             <v-icon 
                 v-if="isTitleFieldSorted"
                 :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
-                x-small
+                small
                 class="sort-icon"
             />
             Title
@@ -51,7 +51,7 @@
             <v-icon 
                 v-if="props.sortField === field"
                 :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
-                x-small
+                small
                 class="sort-icon"
             />
             {{ getFieldLabel(field) }}
@@ -87,7 +87,7 @@
             <v-icon 
                 v-if="props.showIds && props.sortField === 'id'"
                 :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
-                x-small
+                small
                 class="sort-icon"
             />
             <v-icon name="more_horiz" small />
@@ -809,7 +809,15 @@ defineExpose({
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0; /* No gap to control spacing manually */
+  position: relative;
+  min-width: 40px; /* Fixed width to prevent shifting */
+  
+  .sort-icon {
+    position: static; /* Not absolute, keep in flow */
+    transform: none;
+    margin-right: 2px; /* Small gap to more_horiz icon */
+  }
 }
 
 /* Cell content wrapper for overflow control */
@@ -827,7 +835,7 @@ defineExpose({
   gap: 4px;
   flex: 1;
   padding-right: 28px; /* Space for absolute positioned button */
-  padding-left: 15px; /* Space for sort icon */
+  padding-left: 18px; /* Space for sort icon - slightly more */
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -839,12 +847,12 @@ defineExpose({
   opacity: 0.7;
 }
 
-/* Special handling for title header label - no left padding since it's at the start */
+/* Special handling for title header label */
 .title-header-label {
-  padding-left: 0;
+  padding-left: 17px; /* Space for sort icon - slightly closer */
   
   .sort-icon {
-    left: -12px; /* Position icon to the left of the label */
+    left: 0; /* Position icon at the start */
   }
 }
 
