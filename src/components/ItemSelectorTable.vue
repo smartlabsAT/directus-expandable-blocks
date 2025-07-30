@@ -15,8 +15,21 @@
         </div>
         
         <!-- Title Column -->
-        <div class="table-cell title-cell">
-          <span class="field-header-label">Title</span>
+        <div class="table-cell title-cell header-title-cell"
+             :class="{ 
+               'is-sortable': true,
+               'is-sorted': isTitleFieldSorted 
+             }"
+             @click="handleTitleClick">
+          <span class="field-header-label">
+            <v-icon 
+                v-if="isTitleFieldSorted"
+                :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
+                x-small
+                class="sort-icon"
+            />
+            Title
+          </span>
         </div>
         
         <!-- Dynamic Field Columns -->
@@ -64,8 +77,21 @@
         </div>
         
         <!-- Actions Column -->
-        <div class="table-cell actions-cell header-actions-cell">
-          <v-icon name="more_horiz" small />
+        <div class="table-cell actions-cell header-actions-cell"
+             :class="{ 
+               'is-sortable': props.showIds,
+               'is-sorted': props.sortField === 'id' 
+             }"
+             @click="props.showIds && handleHeaderClick('id')">
+          <span class="actions-header-content">
+            <v-icon 
+                v-if="props.showIds && props.sortField === 'id'"
+                :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
+                x-small
+                class="sort-icon"
+            />
+            <v-icon name="more_horiz" small />
+          </span>
         </div>
       </div>
     </div>
@@ -187,7 +213,7 @@ import { computed, ref } from 'vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import ColumnWidthPopover from './ColumnWidthPopover.vue';
-import { extractItemTitle } from '../utils/helpers';
+import { extractItemTitle, detectTitleField, TITLE_FIELDS } from '../utils/helpers';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { calculateColumnWidth, getFieldTypeFromInfo } from '../utils/column-width-helpers';
 
@@ -308,6 +334,20 @@ const allSelected = computed(() =>
 const someSelected = computed(() => 
   props.selectedItems.length > 0 && props.selectedItems.length < props.items.length
 );
+
+// Computed: Detect which title field is actually used in this collection
+const actualTitleField = computed(() => {
+  if (!props.items || props.items.length === 0) return null;
+  
+  // Check first item to detect which title field is used
+  const firstItem = props.items[0];
+  return detectTitleField(firstItem);
+});
+
+// Computed: Check if the title field is sorted
+const isTitleFieldSorted = computed(() => {
+  return actualTitleField.value && props.sortField === actualTitleField.value;
+});
 
 // Grid Template Columns - dynamically calculate column widths
 const gridTemplateColumns = computed(() => {
@@ -522,6 +562,32 @@ function handleHeaderClick(field: string) {
   }
 }
 
+// Handle title column click
+function handleTitleClick() {
+  const titleField = actualTitleField.value;
+  if (!titleField) {
+    logger.log('Title header clicked but no title field found');
+    return; // No title field found
+  }
+  
+  logger.log('Title header clicked', { 
+    titleField,
+    currentSortField: props.sortField, 
+    currentDirection: props.sortDirection 
+  });
+  
+  if (props.sortField !== titleField) {
+    // New field: sort ascending
+    emit('update-sort', titleField, 'asc');
+  } else if (props.sortDirection === 'asc') {
+    // Same field: switch to descending
+    emit('update-sort', titleField, 'desc');
+  } else {
+    // Disable sorting
+    emit('update-sort', null, 'asc');
+  }
+}
+
 // Expose reset function for parent component
 defineExpose({
   resetAllColumnWidths
@@ -723,6 +789,27 @@ defineExpose({
   justify-content: center;
   text-align: center;
   color: var(--foreground-subdued);
+  
+  &.is-sortable {
+    cursor: pointer;
+    user-select: none;
+    
+    &:hover {
+      background-color: var(--background-normal) !important;
+    }
+    
+    &.is-sorted {
+      background-color: var(--background-accent) !important;
+    }
+  }
+}
+
+/* Actions header content wrapper */
+.actions-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 /* Cell content wrapper for overflow control */
@@ -751,7 +838,8 @@ defineExpose({
 }
 
 /* Sortable Headers */
-.header-field-cell {
+.header-field-cell,
+.header-title-cell {
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s;

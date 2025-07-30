@@ -62,6 +62,24 @@ export function extractItemTitle(item: ItemRecord | JunctionRecord): string {
 }
 
 /**
+ * Detect which title field actually exists in the item
+ */
+export function detectTitleField(item: ItemRecord): string | null {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+  
+  // Check which title field actually exists
+  for (const field of TITLE_FIELDS) {
+    if (field in item && item[field] !== undefined) {
+      return field;
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Get actual item ID from junction record
  */
 export function getActualItemId(item: JunctionRecord): string | number {
