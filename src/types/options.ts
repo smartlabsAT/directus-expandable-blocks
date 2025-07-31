@@ -39,4 +39,7 @@ export interface ExpandableBlocksOptions {
   aiTemperature?: number;
   aiMaxTokens?: number;
   aiCustomUrl?: string;
+  
+  // Cache Configuration
+  enableCache?: boolean;
 }

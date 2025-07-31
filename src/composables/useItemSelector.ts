@@ -2,9 +2,9 @@ import { ref, type Ref } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
-import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption } from '../types';
+import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption, ExpandableBlocksOptions } from '../types';
 
-export function useItemSelector(api: any, allowedCollections?: string[]) {
+export function useItemSelector(api: any, allowedCollections?: string[], options?: ExpandableBlocksOptions) {
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
   const itemRelations = ref<Record<string, any[]>>({});
@@ -41,6 +41,14 @@ export function useItemSelector(api: any, allowedCollections?: string[]) {
   const sortField = ref<string | null>(null);
   const sortDirection = ref<'asc' | 'desc'>('asc');
 
+  /**
+   * Get cache headers based on options
+   */
+  function getCacheHeaders() {
+    return {
+      'X-Cache-Enabled': String(options?.enableCache !== false) // Default true
+    };
+  }
 
   /**
    * Load collection metadata including searchable fields
@@ -50,7 +58,9 @@ export function useItemSelector(api: any, allowedCollections?: string[]) {
     
     try {
       apiError.value = null;
-      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/metadata`);
+      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/metadata`, {
+        headers: getCacheHeaders()
+      });
       
       const metadata = response.data as CollectionMetadata;
       
@@ -453,7 +463,10 @@ export function useItemSelector(api: any, allowedCollections?: string[]) {
         params.deep = JSON.stringify(params.deep);
       }
       
-      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { params });
+      const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { 
+        params,
+        headers: getCacheHeaders()
+      });
 
       availableItems.value = response.data.data || [];
       totalItems.value = response.data.meta?.filter_count || 0;
@@ -536,7 +549,10 @@ export function useItemSelector(api: any, allowedCollections?: string[]) {
       const response = await api.post(
         `/expandable-blocks-api/${selectedCollection.value}/detail`,
         { ids: itemIds, fields: '*' },
-        { signal: detailsAbortController.value.signal }
+        { 
+          signal: detailsAbortController.value.signal,
+          headers: getCacheHeaders()
+        }
       );
 
       // Only process if this is still the current request

@@ -44,6 +44,7 @@ export class DirectusCacheWrapper implements CacheService {
   private cleanupInterval: NodeJS.Timer | null = null;
   private nextExpirationCheck: number = Infinity;
   private logger: any;
+  private ttlOverrides: CacheServiceConfig['ttlOverrides'];
 
   // Statistics
   private stats: CacheStats = {
@@ -60,6 +61,7 @@ export class DirectusCacheWrapper implements CacheService {
     // Ensure defaultTTL is in milliseconds
     this.defaultTTL = config.defaultTTL || CacheTTLHelper.SHORT;
     this.maxKeys = config.maxKeys || 50000; // Allow configuration of max keys
+    this.ttlOverrides = config.ttlOverrides;
     this.logger = getLogger(config.services);
 
     // Note: In production, you might want to use Redis through Directus' cache service
@@ -67,6 +69,10 @@ export class DirectusCacheWrapper implements CacheService {
     this.logger.debug(
         `[DirectusCacheWrapper] Initialized with in-memory cache (max ${this.maxKeys} keys, default TTL: ${this.defaultTTL}ms)`
     );
+    
+    if (this.ttlOverrides) {
+      this.logger.debug(`[DirectusCacheWrapper] TTL overrides configured:`, this.ttlOverrides);
+    }
 
     // Start cleanup interval for expired entries
     this.startCleanupInterval();
@@ -79,99 +85,74 @@ export class DirectusCacheWrapper implements CacheService {
    * Get a value from cache
    */
   async get<T>(key: string): Promise<T | null> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key);
-      const entry = this.cache.get(prefixedKey);
+    const prefixedKey = this.getPrefixedKey(key);
+    const entry = this.cache.get(prefixedKey);
 
-      if (!entry) {
-        this.stats.misses++;
-        return null;
-      }
-
-      // Check if entry has expired
-      if (entry.expiresAt && entry.expiresAt < Date.now()) {
-        this.cache.delete(prefixedKey);
-        this.stats.misses++;
-        this.stats.size = this.cache.size;
-        return null;
-      }
-
-      this.stats.hits++;
-      return entry.value as T;
-    } catch (error) {
-      this.logger.error('[DirectusCacheWrapper] Get error:', error);
+    if (!entry) {
       this.stats.misses++;
       return null;
     }
+
+    // Check if entry has expired
+    if (this.isExpired(entry)) {
+      this.deleteEntry(prefixedKey);
+      this.stats.misses++;
+      return null;
+    }
+
+    this.stats.hits++;
+    return entry.value as T;
   }
 
   /**
    * Set a value in cache
    */
   async set<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key);
-      // TTL should be in milliseconds
-      const ttl = options?.ttl !== undefined ? options.ttl : this.defaultTTL;
+    const prefixedKey = this.getPrefixedKey(key);
+    // TTL should be in milliseconds
+    const ttl = options?.ttl !== undefined ? options.ttl : this.defaultTTL;
 
-      // Enforce max keys limit (simple LRU)
-      if (this.cache.size >= this.maxKeys && !this.cache.has(prefixedKey)) {
-        const firstKey = this.cache.keys().next().value;
-        if (firstKey) {
-          this.cache.delete(firstKey);
-        }
+    // Enforce max keys limit (simple LRU)
+    if (this.cache.size >= this.maxKeys && !this.cache.has(prefixedKey)) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.deleteEntry(firstKey);
       }
-
-      const expiresAt = ttl > 0 ? Date.now() + ttl : null;
-      this.cache.set(prefixedKey, { value, expiresAt });
-
-      // Update next expiration check time
-      if (expiresAt && expiresAt < this.nextExpirationCheck) {
-        this.nextExpirationCheck = expiresAt;
-      }
-
-      this.stats.size = this.cache.size;
-    } catch (error) {
-      this.logger.error('[DirectusCacheWrapper] Set error:', error);
     }
+
+    const expiresAt = ttl > 0 ? Date.now() + ttl : null;
+    this.cache.set(prefixedKey, { value, expiresAt });
+
+    // Update next expiration check time
+    if (expiresAt && expiresAt < this.nextExpirationCheck) {
+      this.nextExpirationCheck = expiresAt;
+    }
+
+    this.updateStats();
   }
 
   /**
    * Delete a value from cache
    */
   async delete(key: string): Promise<void> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key);
-      this.cache.delete(prefixedKey);
-      this.stats.size = this.cache.size;
-    } catch (error) {
-      this.logger.error('[DirectusCacheWrapper] Delete error:', error);
-    }
+    const prefixedKey = this.getPrefixedKey(key);
+    this.deleteEntry(prefixedKey);
   }
 
   /**
    * Get multiple values from cache
    */
   async mget<T>(keys: string[]): Promise<(T | null)[]> {
-    // Batch get operations for better performance
-    const results: (T | null)[] = [];
-
-    for (const key of keys) {
-      const value = await this.get<T>(key);
-      results.push(value);
-    }
-
-    return results;
+    return Promise.all(keys.map(key => this.get<T>(key)));
   }
 
   /**
    * Set multiple values in cache
    */
   async mset(items: { key: string; value: any; options?: CacheOptions }[]): Promise<void> {
-    // Batch set operations for better performance
-    for (const item of items) {
-      await this.set(item.key, item.value, item.options);
-    }
+    await Promise.all(
+      items.map(item => this.set(item.key, item.value, item.options))
+    );
   }
 
   /**
@@ -179,23 +160,17 @@ export class DirectusCacheWrapper implements CacheService {
    */
   async deletePattern(pattern: string): Promise<number> {
     let deletedCount = 0;
+    
+    // Convert pattern to regex (support * wildcard)
+    const regex = new RegExp(
+      '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
+    );
 
-    try {
-      // Convert pattern to regex (support * wildcard)
-      const regex = new RegExp(
-          '^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
-      );
-
-      for (const key of this.cache.keys()) {
-        if (regex.test(key)) {
-          this.cache.delete(key);
-          deletedCount++;
-        }
+    for (const key of this.cache.keys()) {
+      if (regex.test(key)) {
+        this.deleteEntry(key);
+        deletedCount++;
       }
-
-      this.stats.size = this.cache.size;
-    } catch (error) {
-      this.logger.error('[DirectusCacheWrapper] DeletePattern error:', error);
     }
 
     return deletedCount;
@@ -204,7 +179,7 @@ export class DirectusCacheWrapper implements CacheService {
   /**
    * Delete all keys with specific tags
    */
-  async deleteTags(tags: string[]): Promise<number> {
+  async deleteTags(_tags: string[]): Promise<number> {
     // Not supported by default in-memory cache
     this.logger.warn('[DirectusCacheWrapper] Tag-based delete not supported in memory cache');
     return 0;
@@ -222,9 +197,8 @@ export class DirectusCacheWrapper implements CacheService {
     }
 
     // Check if expired
-    if (entry.expiresAt && entry.expiresAt < Date.now()) {
-      this.cache.delete(prefixedKey);
-      this.stats.size = this.cache.size;
+    if (this.isExpired(entry)) {
+      this.deleteEntry(prefixedKey);
       return false;
     }
 
@@ -235,16 +209,12 @@ export class DirectusCacheWrapper implements CacheService {
    * Clear entire cache
    */
   async flush(): Promise<void> {
-    try {
-      this.cache.clear();
-      this.stats.hits = 0;
-      this.stats.misses = 0;
-      this.stats.size = 0;
-      this.nextExpirationCheck = Infinity;
-      this.logger.debug('[DirectusCacheWrapper] Cache flushed');
-    } catch (error) {
-      this.logger.error('[DirectusCacheWrapper] Flush error:', error);
-    }
+    this.cache.clear();
+    this.stats.hits = 0;
+    this.stats.misses = 0;
+    this.stats.size = 0;
+    this.nextExpirationCheck = Infinity;
+    this.logger.debug('[DirectusCacheWrapper] Cache flushed');
   }
 
   /**
@@ -277,11 +247,10 @@ export class DirectusCacheWrapper implements CacheService {
    * Get cache statistics
    */
   getStats(): CacheStats {
+    const total = this.stats.hits + this.stats.misses;
     return {
       ...this.stats,
-      hitRate: this.stats.hits + this.stats.misses > 0
-          ? this.stats.hits / (this.stats.hits + this.stats.misses)
-          : 0
+      hitRate: total > 0 ? this.stats.hits / total : 0
     };
   }
 
@@ -290,6 +259,28 @@ export class DirectusCacheWrapper implements CacheService {
    */
   private getPrefixedKey(key: string): string {
     return `${this.prefix}:${key}`;
+  }
+
+  /**
+   * Check if a cache entry has expired
+   */
+  private isExpired(entry: CacheEntry<any>): boolean {
+    return entry.expiresAt !== null && entry.expiresAt < Date.now();
+  }
+
+  /**
+   * Update cache statistics
+   */
+  private updateStats(): void {
+    this.stats.size = this.cache.size;
+  }
+
+  /**
+   * Delete an entry and update stats
+   */
+  private deleteEntry(key: string): void {
+    this.cache.delete(key);
+    this.updateStats();
   }
 
   /**
@@ -311,7 +302,7 @@ export class DirectusCacheWrapper implements CacheService {
       for (const [key, entry] of this.cache.entries()) {
         if (entry.expiresAt) {
           if (entry.expiresAt < now) {
-            this.cache.delete(key);
+            this.deleteEntry(key);
             deletedCount++;
           } else if (entry.expiresAt < this.nextExpirationCheck) {
             this.nextExpirationCheck = entry.expiresAt;
@@ -320,7 +311,6 @@ export class DirectusCacheWrapper implements CacheService {
       }
 
       if (deletedCount > 0) {
-        this.stats.size = this.cache.size;
         this.logger.debug(`[DirectusCacheWrapper] Cleaned up ${deletedCount} expired entries`);
       }
     }, 30000); // 30 seconds
@@ -350,6 +340,18 @@ export class DirectusCacheWrapper implements CacheService {
   }
 
   /**
+   * Get TTL for a specific data type
+   * @param dataType The type of data being cached
+   * @returns TTL in milliseconds
+   */
+  getTTLForDataType(dataType: string): number {
+    if (this.ttlOverrides && this.ttlOverrides[dataType] !== undefined) {
+      return this.ttlOverrides[dataType];
+    }
+    return this.defaultTTL;
+  }
+
+  /**
    * Destroy the service (cleanup resources)
    */
   destroy(): void {
@@ -365,25 +367,4 @@ export class DirectusCacheWrapper implements CacheService {
     this.logger.debug('[DirectusCacheWrapper] Cache service destroyed');
   }
 
-  /**
-   * Get the current size of the cache
-   */
-  getSize(): number {
-    return this.cache.size;
-  }
-
-  /**
-   * Get remaining TTL for a key (in milliseconds)
-   */
-  async getTTL(key: string): Promise<number | null> {
-    const prefixedKey = this.getPrefixedKey(key);
-    const entry = this.cache.get(prefixedKey);
-
-    if (!entry || !entry.expiresAt) {
-      return null;
-    }
-
-    const ttl = entry.expiresAt - Date.now();
-    return ttl > 0 ? ttl : null;
-  }
 }

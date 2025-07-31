@@ -11,7 +11,7 @@ import {TranslationFieldAnalyzerConfig} from './types/TranslationFieldAnalyzerTy
 import {UsageFinderService} from './services/UsageFinderService';
 import {PathBuilderService} from './services/PathBuilderService';
 import {DirectusCacheWrapper} from './services/DirectusCacheWrapper';
-import {CacheKeys, CacheTTL} from './types/CacheTypes';
+import {CacheKeys, CacheTTL, CacheServiceConfig} from './types/CacheTypes';
 import type { DirectusAccountability } from './types/directus-api';
 
 // Extend Express Request type for Directus
@@ -22,24 +22,103 @@ interface DirectusRequest extends Request {
 // Create a singleton cache instance that persists across requests
 let cacheInstance: DirectusCacheWrapper | null = null;
 
+/**
+ * Get global cache configuration from environment variables or defaults
+ */
+function getGlobalCacheConfig(): Partial<CacheServiceConfig> {
+    const envConfig = process.env.EXPANDABLE_BLOCKS_CACHE_TTL_METADATA ||
+                     process.env.EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH ||
+                     process.env.EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL ||
+                     process.env.EXPANDABLE_BLOCKS_CACHE_TTL_PATHS;
+    
+    if (envConfig) {
+        return {
+            defaultTTL: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL || '600000'), // 10 min default
+            ttlOverrides: {
+                metadata: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_METADATA || '30') * 60 * 1000,
+                search: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH || '5') * 60 * 1000,
+                detail: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL || '10') * 60 * 1000,
+                paths: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_PATHS || '10') * 60 * 1000
+            },
+            maxKeys: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_MAX_SIZE || '50000'),
+            prefix: 'expandable_blocks'
+        } as Partial<CacheServiceConfig>;
+    }
+    
+    return {
+        defaultTTL: CacheTTL.MEDIUM, // 10 minutes
+        ttlOverrides: {
+            metadata: 30 * 60 * 1000, // 30 minutes
+            search: 5 * 60 * 1000,    // 5 minutes
+            detail: 10 * 60 * 1000,   // 10 minutes
+            paths: 10 * 60 * 1000     // 10 minutes
+        },
+        maxKeys: 50000,
+        prefix: 'expandable_blocks'
+    } as Partial<CacheServiceConfig>;
+}
+
+/**
+ * Send standardized error response
+ */
+function sendErrorResponse(res: any, error: any, context: any, customMessage?: string) {
+    context.logger.error(customMessage || 'API Error:', error);
+    
+    // Extract meaningful error message
+    let errorMessage = 'Internal server error';
+    let errorCode = 'INTERNAL_SERVER_ERROR';
+    
+    if (error.response?.data?.errors?.[0]) {
+        // Directus API error format
+        errorMessage = error.response.data.errors[0].message;
+        errorCode = error.response.data.errors[0].extensions?.code || errorCode;
+    } else if (error.errors?.[0]?.message) {
+        // Our custom error format
+        errorMessage = error.errors[0].message;
+        errorCode = error.errors[0].extensions?.code || errorCode;
+    } else if (error.message) {
+        // Standard error message
+        errorMessage = error.message;
+    }
+    
+    res.status(500).json({
+        errors: [{
+            message: errorMessage,
+            extensions: {
+                code: errorCode
+            }
+        }]
+    });
+}
+
 export default defineEndpoint({
     id: 'expandable-blocks-api',
     handler: (router, context) => {
         const {getSchema} = context;
 
-        // Initialize singleton cache instance if not already created
-        if (!cacheInstance) {
-            cacheInstance = new DirectusCacheWrapper({
-                database: context.database,
-                services: context.services,
-                defaultTTL: CacheTTL.LONG,
-                prefix: 'expandable_blocks'
-            });
-            context.logger.info('[API] Initialized singleton cache instance');
-        }
+        // Initialize cache with global configuration on first use
+        const initializeCache = () => {
+            if (!cacheInstance) {
+                const globalConfig = getGlobalCacheConfig();
+                cacheInstance = new DirectusCacheWrapper({
+                    ...globalConfig,
+                    database: context.database,
+                    services: context.services
+                });
+                context.logger.info('[API] Initialized cache with global config:', {
+                    defaultTTL: globalConfig.defaultTTL,
+                    maxKeys: globalConfig.maxKeys,
+                    ttlOverrides: globalConfig.ttlOverrides
+                });
+            }
+            return cacheInstance;
+        };
 
-        // Create a reference for easier access in endpoints
-        const cache = cacheInstance;
+        // Get cache instance based on request header
+        const getCacheForRequest = (req: DirectusRequest): DirectusCacheWrapper | null => {
+            const cacheEnabled = req.headers['x-cache-enabled'] !== 'false';
+            return cacheEnabled ? initializeCache() : null;
+        };
 
         /**
          * Route 1: Metadata Endpoint
@@ -51,52 +130,46 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-                // Cache is already available from handler scope
-
-                // Initialize analyzers
-                const relationAnalyzerConfig: RelationAnalyzerConfig = {
+                // Create base configuration for all analyzers
+                const baseAnalyzerConfig = {
                     database: context.database,
                     services: context.services,
                     schema,
                     accountability
                 };
 
-                const fieldAnalyzerConfig: FieldAnalyzerConfig = {
-                    database: context.database,
-                    services: context.services,
-                    schema,
-                    accountability
-                };
+                // Initialize analyzers with base config
+                const relationAnalyzer = new RelationAnalyzer(baseAnalyzerConfig);
+                const fieldAnalyzer = new FieldAnalyzer(baseAnalyzerConfig);
+                const translationAnalyzer = new TranslationFieldAnalyzer(baseAnalyzerConfig);
 
-                const translationAnalyzerConfig: TranslationFieldAnalyzerConfig = {
-                    database: context.database,
-                    services: context.services,
-                    schema,
-                    accountability
-                };
-
-                const relationAnalyzer = new RelationAnalyzer(relationAnalyzerConfig);
-                const fieldAnalyzer = new FieldAnalyzer(fieldAnalyzerConfig);
-                const translationAnalyzer = new TranslationFieldAnalyzer(translationAnalyzerConfig);
-
+                // Get cache instance based on request
+                const cache = getCacheForRequest(req);
+                
                 // Get cached or fresh metadata
-                const possibleLocations = await cache.getOrSet(
-                    CacheKeys.collectionPossibleLocations(collection),
-                    async () => relationAnalyzer.getPossibleUsageLocations(collection),
-                    {ttl: CacheTTL.LONG}
-                );
+                const possibleLocations = cache
+                    ? await cache.getOrSet(
+                        CacheKeys.collectionPossibleLocations(collection),
+                        async () => relationAnalyzer.getPossibleUsageLocations(collection),
+                        {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
+                    )
+                    : await relationAnalyzer.getPossibleUsageLocations(collection);
 
-                const searchableFields = await cache.getOrSet(
-                    CacheKeys.collectionSearchableFields(collection),
-                    async () => fieldAnalyzer.getSearchableFields(collection),
-                    {ttl: CacheTTL.LONG}
-                );
+                const searchableFields = cache
+                    ? await cache.getOrSet(
+                        CacheKeys.collectionSearchableFields(collection),
+                        async () => fieldAnalyzer.getSearchableFields(collection),
+                        {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
+                    )
+                    : await fieldAnalyzer.getSearchableFields(collection);
 
-                const translationInfo = await cache.getOrSet(
-                    CacheKeys.collectionTranslationInfo(collection),
-                    async () => translationAnalyzer.analyzeCollection(collection, { includeLanguages: true }),
-                    {ttl: CacheTTL.LONG}
-                );
+                const translationInfo = cache
+                    ? await cache.getOrSet(
+                        CacheKeys.collectionTranslationInfo(collection),
+                        async () => translationAnalyzer.analyzeCollection(collection, { includeLanguages: true }),
+                        {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
+                    )
+                    : await translationAnalyzer.analyzeCollection(collection, { includeLanguages: true });
 
                 res.json({
                     collection,
@@ -107,15 +180,7 @@ export default defineEndpoint({
                 });
 
             } catch (error) {
-                context.logger.error('Error in metadata endpoint:', error);
-                res.status(500).json({
-                    errors: [{
-                        message: error instanceof Error ? error.message : 'Internal server error',
-                        extensions: {
-                            code: 'INTERNAL_SERVER_ERROR'
-                        }
-                    }]
-                });
+                sendErrorResponse(res, error, context, 'Error in metadata endpoint');
             }
         });
 
@@ -138,15 +203,15 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-
-                // Initialize ItemLoader
-                const itemLoaderConfig: ItemLoaderConfig = {
+                // Create base configuration for all analyzers
+                const baseAnalyzerConfig = {
                     database: context.database,
                     services: context.services,
                     schema,
                     accountability
                 };
-                const itemLoader = new ItemLoader(itemLoaderConfig);
+
+                const itemLoader = new ItemLoader(baseAnalyzerConfig);
 
 
                 // Parse fields - handle both array and string formats
@@ -172,9 +237,20 @@ export default defineEndpoint({
                     expandTranslations: true  // Always expand translations for search endpoint
                 };
 
+                // Get cache instance based on request
+                const cache = getCacheForRequest(req);
+                
+                // Create cache key for search query
+                const searchCacheKey = cache ? `search:${collection}:${JSON.stringify(query)}` : null;
+                
                 // Load items with translations
-                const itemsResult = await itemLoader.loadItems(collection, query);
-
+                const itemsResult = cache && searchCacheKey
+                    ? await cache.getOrSet(
+                        searchCacheKey,
+                        async () => itemLoader.loadItems(collection, query),
+                        { ttl: cache.getTTLForDataType('search') || CacheTTL.SHORT }
+                    )
+                    : await itemLoader.loadItems(collection, query);
 
                 res.json({
                     data: itemsResult.data,
@@ -182,33 +258,7 @@ export default defineEndpoint({
                 });
 
             } catch (error: any) {
-                context.logger.error('Error in search endpoint:', error);
-                
-                // Extract meaningful error message
-                let errorMessage = 'Internal server error';
-                let errorCode = 'INTERNAL_SERVER_ERROR';
-                
-                if (error.response?.data?.errors?.[0]) {
-                    // Directus API error format
-                    errorMessage = error.response.data.errors[0].message;
-                    errorCode = error.response.data.errors[0].extensions?.code || errorCode;
-                } else if (error.errors?.[0]?.message) {
-                    // Our custom error format
-                    errorMessage = error.errors[0].message;
-                    errorCode = error.errors[0].extensions?.code || errorCode;
-                } else if (error.message) {
-                    // Standard error message
-                    errorMessage = error.message;
-                }
-                
-                res.status(500).json({
-                    errors: [{
-                        message: errorMessage,
-                        extensions: {
-                            code: errorCode
-                        }
-                    }]
-                });
+                sendErrorResponse(res, error, context, 'Error in search endpoint');
             }
         });
 
@@ -235,20 +285,24 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-                // Cache is already available from handler scope
-
-                // Create ItemLoader instance
-                const itemLoader = new ItemLoader({
+                // Create base configuration for all analyzers
+                const baseAnalyzerConfig = {
                     database: context.database,
-                    schema: schema,
                     services: context.services,
-                    accountability: req.accountability
-                });
+                    schema,
+                    accountability
+                };
+
+                // Get cache instance based on request
+                const cache = getCacheForRequest(req);
+
+                const itemLoader = new ItemLoader(baseAnalyzerConfig);
 
                 // Load filtered relations once
-                const filteredRelations = await cache.getOrSet(
-                    CacheKeys.collectionIncomingRelations(collection),
-                    async () => {
+                const filteredRelations = cache
+                    ? await cache.getOrSet(
+                        CacheKeys.collectionIncomingRelations(collection),
+                        async () => {
                         const allRelations = await context.database
                             .select('*')
                             .from('directus_relations')
@@ -265,26 +319,33 @@ export default defineEndpoint({
                             });
                         return allRelations;
                     },
-                    {ttl: CacheTTL.LONG}
-                );
+                    {ttl: cache?.getTTLForDataType('metadata') || CacheTTL.LONG}
+                )
+                : await context.database
+                    .select('*')
+                    .from('directus_relations')
+                    .where(function () {
+                        this.where('one_collection', collection)
+                            .orWhere('one_allowed_collections', '=', collection)
+                            .orWhere('one_allowed_collections', 'like', `${collection},%`)
+                            .orWhere('one_allowed_collections', 'like', `%,${collection},%`)
+                            .orWhere('one_allowed_collections', 'like', `%,${collection}`);
+                    })
+                    .whereNot(function () {
+                        this.where('many_collection', collection)
+                            .whereIn('many_field', ['user_created', 'user_updated']);
+                    });
 
-                // Initialize services
                 const usageFinder = new UsageFinderService({
-                    database: context.database,
-                    services: context.services,
-                    schema: schema,
-                    accountability: req.accountability,
+                    ...baseAnalyzerConfig,
                     incomingRelations: filteredRelations
                 });
 
                 const pathBuilder = new PathBuilderService({
-                    database: context.database,
-                    services: context.services,
-                    schema: schema,
-                    accountability: req.accountability,
+                    ...baseAnalyzerConfig,
                     defaultLocale: 'de-DE',
                     usageFinder: usageFinder,
-                    cache: cache
+                    cache: cache || undefined
                 });
 
                 // Load items by IDs using ItemLoader
@@ -300,9 +361,10 @@ export default defineEndpoint({
                         // Try to get complete cached result first
                         const itemCacheKey = CacheKeys.itemDetail(collection, item.id, fields);
                         
-                        return cache.getOrSet(
-                            itemCacheKey,
-                            async () => {
+                        return cache
+                            ? await cache.getOrSet(
+                                itemCacheKey,
+                                async () => {
                                 try {
                                     // Find direct usages only, excluding translations
                                     const directUsages = await usageFinder.findDirectUsages(collection, item.id, {
@@ -336,8 +398,17 @@ export default defineEndpoint({
                                     };
                                 }
                             },
-                            { ttl: CacheTTL.SHORT }
-                        );
+                            { ttl: cache?.getTTLForDataType('detail') || CacheTTL.SHORT }
+                        )
+                        : {
+                            ...item,
+                            usage_locations: [],
+                            usage_summary: {
+                                total_count: 0,
+                                by_collection: {},
+                                by_status: {}
+                            }
+                        };
                     })
                 );
 
@@ -346,15 +417,7 @@ export default defineEndpoint({
                 });
 
             } catch (error) {
-                context.logger.error('Error in batch usage endpoint:', error);
-                res.status(500).json({
-                    errors: [{
-                        message: error instanceof Error ? error.message : 'Internal server error',
-                        extensions: {
-                            code: 'INTERNAL_SERVER_ERROR'
-                        }
-                    }]
-                });
+                sendErrorResponse(res, error, context, 'Error in batch usage endpoint');
             }
         });
 

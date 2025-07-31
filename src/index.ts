@@ -546,6 +546,24 @@ export default defineInterface({
           default_value: null
         }
       });
+      
+      // Cache Configuration
+      baseOptions.push({
+        field: 'enableCache',
+        name: 'Enable Caching',
+        type: 'boolean',
+        meta: {
+          interface: 'boolean',
+          options: {
+            label: 'Enable API response caching for this field'
+          },
+          width: 'full',
+          note: 'Disable during development for real-time data. Uses global cache settings when enabled.'
+        },
+        schema: {
+          default_value: true
+        }
+      });
     }
 
     return baseOptions;
