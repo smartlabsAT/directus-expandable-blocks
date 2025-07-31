@@ -98,30 +98,3 @@ export interface DirectusPermission {
 /**
  * Field definition as returned by FieldsService
  */
-export interface FieldDefinition {
-  collection: string;
-  field: string;
-  type: string;
-  schema?: any;
-  meta?: any;
-}
-
-/**
- * Collection metadata
- */
-export interface CollectionMetadata {
-  collection: string;
-  meta?: {
-    icon?: string;
-    display_template?: string;
-    hidden?: boolean;
-    singleton?: boolean;
-    translations?: any[];
-    archive_field?: string;
-    archive_app_filter?: boolean;
-    archive_value?: string;
-    unarchive_value?: string;
-    sort_field?: string;
-    [key: string]: any;
-  };
-}

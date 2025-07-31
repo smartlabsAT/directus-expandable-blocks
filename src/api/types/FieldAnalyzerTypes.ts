@@ -1,5 +1,6 @@
 import { Knex } from 'knex';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
+import { TranslationType } from '../services/FieldAnalyzer';
 
 /**
  * Configuration for FieldAnalyzer service
@@ -82,8 +83,8 @@ export interface SearchableField {
   /** Whether this field is translatable */
   translatable?: boolean;
   
-  /** Translation type: 'table' | 'json' | 'combined' | 'none' */
-  translation_type?: 'table' | 'json' | 'combined' | 'none';
+  /** Translation type */
+  translation_type?: TranslationType;
   
   /** Available languages for this field */
   available_languages?: string[];

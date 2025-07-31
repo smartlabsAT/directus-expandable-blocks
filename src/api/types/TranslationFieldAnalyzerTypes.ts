@@ -1,5 +1,6 @@
 import { Knex } from 'knex';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';
+import { TranslationType } from '../services/FieldAnalyzer';
 
 /**
  * Configuration for TranslationFieldAnalyzer service
@@ -26,7 +27,7 @@ export interface TranslationInfo {
   hasTranslations: boolean;
   
   /** Type of translation implementation */
-  translationType: 'table' | 'json' | 'combined' | 'hybrid' | 'standard' | 'custom' | 'none';
+  translationType: TranslationType;
   
   /** Name of the translation table (if applicable) */
   translationTable?: string;
@@ -67,7 +68,7 @@ export interface TranslationField {
   translatable: boolean;
   
   /** How this field is translated */
-  translationMethod?: 'table' | 'json' | 'combined';
+  translationMethod?: TranslationType;
   
   /** Corresponding fields in translation table */
   translationTableFields?: string[];
@@ -159,7 +160,7 @@ export interface TranslationAnalysisOptions {
  */
 export interface TranslationPattern {
   /** Detected pattern type */
-  type: 'standard' | 'custom' | 'json' | 'combined' | 'hybrid' | 'none';
+  type: TranslationType;
   
   /** Confidence in the detection (0-1) */
   confidence: number;
