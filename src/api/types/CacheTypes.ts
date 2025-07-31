@@ -10,7 +10,7 @@ export interface CacheServiceConfig {
   /** Directus services object */
   services: any;
   
-  /** Default TTL in seconds (default: 300) */
+  /** Default TTL in milliseconds (default: 5 minutes) */
   defaultTTL?: number;
   
   /** Prefix for all cache keys (default: 'directus_api') */
@@ -21,13 +21,22 @@ export interface CacheServiceConfig {
   
   /** Maximum number of keys to store (default: 10000) */
   maxKeys?: number;
+  
+  /** TTL overrides for specific data types (in milliseconds) */
+  ttlOverrides?: {
+    metadata?: number;
+    search?: number;
+    detail?: number;
+    paths?: number;
+    [key: string]: number | undefined;
+  };
 }
 
 /**
  * Options for cache operations
  */
 export interface CacheOptions {
-  /** Time to live in seconds */
+  /** Time to live in milliseconds */
   ttl?: number;
   
   /** Tags for grouped invalidation */
@@ -188,18 +197,21 @@ export const CacheKeys = {
 };
 
 /**
- * Standard TTL values in seconds
+ * Standard TTL values in milliseconds
  */
 export const CacheTTL = {
-  /** 30 minutes - for rarely changing data */
-  LONG: 1800000,
+  /** 30 minutes - for rarely changing data like collection metadata */
+  LONG: 30 * 60 * 1000,
   
   /** 10 minutes - for moderately changing data */
-  MEDIUM: 600000,
+  MEDIUM: 10 * 60 * 1000,
   
   /** 5 minutes - for frequently changing data */
-  SHORT: 300000,
+  SHORT: 5 * 60 * 1000,
   
   /** 1 minute - for very dynamic data */
-  VERY_SHORT: 60000
+  VERY_SHORT: 60 * 1000,
+  
+  /** No expiration */
+  NONE: 0
 };

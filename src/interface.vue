@@ -187,7 +187,7 @@ const userPresets = useUserPresets();
 const userPresetsInitialized = ref(false);
 
 // Initialize item selector composable
-const itemSelector = useItemSelector(api, allowedCollections);
+const itemSelector = useItemSelector(api, allowedCollections, mergedOptions.value);
 
 // Override the open function to include user preferences
 const originalOpen = itemSelector.open;
