@@ -9,7 +9,7 @@ import {
   MAX_LIMIT
 } from '../types/ItemLoaderTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
-import { TranslationFieldAnalyzer } from './TranslationFieldAnalyzer';
+import { FieldAnalyzer } from './FieldAnalyzer';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
@@ -331,8 +331,8 @@ export class ItemLoader {
     fields: string[]
   ): Promise<string[]> {
     try {
-      // Create TranslationFieldAnalyzer instance
-      const translationAnalyzer = new TranslationFieldAnalyzer({
+      // Create FieldAnalyzer instance
+      const fieldAnalyzer = new FieldAnalyzer({
         database: this.database,
         services: this.services,
         schema: this.schema,
@@ -340,7 +340,7 @@ export class ItemLoader {
       });
 
       // Analyze collection for translations
-      const translationInfo = await translationAnalyzer.analyzeCollection(collection);
+      const translationInfo = await fieldAnalyzer.analyzeTranslations(collection);
 
       // If no translations, return original fields
       if (!translationInfo.hasTranslations) {
