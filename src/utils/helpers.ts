@@ -58,6 +58,21 @@ export function extractItemTitle(item: ItemRecord | JunctionRecord): string {
     }
   }
   
+  // Check if any title field exists in the collection structure
+  const titleFieldExists = detectTitleField(itemData as ItemRecord) !== null;
+  
+  // If no title field exists in the collection, show ID or empty string
+  if (!titleFieldExists) {
+    const id = (itemData as any).id;
+    // For new items without ID, return empty string
+    if (!id || isTemporaryId(id)) {
+      return '';
+    }
+    // For existing items, show ID in format #123
+    return `#${id}`;
+  }
+  
+  // Title field exists but is empty/not filled
   return 'Untitled Block';
 }
 
