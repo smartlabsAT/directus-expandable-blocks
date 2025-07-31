@@ -140,6 +140,33 @@ export interface FieldAnalyzerOptions {
 }
 
 /**
+ * Raw field data from FieldsService
+ */
+export interface RawField {
+  field: string;
+  type: string;
+  collection?: string;
+  default_value?: any;
+  meta?: {
+    display?: string;
+    name?: string;
+    interface?: string;
+    note?: string;
+    required?: boolean;
+    readonly?: boolean;
+    hidden?: boolean;
+    special?: string[];
+    width?: 'half' | 'half-left' | 'half-right' | 'full' | 'fill';
+    translations?: any;
+    validation?: any;
+    conditions?: any;
+    options?: any;
+    display_options?: any;
+  };
+  schema?: any;
+}
+
+/**
  * System fields that are typically excluded from search
  */
 export const SYSTEM_FIELDS = [

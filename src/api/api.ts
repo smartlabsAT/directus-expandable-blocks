@@ -6,8 +6,6 @@ import {ItemLoader} from './services/ItemLoader';
 import {ItemLoaderConfig, ItemQuery} from './types/ItemLoaderTypes';
 import {FieldAnalyzer} from './services/FieldAnalyzer';
 import {FieldAnalyzerConfig} from './types/FieldAnalyzerTypes';
-import {TranslationFieldAnalyzer} from './services/TranslationFieldAnalyzer';
-import {TranslationFieldAnalyzerConfig} from './types/TranslationFieldAnalyzerTypes';
 import {UsageFinderService} from './services/UsageFinderService';
 import {PathBuilderService} from './services/PathBuilderService';
 import {DirectusCacheWrapper} from './services/DirectusCacheWrapper';
@@ -141,43 +139,55 @@ export default defineEndpoint({
                 // Initialize analyzers with base config
                 const relationAnalyzer = new RelationAnalyzer(baseAnalyzerConfig);
                 const fieldAnalyzer = new FieldAnalyzer(baseAnalyzerConfig);
-                const translationAnalyzer = new TranslationFieldAnalyzer(baseAnalyzerConfig);
 
                 // Get cache instance based on request
                 const cache = getCacheForRequest(req);
                 
-                // Get cached or fresh metadata
-                const possibleLocations = cache
+                // Get all metadata in one call
+                const cacheKey = `metadata:complete:${collection}`;
+                
+                const metadata = cache
                     ? await cache.getOrSet(
-                        CacheKeys.collectionPossibleLocations(collection),
-                        async () => relationAnalyzer.getPossibleUsageLocations(collection),
+                        cacheKey,
+                        async () => {
+                            // Get all data in parallel for better performance
+                            const [possibleLocations, fieldAnalysis] = await Promise.all([
+                                relationAnalyzer.getPossibleUsageLocations(collection),
+                                fieldAnalyzer.analyzeCollectionComplete(collection, {
+                                    translationOptions: { includeLanguages: true }
+                                })
+                            ]);
+                            
+                            return {
+                                collection,
+                                possibleLocations,
+                                searchableFields: fieldAnalysis.searchableFields,
+                                translationInfo: fieldAnalysis.translationInfo,
+                                collectionMetadata: fieldAnalysis.collectionMetadata,
+                                cached_at: new Date().toISOString()
+                            };
+                        },
                         {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
                     )
-                    : await relationAnalyzer.getPossibleUsageLocations(collection);
+                    : await (async () => {
+                        const [possibleLocations, fieldAnalysis] = await Promise.all([
+                            relationAnalyzer.getPossibleUsageLocations(collection),
+                            fieldAnalyzer.analyzeCollectionComplete(collection, {
+                                translationOptions: { includeLanguages: true }
+                            })
+                        ]);
+                        
+                        return {
+                            collection,
+                            possibleLocations,
+                            searchableFields: fieldAnalysis.searchableFields,
+                            translationInfo: fieldAnalysis.translationInfo,
+                            collectionMetadata: fieldAnalysis.collectionMetadata,
+                            cached_at: new Date().toISOString()
+                        };
+                    })();
 
-                const searchableFields = cache
-                    ? await cache.getOrSet(
-                        CacheKeys.collectionSearchableFields(collection),
-                        async () => fieldAnalyzer.getSearchableFields(collection),
-                        {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
-                    )
-                    : await fieldAnalyzer.getSearchableFields(collection);
-
-                const translationInfo = cache
-                    ? await cache.getOrSet(
-                        CacheKeys.collectionTranslationInfo(collection),
-                        async () => translationAnalyzer.analyzeCollection(collection, { includeLanguages: true }),
-                        {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
-                    )
-                    : await translationAnalyzer.analyzeCollection(collection, { includeLanguages: true });
-
-                res.json({
-                    collection,
-                    possibleLocations,
-                    searchableFields,
-                    translationInfo,
-                    cached_at: new Date().toISOString()
-                });
+                res.json(metadata);
 
             } catch (error) {
                 sendErrorResponse(res, error, context, 'Error in metadata endpoint');
@@ -341,12 +351,12 @@ export default defineEndpoint({
                     incomingRelations: filteredRelations
                 });
 
-                const pathBuilder = new PathBuilderService({
+                const pathBuilder = cache ? new PathBuilderService({
                     ...baseAnalyzerConfig,
                     defaultLocale: 'de-DE',
                     usageFinder: usageFinder,
-                    cache: cache || undefined
-                });
+                    cache: cache
+                }) : null;
 
                 // Load items by IDs using ItemLoader
                 const itemsResult = await itemLoader.loadItems(collection, {
@@ -427,12 +437,14 @@ export default defineEndpoint({
          * @param pathBuilder PathBuilderService instance
          * @returns Array of usage locations with path information
          */
-        async function buildUsageLocations(directUsages: any[], pathBuilder: PathBuilderService): Promise<any[]> {
+        async function buildUsageLocations(directUsages: any[], pathBuilder: PathBuilderService | null): Promise<any[]> {
             const locations = [];
             
             for (const usage of directUsages) {
                 // Build path with full relation information
-                const path = await pathBuilder.buildSimplePathWithRelations(usage);
+                const path = pathBuilder 
+                    ? await pathBuilder.buildSimplePathWithRelations(usage)
+                    : null;
                 
                 locations.push({
                     id: usage.item_id,
