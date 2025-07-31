@@ -1128,6 +1128,7 @@ function getRelationDisplay(item: any): string {
 .slider-field {
   display: flex;
   align-items: center;
+  justify-content: center;
   width: 100%;
   min-width: 0;
 }
@@ -1136,6 +1137,7 @@ function getRelationDisplay(item: any): string {
   flex: 1;
   position: relative;
   padding-top: 20px;
+  max-width: 150px;
 }
 
 .slider-value-label {
