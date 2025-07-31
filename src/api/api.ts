@@ -38,6 +38,9 @@ export default defineEndpoint({
             context.logger.info('[API] Initialized singleton cache instance');
         }
 
+        // Create a reference for easier access in endpoints
+        const cache = cacheInstance;
+
         /**
          * Route 1: Metadata Endpoint
          * Returns collection metadata for frontend initialization
@@ -48,8 +51,7 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-                // Use singleton cache instance
-                const cache = cacheInstance!;
+                // Cache is already available from handler scope
 
                 // Initialize analyzers
                 const relationAnalyzerConfig: RelationAnalyzerConfig = {
@@ -233,8 +235,7 @@ export default defineEndpoint({
                 const schema = await getSchema();
                 const accountability = req.accountability;
 
-                // Use singleton cache instance
-                const cache = cacheInstance!;
+                // Cache is already available from handler scope
 
                 // Create ItemLoader instance
                 const itemLoader = new ItemLoader({
