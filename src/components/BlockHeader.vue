@@ -125,11 +125,12 @@ defineEmits<{
 }>();
 
 const usageTooltip = computed(() => {
-  if (!props.usageData) {
-    return `This item is used in ${props.usageCount} ${props.usageCount === 1 ? 'place' : 'places'}`;
+  if (!props.usageData || typeof props.usageData !== 'object') {
+    return props.usageCount ? `This item is used in ${props.usageCount} ${props.usageCount === 1 ? 'place' : 'places'}` : '';
   }
   
-  const { externalCount, internalCount } = props.usageData;
+  const externalCount = props.usageData?.externalCount || 0;
+  const internalCount = props.usageData?.internalCount || 0;
   
   if (externalCount > 0 && internalCount > 0) {
     return `Used in ${externalCount} other ${externalCount === 1 ? 'place' : 'places'} and ${internalCount} more ${internalCount === 1 ? 'time' : 'times'} in this page`;

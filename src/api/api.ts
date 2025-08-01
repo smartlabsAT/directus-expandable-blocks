@@ -150,13 +150,31 @@ export default defineEndpoint({
                     ? await cache.getOrSet(
                         cacheKey,
                         async () => {
-                            // Get all data in parallel for better performance
-                            const [possibleLocations, fieldAnalysis] = await Promise.all([
-                                relationAnalyzer.getPossibleUsageLocations(collection),
-                                fieldAnalyzer.analyzeCollectionComplete(collection, {
+                            // Try to get data, but handle permission errors gracefully
+                            let possibleLocations: any[] = [];
+                            let fieldAnalysis: any = {
+                                searchableFields: [],
+                                translationInfo: { hasTranslations: false },
+                                collectionMetadata: { totalFields: 0, translatableCount: 0, systemFieldsCount: 0 }
+                            };
+                            
+                            try {
+                                possibleLocations = await relationAnalyzer.getPossibleUsageLocations(collection, {
+                                    bypassPermissions: true,
+                                    includeHidden: true
+                                });
+                            } catch (error) {
+                                context.logger.warn(`Failed to get relations for ${collection}:`, error);
+                            }
+                            
+                            try {
+                                fieldAnalysis = await fieldAnalyzer.analyzeCollectionComplete(collection, {
                                     translationOptions: { includeLanguages: true }
-                                })
-                            ]);
+                                });
+                            } catch (error) {
+                                context.logger.warn(`Failed to analyze fields for ${collection}:`, error);
+                                // Return minimal data for collections without permissions
+                            }
                             
                             return {
                                 collection,
@@ -170,12 +188,31 @@ export default defineEndpoint({
                         {ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG}
                     )
                     : await (async () => {
-                        const [possibleLocations, fieldAnalysis] = await Promise.all([
-                            relationAnalyzer.getPossibleUsageLocations(collection),
-                            fieldAnalyzer.analyzeCollectionComplete(collection, {
+                        // Try to get data, but handle permission errors gracefully
+                        let possibleLocations: any[] = [];
+                        let fieldAnalysis: any = {
+                            searchableFields: [],
+                            translationInfo: { hasTranslations: false },
+                            collectionMetadata: { totalFields: 0, translatableCount: 0, systemFieldsCount: 0 }
+                        };
+                        
+                        try {
+                            possibleLocations = await relationAnalyzer.getPossibleUsageLocations(collection, {
+                                bypassPermissions: true,
+                                includeHidden: true
+                            });
+                        } catch (error) {
+                            context.logger.warn(`Failed to get relations for ${collection}:`, error);
+                        }
+                        
+                        try {
+                            fieldAnalysis = await fieldAnalyzer.analyzeCollectionComplete(collection, {
                                 translationOptions: { includeLanguages: true }
-                            })
-                        ]);
+                            });
+                        } catch (error) {
+                            context.logger.warn(`Failed to analyze fields for ${collection}:`, error);
+                            // Return minimal data for collections without permissions
+                        }
                         
                         return {
                             collection,
@@ -362,12 +399,26 @@ export default defineEndpoint({
                 const itemsResult = await itemLoader.loadItems(collection, {
                     filter: {id: {_in: ids}},
                     fields: fields === '*' ? ['*'] : String(fields).split(','),
-                    limit: -1
+                    limit: -1,
+                    returnMinimalOnPermissionError: true
                 });
 
                 // Add usage information to each item
                 const itemsWithUsage = await Promise.all(
                     itemsResult.data.map(async (item) => {
+                        // Skip usage calculation for items without permission
+                        if (item._no_permission) {
+                            return {
+                                ...item,
+                                usage_locations: [],
+                                usage_summary: {
+                                    total_count: 0,
+                                    by_collection: {},
+                                    by_status: {}
+                                }
+                            };
+                        }
+
                         // Try to get complete cached result first
                         const itemCacheKey = CacheKeys.itemDetail(collection, item.id, fields);
                         

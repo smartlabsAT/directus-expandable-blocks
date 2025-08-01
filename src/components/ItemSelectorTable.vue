@@ -134,9 +134,9 @@
               <span class="item-title">{{ extractItemTitle(item) }}</span>
             </div>
             <!-- Update Info -->
-            <span v-if="showLastUpdate && item.date_updated" class="update-info">
+            <span v-if="showLastUpdate && item?.date_updated" class="update-info">
               {{ formatRelativeTime(item.date_updated) }}
-              <span v-if="item.user_updated">
+              <span v-if="item?.user_updated">
                 by {{ getUserDisplayName(item.user_updated) }}
               </span>
             </span>

@@ -25,6 +25,8 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   // Collection helpers
   function getCollectionName(item: JunctionRecord): string {
+    if (!item || typeof item !== 'object') return 'Unknown';
+    
     const collection = getItemCollection(item);
     if (!collection) return 'Unknown';
     const collectionInfo = collectionsStore.getCollection(collection);
@@ -32,6 +34,8 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
   }
 
   function getCollectionIcon(item: JunctionRecord): string | null {
+    if (!item || typeof item !== 'object') return null;
+    
     const collection = getItemCollection(item);
     if (!collection) return null;
     const collectionInfo = collectionsStore.getCollection(collection);
@@ -40,11 +44,16 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   // Field helpers
   function getFieldsForItem(item: JunctionRecord): any[] {
+    if (!item || typeof item !== 'object') {
+      logger.warn('Invalid item passed to getFieldsForItem:', item);
+      return [];
+    }
+    
     const actualItem = getActualItem(item);
-    const collection = (actualItem as any).collection || item.collection;
+    const collection = item.collection || (actualItem as any)?.collection;
     
     if (!isValidCollection(collection)) {
-      logger.warn('No collection found for item:', item);
+      logger.warn('No valid collection found for item:', { item, collection });
       return [];
     }
     

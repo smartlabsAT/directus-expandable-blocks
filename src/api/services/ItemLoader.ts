@@ -53,14 +53,13 @@ export class ItemLoader {
   ): Promise<ItemResult<T>> {
     const normalizedQuery = normalizeQuery(query);
 
-    // Check for translations and expand fields if needed
-    const expandedFields = normalizedQuery.expandTranslations 
-      ? await this.expandTranslationFields(collection, normalizedQuery.fields)
-      : normalizedQuery.fields;
-
-    const itemsService = this.createItemsService(collection);
-
     try {
+      // Check for translations and expand fields if needed
+      const expandedFields = normalizedQuery.expandTranslations 
+        ? await this.expandTranslationFields(collection, normalizedQuery.fields)
+        : normalizedQuery.fields;
+
+      const itemsService = this.createItemsService(collection);
       const queryOptions: any = {
         limit: normalizedQuery.limit,
         offset: normalizedQuery.offset,
@@ -103,6 +102,21 @@ export class ItemLoader {
         throw error;
       }
       
+      // Log error for debugging
+      console.log('[ItemLoader] Error loading items:', {
+        collection,
+        error: error.message,
+        code: error.code,
+        returnMinimalOnPermissionError: normalizedQuery.returnMinimalOnPermissionError
+      });
+      
+      // Check if it's a permission error and we should return minimal data
+      const isPermissionError = this.isPermissionError(error);
+      if (isPermissionError && normalizedQuery.returnMinimalOnPermissionError) {
+        console.log('[ItemLoader] Permission error detected, returning minimal items');
+        return this.loadMinimalItems(collection, normalizedQuery);
+      }
+      
       const errorMessage = `Failed to load items from '${collection}': ${extractDirectusErrorMessage(error)}`;
       throw new DatabaseQueryError(errorMessage);
     }
@@ -111,6 +125,103 @@ export class ItemLoader {
   // ============================================================================
   // Private Helper Methods
   // ============================================================================
+
+  /**
+   * Check if an error is a permission error
+   */
+  private isPermissionError(error: any): boolean {
+    const message = extractDirectusErrorMessage(error).toLowerCase();
+    const isPermError = message.includes('permission') || 
+           message.includes('access') ||
+           message.includes('forbidden') ||
+           message.includes('does not exist') || // Directus often says "or it does not exist" for permission errors
+           error.code === 'FORBIDDEN' ||
+           error.extensions?.code === 'FORBIDDEN';
+    
+    console.log('[ItemLoader] Permission check:', {
+      message,
+      isPermError,
+      code: error.code,
+      extensionsCode: error.extensions?.code
+    });
+    
+    return isPermError;
+  }
+
+  /**
+   * Load minimal item data directly from database
+   * Used when user has no permission but we still need to show locked items
+   */
+  private async loadMinimalItems<T = any>(
+    collection: string,
+    query: Required<ItemQuery>
+  ): Promise<ItemResult<T>> {
+    try {
+      console.log('[ItemLoader] Loading minimal items for:', {
+        collection,
+        filter: query.filter
+      });
+
+      // Check if table exists first
+      const tableExists = await checkTableExists(this.database, collection);
+      if (!tableExists) {
+        console.log('[ItemLoader] Table does not exist:', collection);
+        throw new Error(`Table ${collection} does not exist`);
+      }
+
+      // Build safe query
+      let dbQuery = this.database(collection)
+        .select('id')
+        .limit(query.limit >= 0 ? query.limit : -1);
+
+      if (query.offset > 0) {
+        dbQuery = dbQuery.offset(query.offset);
+      }
+
+      // Apply filter if provided
+      if (query.filter?.id?._in) {
+        dbQuery = dbQuery.whereIn('id', query.filter.id._in);
+      }
+
+      const items = await dbQuery;
+
+      // Add minimal data and permission flag
+      const minimalItems = items.map((item: any) => ({
+        id: item.id,
+        _collection: collection,
+        _no_permission: true
+      }));
+
+      // Get counts (without permission check)
+      const totalCount = await this.database(collection).count('* as count').first();
+      const filterCount = query.filter?.id?._in 
+        ? minimalItems.length 
+        : totalCount?.count || 0;
+
+      const metadata = this.calculateMetadata(
+        totalCount?.count || 0,
+        filterCount,
+        query.limit,
+        query.offset
+      );
+
+      return {
+        data: minimalItems as T[],
+        meta: metadata
+      };
+    } catch (error: any) {
+      // If even minimal access fails, return empty result
+      return {
+        data: [],
+        meta: {
+          total_count: 0,
+          filter_count: 0,
+          limit: query.limit,
+          offset: query.offset
+        }
+      };
+    }
+  }
 
   /**
    * Create an ItemsService instance for a collection

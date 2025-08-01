@@ -128,16 +128,28 @@ export function useM2AData(
         const mappedCollections = await Promise.all(
           collections.map(async (col: string) => {
             try {
-              const response = await api.get(`/collections/${col}`);
-              const collectionData = response.data.data;
+              const response = await api.get(`/expandable-blocks-api/${col}/metadata`);
+              const metadata = response?.data;
+              
+              // Ensure metadata exists and has expected structure
+              if (!metadata || typeof metadata !== 'object') {
+                logger.warn(`Invalid metadata response for ${col}`, metadata);
+                return {
+                  collection: col,
+                  name: col,
+                  icon: 'box',
+                  singleton: false
+                };
+              }
+              
               return {
                 collection: col,
-                name: collectionData.meta?.display_name || collectionData.name || col,
-                icon: collectionData.meta?.icon || 'box',
-                singleton: collectionData.meta?.singleton || false
+                name: metadata.collectionMetadata?.name || metadata.collection || col,
+                icon: metadata.collectionMetadata?.icon || 'box',
+                singleton: metadata.collectionMetadata?.singleton || false
               };
             } catch (error) {
-              logger.warn(`Failed to load collection details for ${col}:`, error);
+              logger.warn(`Failed to load metadata for ${col}, using fallback:`, error);
               return {
                 collection: col,
                 name: col,
@@ -179,16 +191,28 @@ export function useM2AData(
         const mappedCollections = await Promise.all(
           collections.map(async (col: string) => {
             try {
-              const response = await api.get(`/collections/${col}`);
-              const collectionData = response.data.data;
+              const response = await api.get(`/expandable-blocks-api/${col}/metadata`);
+              const metadata = response?.data;
+              
+              // Ensure metadata exists and has expected structure
+              if (!metadata || typeof metadata !== 'object') {
+                logger.warn(`Invalid metadata response for ${col}`, metadata);
+                return {
+                  collection: col,
+                  name: col,
+                  icon: 'box',
+                  singleton: false
+                };
+              }
+              
               return {
                 collection: col,
-                name: collectionData.meta?.display_name || collectionData.name || col,
-                icon: collectionData.meta?.icon || 'box',
-                singleton: collectionData.meta?.singleton || false
+                name: metadata.collectionMetadata?.name || metadata.collection || col,
+                icon: metadata.collectionMetadata?.icon || 'box',
+                singleton: metadata.collectionMetadata?.singleton || false
               };
             } catch (error) {
-              logger.warn(`Failed to load collection details for ${col}:`, error);
+              logger.warn(`Failed to load metadata for ${col}, using fallback:`, error);
               return {
                 collection: col,
                 name: col,

@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import {toRefs, inject, ref, onMounted, computed, watch} from 'vue';
+import {toRefs, inject, ref, onMounted, onUnmounted, computed, watch} from 'vue';
 import { debounce } from 'lodash-es';
 import {useExpandableBlocks} from './composables/useExpandableBlocks';
 import {useItemSelector} from './composables/useItemSelector';
@@ -110,6 +110,9 @@ const initialValues = inject('initialValues', ref({}));
 
 // Get refs for reactive props
 const {value: modelValue, collection, field, primaryKey, disabled, options} = toRefs(props);
+
+// Component lifecycle state
+const isMounted = ref(false);
 
 // Initialize expandable blocks composable
 const expandableBlocks = useExpandableBlocks(
@@ -224,28 +227,46 @@ function handleItemSelectionAsCopy(selectedItems: any[]) {
   itemSelector.close();
 }
 
-// Watch for changes in items to reload usage data
-watch(items, debounce(async (newItems, oldItems) => {
+// Store debounced function for cleanup
+const debouncedLoadUsageData = debounce(async (newItems, oldItems) => {
   // Only reload if there are actual items and the count changed
-  if (newItems && oldItems && newItems.length !== oldItems.length) {
+  if (newItems && oldItems && newItems.length !== oldItems.length && isMounted.value) {
     await loadBlockUsageData();
   }
-}, 1000));
+}, 1000);
+
+// Watch for changes in items to reload usage data
+const stopWatcher = watch(items, debouncedLoadUsageData);
 
 // Initialize on mount
 onMounted(async () => {
+  isMounted.value = true;
+  
   // Initialize user presets first
   try {
     await userPresets.initialize();
     userPresetsInitialized.value = true;
-    logDebug('User presets initialized');
   } catch (err) {
     logDebug('Failed to initialize user presets', { error: err });
   }
   
   await initialize();
+  
   // Load usage data for existing blocks
-  await loadBlockUsageData();
+  if (items.value.length > 0) {
+    await loadBlockUsageData();
+  }
+});
+
+// Cleanup on unmount
+onUnmounted(() => {
+  isMounted.value = false;
+  
+  // Cancel any pending debounced calls
+  debouncedLoadUsageData.cancel?.();
+  
+  // Stop the watcher
+  stopWatcher();
 });
 </script>
 

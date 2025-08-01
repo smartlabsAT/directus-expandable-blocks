@@ -45,6 +45,9 @@ export interface ItemQuery {
   
   /** Deep filter for nested relations */
   deep?: any;
+  
+  /** Return minimal data (id, collection) on permission error instead of throwing */
+  returnMinimalOnPermissionError?: boolean;
 }
 
 /**
@@ -106,7 +109,8 @@ export const DEFAULT_QUERY: Required<ItemQuery> = {
   search: '' as string,
   sort: [],
   expandTranslations: true,
-  deep: undefined as any
+  deep: undefined as any,
+  returnMinimalOnPermissionError: false
 };
 
 /**

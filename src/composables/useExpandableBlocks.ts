@@ -68,8 +68,9 @@ export function useExpandableBlocks(
     { value: 'archived', label: 'Archived' }
   ];
   
-  // Usage data state
-  const blockUsageData = ref<Record<string, any>>({});
+  // Usage data state - use a non-reactive object to avoid Vue reactivity issues
+  let blockUsageDataStore: Record<string, any> = {};
+  const blockUsageData = computed(() => blockUsageDataStore);
 
   // Computed properties
   const sortable = computed(() => mergedOptions.value?.enableSorting !== false);
@@ -391,6 +392,7 @@ export function useExpandableBlocks(
    */
   async function loadBlockUsageData() {
     try {
+      
       // Get all existing item IDs grouped by collection
       const itemsByCollection = new Map<string, (string | number)[]>();
       
@@ -408,6 +410,9 @@ export function useExpandableBlocks(
         }
       });
       
+      // Collect all usage data updates
+      const newUsageData: Record<string, any> = {};
+      
       // Load usage data for each collection
       const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
         try {
@@ -419,12 +424,32 @@ export function useExpandableBlocks(
           // Store usage data by item ID
           const currentParentId = props.primaryKey;
           
-          response.data.data.forEach((item: any) => {
+          // Ensure response data exists and is an array
+          const responseData = response?.data?.data;
+          if (!Array.isArray(responseData)) {
+            logWarn('Invalid response data from detail API', { collection, responseData });
+            return;
+          }
+          
+          responseData.forEach((item: any) => {
+            // Skip items with no permission or invalid data
+            if (!item || typeof item !== 'object' || item._no_permission) {
+              return;
+            }
+            
+            // Ensure item has an id
+            if (!item.id) {
+              logWarn('Item missing id', { item });
+              return;
+            }
+            
             if (item.usage_summary?.total_count > 0) {
               // Group locations by parent entity
               const locationsByParent = new Map<string, any>();
               
-              item.usage_locations.forEach((location: any) => {
+              // Ensure usage_locations is an array
+              const usageLocations = Array.isArray(item.usage_locations) ? item.usage_locations : [];
+              usageLocations.forEach((location: any) => {
                 const parentKey = `${location.collection}:${location.id}`;
                 if (!locationsByParent.has(parentKey)) {
                   locationsByParent.set(parentKey, {
@@ -459,16 +484,22 @@ export function useExpandableBlocks(
               
               // Only store if there are other usages
               if (totalCount > 0) {
-                blockUsageData.value[`${collection}:${item.id}`] = {
+                const key = `${collection}:${item.id}`;
+                // Create plain object without Vue reactivity proxies
+                const usageInfo = {
                   usageCount: totalCount,
                   externalCount,
                   internalCount,
-                  externalLocations,
+                  externalLocations: externalLocations || [],
                   usageSummary: {
-                    ...item.usage_summary,
-                    total_count: totalCount
+                    total_count: totalCount,
+                    by_collection: item.usage_summary?.by_collection || {},
+                    by_status: item.usage_summary?.by_status || {}
                   }
                 };
+                
+                // Ensure we're not storing Vue reactive objects
+                newUsageData[key] = JSON.parse(JSON.stringify(usageInfo));
               }
             }
           });
@@ -479,10 +510,10 @@ export function useExpandableBlocks(
       
       await Promise.all(usagePromises);
       
-      logDebug('Loaded block usage data', {
-        totalBlocksWithUsage: Object.keys(blockUsageData.value).length,
-        data: blockUsageData.value
-      });
+      // Update blockUsageData once with all collected data
+      // Simply update the non-reactive store
+      blockUsageDataStore = { ...blockUsageDataStore, ...newUsageData };
+      
     } catch (error) {
       logError('Error loading block usage data', error);
     }
@@ -492,34 +523,59 @@ export function useExpandableBlocks(
    * Get usage data for a specific block
    */
   function getBlockUsageData(item: JunctionRecord) {
-    const collection = item.collection;
-    const itemId = getActualItemId(item);
-    
-    if (!collection || !itemId || isNewItem(item)) {
+    try {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+      
+      const collection = item.collection;
+      const itemId = getActualItemId(item);
+      
+      if (!collection || !itemId || isNewItem(item)) {
+        return null;
+      }
+      
+      const key = `${collection}:${itemId}`;
+      if (!blockUsageData.value || typeof blockUsageData.value !== 'object') {
+        return null;
+      }
+      
+      // Return a plain object to avoid Vue reactivity issues
+      const data = blockUsageData.value[key];
+      if (!data) return null;
+      
+      // Create a shallow copy to avoid reactivity chains
+      return {
+        usageCount: data.usageCount || 0,
+        externalCount: data.externalCount || 0,
+        internalCount: data.internalCount || 0,
+        externalLocations: data.externalLocations || [],
+        usageSummary: data.usageSummary || null
+      };
+    } catch (error) {
+      logError('getBlockUsageData - Error:', error, { item });
       return null;
     }
-    
-    return blockUsageData.value[`${collection}:${itemId}`] || null;
   }
 
-  // Return consolidated API
+  // Return all public methods and state
   return {
-    // State
-    items,
-    expandedItems,
-    loading,
-    relationInfo,
-    m2aStructure,
-    allowedCollections,
-    allowedCollectionsForExisting,
-    deleteDialog,
-    itemToDelete,
-    isInitialLoad,
-    mergedOptions,
-    blockOriginalStates,
-    originalItemOrder,
-    availableStatuses,
-    blockUsageData,
+      // State
+      items,
+      expandedItems,
+      loading,
+      relationInfo,
+      m2aStructure,
+      allowedCollections,
+      allowedCollectionsForExisting,
+      deleteDialog,
+      itemToDelete,
+      isInitialLoad,
+      mergedOptions,
+      blockOriginalStates,
+      originalItemOrder,
+      availableStatuses,
+      blockUsageData,
     
     // Computed
     sortable,

@@ -170,6 +170,9 @@ export interface GetUsageLocationsOptions {
   
   /** Force refresh (ignore cache) */
   forceRefresh?: boolean;
+  
+  /** Bypass permissions to get all relations (for frontend metadata) */
+  bypassPermissions?: boolean;
 }
 
 /**

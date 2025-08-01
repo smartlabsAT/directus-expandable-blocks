@@ -28,7 +28,17 @@ export class M2AHelper {
     const relation = relations?.[0];
     
     if (!relation) {
-      throw new Error(`No relation found for ${collection}.${field}`);
+      logger.debug(`No relation found for ${collection}.${field}, returning minimal structure`);
+      // Return a minimal structure instead of throwing
+      return {
+        field,
+        collection,
+        junctionCollection: `${collection}_${field}`,
+        junctionField: field,
+        foreignKeyField: `${collection}_id`,
+        allowedCollections: [],
+        nestedM2AFields: {}
+      };
     }
 
     // Determine junction collection name
@@ -80,12 +90,17 @@ export class M2AHelper {
         if (m2aFields.length > 0) {
           fieldInfo.hasNestedM2A = true;
           for (const nestedField of m2aFields) {
-            // Recursively analyze nested M2A
-            const nestedInfo = await this.analyzeM2AStructure(
-              allowedCollection, 
-              nestedField.field
-            );
-            fieldInfo.nestedM2AFields![allowedCollection] = nestedInfo;
+            try {
+              // Recursively analyze nested M2A
+              const nestedInfo = await this.analyzeM2AStructure(
+                allowedCollection, 
+                nestedField.field
+              );
+              fieldInfo.nestedM2AFields![allowedCollection] = nestedInfo;
+            } catch (nestedError) {
+              logger.warn(`Could not analyze nested field ${allowedCollection}.${nestedField.field}:`, nestedError);
+              // Continue with other fields
+            }
           }
         }
       } catch (error) {

@@ -49,6 +49,7 @@ export function normalizeQuery(query: ItemQuery): Required<ItemQuery> {
     search: query.search || '',
     sort: normalizeSort(query.sort),
     expandTranslations: query.expandTranslations ?? DEFAULT_QUERY.expandTranslations,
-    deep: query.deep || undefined
+    deep: query.deep || undefined,
+    returnMinimalOnPermissionError: query.returnMinimalOnPermissionError ?? DEFAULT_QUERY.returnMinimalOnPermissionError
   };
 }
