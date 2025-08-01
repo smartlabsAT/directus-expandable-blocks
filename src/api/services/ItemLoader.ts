@@ -1,12 +1,10 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import { 
   ItemLoaderConfig, 
   ItemQuery, 
   ItemResult, 
   ItemMetadata,
-  CountOptions,
-  DEFAULT_QUERY,
-  MAX_LIMIT
+  CountOptions
 } from '../types/ItemLoaderTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { FieldAnalyzer } from './FieldAnalyzer';
@@ -22,10 +20,10 @@ import type { DirectusServices, DirectusSchema, DirectusAccountability } from '.
  * Service for loading items from Directus collections with pagination and filtering
  */
 export class ItemLoader {
-  private database: Knex;
-  private schema: DirectusSchema;
-  private services: DirectusServices;
-  private accountability?: DirectusAccountability;
+  private readonly database: Knex;
+  private readonly schema: DirectusSchema;
+  private readonly services: DirectusServices;
+  private readonly accountability?: DirectusAccountability;
   private fieldAnalyzer?: FieldAnalyzer;
 
   constructor(config: ItemLoaderConfig) {
@@ -97,16 +95,19 @@ export class ItemLoader {
         data: itemsArray,
         meta: metadata
       };
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof InvalidCollectionError) {
         throw error;
       }
       
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorCode = error instanceof Error && 'code' in error ? (error as any).code : undefined;
+      
       // Log error for debugging
       console.log('[ItemLoader] Error loading items:', {
         collection,
-        error: error.message,
-        code: error.code,
+        error: errorMsg,
+        code: errorCode,
         returnMinimalOnPermissionError: normalizedQuery.returnMinimalOnPermissionError
       });
       
@@ -156,18 +157,27 @@ export class ItemLoader {
     collection: string,
     query: Required<ItemQuery>
   ): Promise<ItemResult<T>> {
+    // Check if table exists first
+    const tableExists = await checkTableExists(this.database, collection);
+    if (!tableExists) {
+      console.log('[ItemLoader] Table does not exist:', collection);
+      // Return empty result for non-existent tables
+      return {
+        data: [],
+        meta: {
+          total_count: 0,
+          filter_count: 0,
+          limit: query.limit,
+          offset: query.offset
+        }
+      };
+    }
+
     try {
       console.log('[ItemLoader] Loading minimal items for:', {
         collection,
         filter: query.filter
       });
-
-      // Check if table exists first
-      const tableExists = await checkTableExists(this.database, collection);
-      if (!tableExists) {
-        console.log('[ItemLoader] Table does not exist:', collection);
-        throw new Error(`Table ${collection} does not exist`);
-      }
 
       // Build safe query
       let dbQuery = this.database(collection)
@@ -196,11 +206,11 @@ export class ItemLoader {
       const totalCount = await this.database(collection).count('* as count').first();
       const filterCount = query.filter?.id?._in 
         ? minimalItems.length 
-        : totalCount?.count || 0;
+        : Number(totalCount?.count) || 0;
 
       const metadata = this.calculateMetadata(
-        totalCount?.count || 0,
-        filterCount,
+        Number(totalCount?.count) || 0,
+        Number(filterCount),
         query.limit,
         query.offset
       );
@@ -209,7 +219,7 @@ export class ItemLoader {
         data: minimalItems as T[],
         meta: metadata
       };
-    } catch (error: any) {
+    } catch (error) {
       // If even minimal access fails, return empty result
       return {
         data: [],
@@ -297,7 +307,7 @@ export class ItemLoader {
         .first();
       
       return parseInt(String(result?.count || '0'));
-    } catch (error: any) {
+    } catch (error) {
       return 0;
     }
   }
@@ -328,7 +338,7 @@ export class ItemLoader {
       });
 
       return extractAggregateCount(result);
-    } catch (error: any) {
+    } catch (error) {
       // Fallback to unfiltered count
       return this.getTotalCount(collection);
     }
