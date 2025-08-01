@@ -37,7 +37,6 @@ export function rateLimitMiddleware() {
     // Get client identifier (IP or user ID)
     const clientId = getClientIdentifier(req);
     const now = Date.now();
-    const windowStart = now - API_LIMITS.RATE_LIMIT_WINDOW_MS;
     
     // Get or create rate limit entry
     let entry = rateLimitStore[clientId];

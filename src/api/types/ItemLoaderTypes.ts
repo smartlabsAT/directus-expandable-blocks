@@ -16,6 +16,9 @@ export interface ItemLoaderConfig {
   
   /** Optional accountability for permissions */
   accountability?: DirectusAccountability;
+  
+  /** Logger instance */
+  logger?: any;
 }
 
 /**
@@ -140,9 +143,5 @@ export function isValidItemQuery(query: any): query is ItemQuery {
     return false;
   }
   
-  if (query.sort !== undefined && !Array.isArray(query.sort)) {
-    return false;
-  }
-  
-  return true;
+  return !(query.sort !== undefined && !Array.isArray(query.sort));
 }

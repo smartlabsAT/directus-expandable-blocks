@@ -62,3 +62,8 @@ temp/
 # Wiki (managed separately on GitHub)
 wiki/
 wiki-repo/
+
+# Qodana
+.qodana/
+qodana.sarif.json
+

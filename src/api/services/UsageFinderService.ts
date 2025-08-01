@@ -11,6 +11,7 @@ import {
 import { createServiceLogger } from '../utils/logger-utils';
 import { buildCacheKey, itemCacheKey } from '../utils/cache-utils';
 import { TITLE_FIELDS, METADATA_FIELDS, parseAllowedCollections } from '../utils/constants';
+import { getErrorMessage } from '../utils/error-utils';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
@@ -62,10 +63,7 @@ export class UsageFinderService {
     if (cached) return cached as UsageLocation[];
 
     const {
-      includeInactive = true,
-      limitPerCollection,
       excludeCollections = [],
-      includeFieldMetadata = true,
       groupDuplicates = true,
       excludeTranslations = false
     } = options;
@@ -117,65 +115,97 @@ export class UsageFinderService {
     collection: string,
     itemIds: (string | number)[],
     options: FindUsageOptions = {}
-  ): Promise<Usage[]> {
+  ): Promise<UsageLocation[]> {
     if (itemIds.length === 0) {
       return [];
     }
     
     // Build batch cache key
     const cacheKey = `batch:${collection}:${itemIds.sort().join(',')}:${JSON.stringify(options)}`;
-    const cached = this.getCache(cacheKey);
+    const cached = this.getFromCache(cacheKey);
     
     if (cached) {
       return cached;
     }
     
     const {
-      includeTranslations = false,
-      includeFieldMetadata = true,
-      excludeTranslations = false,
-      groupDuplicates = false
+      excludeTranslations = false
     } = options;
     
-    // Get all relations pointing to this collection
-    const relationsToCollection = await this.relationAnalyzer.getRelationsToCollection(
-      collection,
-      { bypassPermissions: true }
-    );
+    // Use pre-loaded incoming relations
+    const relationsToCollection = this.incomingRelations;
     
     if (relationsToCollection.length === 0) {
       this.setCache(cacheKey, []);
       return [];
     }
     
-    const usages: Usage[] = [];
+    const usages: UsageLocation[] = [];
     
     // Process each relation in batch
     for (const relation of relationsToCollection) {
       try {
-        const relationUsages = await this.findUsagesInRelationBatch(
-          relation,
-          collection,
-          itemIds,
-          includeFieldMetadata
-        );
-        
-        if (relationUsages.length > 0) {
-          usages.push(...relationUsages);
+        // Handle M2A relations
+        if (!relation.one_collection) {
+          const allowedCollections = parseAllowedCollections(relation.one_allowed_collections!);
+          if (!allowedCollections.includes(collection)) continue;
+          
+          // Find usages in junction table for all items
+          const junctionUsages = await this.database(relation.many_collection)
+            .where(relation.one_collection_field!, collection)
+            .whereIn(relation.junction_field!, itemIds.map(id => String(id)))
+            .select('*');
+            
+          for (const junctionItem of junctionUsages) {
+            const usage: UsageLocation = {
+              collection: relation.many_collection,
+              collection_name: relation.many_collection,
+              item_id: junctionItem[relation.many_field!],
+              item_name: `Item ${junctionItem[relation.many_field!]}`,
+              field: relation.many_field!,
+              field_name: relation.many_field!,
+              status: junctionItem.status || null,
+              sort: junctionItem.sort || 0,
+              depth: 0,
+              relation_type: 'M2A' as const
+            };
+            usages.push(usage);
+          }
+        } else {
+          // Handle M2O relations
+          const items = await this.database(relation.many_collection)
+            .whereIn(relation.many_field, itemIds.map(id => String(id)))
+            .select('*');
+            
+          for (const item of items) {
+            const usage: UsageLocation = {
+              collection: relation.many_collection,
+              collection_name: relation.many_collection,
+              item_id: item.id,
+              item_name: item.title || item.name || `Item ${item.id}`,
+              field: relation.many_field,
+              field_name: relation.many_field,
+              status: item.status || null,
+              sort: item.sort || 0,
+              depth: 0,
+              relation_type: 'M2O' as const
+            };
+            usages.push(usage);
+          }
         }
       } catch (error) {
         this.logger.error(`Error finding batch usages in relation:`, {
-          relation: relation.collection,
-          field: relation.field,
-          error
+          relation: relation.many_collection,
+          field: relation.many_field,
+          error: getErrorMessage(error)
         });
       }
     }
     
     // Filter translations if needed
     let filteredUsages = usages;
-    if (excludeTranslations && !includeTranslations) {
-      filteredUsages = usages.filter(usage => !this.isTranslationCollection(usage.collection));
+    if (excludeTranslations) {
+      filteredUsages = usages.filter(usage => !usage.collection.endsWith('_translations'));
     }
     
     this.setCache(cacheKey, filteredUsages);
@@ -384,7 +414,7 @@ export class UsageFinderService {
       query = query.limit(limit);
     }
 
-    return await query;
+    return query;
   }
 
   /**
@@ -653,9 +683,8 @@ export class UsageFinderService {
     if (ids.length === 0) return [];
 
     try {
-      const items = await this.database(collection)
+      return await this.database(collection)
         .whereIn('id', ids.map(id => String(id)));
-      return items;
     } catch (error) {
       this.logger.error(`Error loading items from ${collection}:`, error);
       return [];

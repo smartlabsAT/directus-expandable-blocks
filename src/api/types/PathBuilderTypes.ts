@@ -1,5 +1,4 @@
 import { Knex } from 'knex';
-import { UsageLocation, UsageTree } from './UsageFinderTypes';
 import { UsageFinderService } from '../services/UsageFinderService';
 import { CacheService } from './CacheTypes';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from './directus-api';

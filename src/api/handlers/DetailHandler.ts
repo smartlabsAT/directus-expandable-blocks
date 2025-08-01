@@ -4,11 +4,13 @@ import type { DirectusItem, Logger } from '../types/common';
 import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheKeys, CacheTTL } from '../types/CacheTypes';
-import type { DetailResponse, UsageLocation, UsageSummary } from '../schemas/response-schemas';
+import type { DetailResponse, UsageLocation as ResponseUsageLocation, UsageSummary } from '../schemas/response-schemas';
 import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection, validateIds, validateFields } from '../utils/validation';
 import type { UsageFinderService } from '../services/UsageFinderService';
 import type { PathBuilderService } from '../services/PathBuilderService';
+import type { UsageLocation } from '../types/UsageFinderTypes';
+import { getErrorMessage } from '../utils/error-utils';
 
 /**
  * Handler for detail endpoint
@@ -134,7 +136,7 @@ export class DetailHandler {
       res.json(response);
     } catch (error) {
       // Log error but don't expose internals
-      this.logger.error('Detail handler error:', error);
+      this.logger.error('Detail handler error: ' + getErrorMessage(error));
       
       // Send appropriate error response
       if (error instanceof Error) {
@@ -203,7 +205,7 @@ export class DetailHandler {
       }
       
       // Process each item with its usages
-      const results = await Promise.all(
+      return await Promise.all(
         items.map(async (item) => {
           const itemUsages = allUsages.filter((usage: any) => usage.target_id === item.id);
           
@@ -230,10 +232,8 @@ export class DetailHandler {
           return result;
         })
       );
-      
-      return results;
     } catch (error) {
-      this.logger.error('Error batch processing usage:', error);
+      this.logger.error('Error batch processing usage: ' + getErrorMessage(error));
       
       // Fallback to individual processing on error
       return Promise.all(
@@ -280,7 +280,7 @@ export class DetailHandler {
         usage_summary: summary
       };
     } catch (error) {
-      this.logger.error(`Error processing usage for item ${item.id}:`, error);
+      this.logger.error(`Error processing usage for item ${item.id}: ` + getErrorMessage(error));
       return {
         ...item,
         usage_locations: [],
@@ -302,8 +302,8 @@ export class DetailHandler {
   private async buildUsageLocations(
     directUsages: UsageLocation[],
     pathBuilder: PathBuilderService | null
-  ): Promise<UsageLocation[]> {
-    const locations: UsageLocation[] = [];
+  ): Promise<ResponseUsageLocation[]> {
+    const locations: ResponseUsageLocation[] = [];
     
     for (const usage of directUsages) {
       // Build path with full relation information
@@ -316,10 +316,10 @@ export class DetailHandler {
         collection: usage.collection,
         collection_display: usage.collection_name,
         title: usage.item_name,
-        status: usage.status,
+        status: usage.status || null,
         field: usage.field,
-        field_display: usage.field_name,
-        sort: usage.sort,
+        field_display: usage.field_name || usage.field || '',
+        sort: usage.sort || null,
         path,
         edit_url: `/admin/content/${usage.collection}/${usage.item_id}`
       });
@@ -331,7 +331,7 @@ export class DetailHandler {
   /**
    * Calculate usage summary from usage locations
    */
-  private calculateUsageSummary(usageLocations: UsageLocation[]): UsageSummary {
+  private calculateUsageSummary(usageLocations: ResponseUsageLocation[]): UsageSummary {
     const summary: UsageSummary = {
       total_count: usageLocations.length,
       by_collection: {},

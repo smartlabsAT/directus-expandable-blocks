@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheServiceConfig, CacheTTL } from '../types/CacheTypes';
 

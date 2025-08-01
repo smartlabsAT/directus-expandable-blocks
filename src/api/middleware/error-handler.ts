@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import { getErrorMessage, isPermissionError } from '../utils/error-utils';
 import { createErrorResponse, createPermissionError } from '../schemas/response-schemas';
 import { isProduction } from '../utils/validation';

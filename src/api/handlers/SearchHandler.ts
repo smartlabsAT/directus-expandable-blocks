@@ -8,6 +8,7 @@ import { ItemQuery } from '../types/ItemLoaderTypes';
 import type { SearchResponse } from '../schemas/response-schemas';
 import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection, validateFields, validateFilter, validateSort, validatePagination } from '../utils/validation';
+import { getErrorMessage } from '../utils/error-utils';
 
 /**
  * Handler for the search endpoint that returns items with optional filtering and pagination
@@ -79,7 +80,7 @@ export class SearchHandler {
       res.json(response);
     } catch (error) {
       // Log error but don't expose internals
-      this.logger.error('Search handler error:', error);
+      this.logger.error('Search handler error: ' + getErrorMessage(error));
       
       // Send appropriate error response
       if (error instanceof Error) {

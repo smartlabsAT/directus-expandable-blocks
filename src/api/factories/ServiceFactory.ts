@@ -85,7 +85,8 @@ export class ServiceFactory {
         database: this.context.database,
         services: this.context.services,
         schema,
-        accountability: this.context.accountability
+        accountability: this.context.accountability,
+        logger: this.context.logger
       });
     }
     return this.itemLoader;

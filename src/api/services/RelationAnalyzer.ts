@@ -11,7 +11,8 @@ import {
   isM2ORelation
 } from '../types/RelationTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
-import { parseMetadata, humanizeName } from '../utils/relation-utils';
+import { parseMetadata } from '../utils/relation-utils';
+import { formatName } from '../utils/string-utils';
 import type { Knex } from 'knex';
 import { createServiceLogger } from '../utils/logger-utils';
 import { getErrorMessage } from '../utils/error-utils';
@@ -258,7 +259,7 @@ export class RelationAnalyzer {
             (!SYSTEM_COLLECTIONS.includes(col) || options.includeSystem)) {
           metadata.set(col, {
             collection: col,
-            name: humanizeName(col),
+            name: formatName(col),
             icon: DEFAULT_COLLECTION_ICON
           });
         }
@@ -271,7 +272,7 @@ export class RelationAnalyzer {
       collections.forEach(col => {
         metadata.set(col, {
           collection: col,
-          name: humanizeName(col),
+          name: formatName(col),
           icon: DEFAULT_COLLECTION_ICON
         });
       });
@@ -340,7 +341,7 @@ export class RelationAnalyzer {
 
       this.addUsageEntry(usageMap, rel.many_collection, fieldName, {
         field: fieldName,
-        field_name: humanizeName(fieldName),
+        field_name: formatName(fieldName),
         relation_type: 'M2A',
         junction_table: rel.many_collection,
         junction_field: rel.junction_field || undefined,
@@ -361,7 +362,7 @@ export class RelationAnalyzer {
   ): void {
     this.addUsageEntry(usageMap, rel.many_collection!, rel.many_field!, {
       field: rel.many_field!,
-      field_name: humanizeName(rel.many_field!),
+      field_name: formatName(rel.many_field!),
       relation_type: 'M2O',
       relation_id: rel.id
     });
@@ -376,7 +377,7 @@ export class RelationAnalyzer {
   ): void {
     this.addUsageEntry(usageMap, rel.one_collection!, rel.one_field!, {
       field: rel.one_field!,
-      field_name: humanizeName(rel.one_field!),
+      field_name: formatName(rel.one_field!),
       relation_type: 'O2M',
       relation_id: rel.id
     });

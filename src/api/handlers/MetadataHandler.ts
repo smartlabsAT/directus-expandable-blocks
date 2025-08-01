@@ -8,6 +8,7 @@ import type { MetadataResponse } from '../schemas/response-schemas';
 import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection } from '../utils/validation';
 import type { RelationAnalyzer } from '../services/RelationAnalyzer';
+import { getErrorMessage } from '../utils/error-utils';
 import type { FieldAnalyzer } from '../services/FieldAnalyzer';
 
 /**
@@ -57,7 +58,7 @@ export class MetadataHandler {
       res.json(metadata);
     } catch (error) {
       // Log error but don't expose internals
-      this.logger.error('Metadata handler error:', error);
+      this.logger.error('Metadata handler error: ' + getErrorMessage(error));
       
       // Send appropriate error response
       if (error instanceof Error) {
@@ -93,24 +94,9 @@ export class MetadataHandler {
     fieldAnalyzer: FieldAnalyzer
   ): Promise<MetadataResponse> {
     // Initialize default response
-    let possibleLocations: Array<{
-      collection: string;
-      collection_name: string;
-      collection_icon?: string;
-      fields: string[];
-      relation_details: Array<{
-        type: string;
-        field: string;
-        related_collection?: string;
-        junction_field?: string;
-      }>;
-    }> = [];
+    let possibleLocations: any[] = [];
     
-    let fieldAnalysis: {
-      searchableFields: Array<{ field: string; field_name: string; type: string; }>;
-      translationInfo: { hasTranslations: boolean; };
-      collectionMetadata: { totalFields: number; translatableCount: number; systemFieldsCount: number; };
-    } = {
+    let fieldAnalysis: any = {
       searchableFields: [],
       translationInfo: { hasTranslations: false },
       collectionMetadata: { totalFields: 0, translatableCount: 0, systemFieldsCount: 0 }
@@ -123,7 +109,7 @@ export class MetadataHandler {
         includeHidden: true
       });
     } catch (error) {
-      this.logger.warn(`Failed to get relations for ${collection}:`, error);
+      this.logger.warn(`Failed to get relations for ${collection}: ` + getErrorMessage(error));
     }
     
     // Try to analyze fields
@@ -132,14 +118,23 @@ export class MetadataHandler {
         translationOptions: { includeLanguages: true }
       });
     } catch (error) {
-      this.logger.warn(`Failed to analyze fields for ${collection}:`, error);
+      this.logger.warn(`Failed to analyze fields for ${collection}: ` + getErrorMessage(error));
     }
     
     return {
       collection,
-      possibleLocations,
-      searchableFields: fieldAnalysis.searchableFields,
-      translationInfo: fieldAnalysis.translationInfo,
+      possibleLocations: possibleLocations.map(loc => ({
+        ...loc,
+        relation_details: loc.relation_details || []
+      })),
+      searchableFields: fieldAnalysis.searchableFields.map((field: any) => ({
+        field: field.field,
+        field_name: field.name,
+        type: field.type
+      })),
+      translationInfo: {
+        hasTranslations: fieldAnalysis.translationInfo.hasTranslations
+      },
       collectionMetadata: fieldAnalysis.collectionMetadata,
       cached_at: new Date().toISOString()
     };

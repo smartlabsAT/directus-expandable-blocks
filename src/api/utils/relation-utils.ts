@@ -1,4 +1,5 @@
 import { ParsedMetadata } from '../types/RelationTypes';
+import { formatName } from './string-utils';
 
 /**
  * Safely parses JSON metadata
@@ -64,8 +65,8 @@ export function getDisplayName(fieldInfo: any, defaultName: string): string {
            displayOptions.display || 
            interfaceOptions.placeholder || 
            options.note || 
-           humanizeName(defaultName);
+           formatName(defaultName);
   } catch (e) {
-    return humanizeName(defaultName);
+    return formatName(defaultName);
   }
 }

@@ -14,7 +14,7 @@ export abstract class APIError extends Error {
   public readonly code: string;
   public readonly isOperational: boolean;
 
-  constructor(message: string, statusCode: number, code: string, isOperational = true) {
+  protected constructor(message: string, statusCode: number, code: string, isOperational = true) {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode;
@@ -68,7 +68,7 @@ export class CollectionError extends APIError {
  * Used when user lacks permissions
  */
 export class PermissionError extends APIError {
-  constructor(message = ERROR_MESSAGES.ACCESS_DENIED) {
+  constructor(message: string = ERROR_MESSAGES.ACCESS_DENIED) {
     super(message, HTTP_STATUS.FORBIDDEN, 'PERMISSION_DENIED');
   }
 }

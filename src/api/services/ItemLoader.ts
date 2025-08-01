@@ -8,7 +8,7 @@ import {
 } from '../types/ItemLoaderTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { FieldAnalyzer } from './FieldAnalyzer';
-import { checkTableExists, extractDirectusErrorMessage, extractAggregateCount } from '../utils/database-utils';
+import { checkTableExists, extractAggregateCount } from '../utils/database-utils';
 import { getErrorMessage } from '../utils/error-utils';
 import { normalizeQuery } from '../utils/query-utils';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
@@ -25,6 +25,7 @@ export class ItemLoader {
   private readonly schema: DirectusSchema;
   private readonly services: DirectusServices;
   private readonly accountability?: DirectusAccountability;
+  private readonly logger: any;
   private fieldAnalyzer?: FieldAnalyzer;
 
   constructor(config: ItemLoaderConfig) {
@@ -32,6 +33,7 @@ export class ItemLoader {
     this.schema = config.schema;
     this.services = config.services;
     this.accountability = config.accountability;
+    this.logger = config.logger || console;
   }
 
   // ============================================================================
@@ -105,7 +107,7 @@ export class ItemLoader {
       const errorCode = error instanceof Error && 'code' in error ? (error as any).code : undefined;
       
       // Log error for debugging
-      console.log('[ItemLoader] Error loading items:', {
+      this.logger.error('Error loading items', {
         collection,
         error: errorMsg,
         code: errorCode,
@@ -115,11 +117,11 @@ export class ItemLoader {
       // Check if it's a permission error and we should return minimal data
       const isPermissionError = this.isPermissionError(error);
       if (isPermissionError && normalizedQuery.returnMinimalOnPermissionError) {
-        console.log('[ItemLoader] Permission error detected, returning minimal items');
+        this.logger.info('Permission error detected, returning minimal items', { collection });
         return this.loadMinimalItems(collection, normalizedQuery);
       }
       
-      const errorMessage = `Failed to load items from '${collection}': ${extractDirectusErrorMessage(error)}`;
+      const errorMessage = `Failed to load items from '${collection}': ${getErrorMessage(error)}`;
       throw new DatabaseQueryError(errorMessage);
     }
   }
@@ -132,7 +134,7 @@ export class ItemLoader {
    * Check if an error is a permission error
    */
   private isPermissionError(error: any): boolean {
-    const message = extractDirectusErrorMessage(error).toLowerCase();
+    const message = getErrorMessage(error).toLowerCase();
     const isPermError = message.includes('permission') || 
            message.includes('access') ||
            message.includes('forbidden') ||
@@ -140,7 +142,7 @@ export class ItemLoader {
            error.code === 'FORBIDDEN' ||
            error.extensions?.code === 'FORBIDDEN';
     
-    console.log('[ItemLoader] Permission check:', {
+    this.logger.debug('Permission check', {
       message,
       isPermError,
       code: error.code,
@@ -161,7 +163,7 @@ export class ItemLoader {
     // Check if table exists first
     const tableExists = await checkTableExists(this.database, collection);
     if (!tableExists) {
-      console.log('[ItemLoader] Table does not exist:', collection);
+      this.logger.warn('Table does not exist', { collection });
       // Return empty result for non-existent tables
       return {
         data: [],
@@ -175,7 +177,7 @@ export class ItemLoader {
     }
 
     try {
-      console.log('[ItemLoader] Loading minimal items for:', {
+      this.logger.debug('Loading minimal items', {
         collection,
         filter: query.filter
       });

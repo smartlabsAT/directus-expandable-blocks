@@ -15,7 +15,7 @@ import { buildCacheKey, collectionCacheKey, fieldCacheKey } from '../utils/cache
 import { TITLE_FIELDS } from '../utils/constants';
 import { createServiceLogger } from '../utils/logger-utils';
 import { getErrorMessage } from '../utils/error-utils';
-import { formatCollectionName, formatFieldName } from '../utils/string-utils';
+import { formatName } from '../utils/string-utils';
 import type { Logger } from '../types/directus-api';
 
 /**
@@ -476,7 +476,7 @@ export class PathBuilderService {
           }
           
           // Fallback to formatted collection name
-          return formatCollectionName(collection);
+          return formatName(collection);
         } catch (error) {
           const errorMessage = getErrorMessage(error);
           this.logger.debug(`Failed to get collection display for '${collection}':`, errorMessage);
@@ -507,7 +507,7 @@ export class PathBuilderService {
           }
           
           // Fallback to formatted field name
-          return formatFieldName(field);
+          return formatName(field);
         } catch (error) {
           const errorMessage = getErrorMessage(error);
           this.logger.debug(`Failed to get field display for '${collection}.${field}':`, errorMessage);

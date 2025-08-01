@@ -5,7 +5,6 @@ import {
   ERROR_MESSAGES, 
   DEFAULT_ALLOWED_COLLECTIONS,
   ENV_VARS,
-  ENVIRONMENTS,
   FIELD_CONSTANTS
 } from '../constants';
 
@@ -28,7 +27,7 @@ export function getAllowedCollections(): Set<string> {
  * Validate collection name against whitelist
  */
 export function validateCollection(collection: string): void {
-  if (!collection || typeof collection !== 'string') {
+  if (!collection) {
     throw new ValidationError(ERROR_MESSAGES.COLLECTION_REQUIRED);
   }
   

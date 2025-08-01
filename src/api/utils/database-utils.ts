@@ -1,8 +1,5 @@
 import type { Knex } from 'knex';
 
-// Re-export from error-utils for backward compatibility
-export { extractDirectusErrorMessage } from './error-utils';
-
 /**
  * Check if a table exists in the database
  * @param database Knex database connection
