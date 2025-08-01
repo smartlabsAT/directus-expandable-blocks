@@ -14,7 +14,7 @@ export function parseMetadata(meta: any): ParsedMetadata {
   if (typeof meta === 'string') {
     try {
       return JSON.parse(meta);
-    } catch (e) {
+    } catch {
       // Silently fail and return empty object
       return {};
     }
@@ -66,7 +66,7 @@ export function getDisplayName(fieldInfo: any, defaultName: string): string {
            interfaceOptions.placeholder || 
            options.note || 
            formatName(defaultName);
-  } catch (e) {
+  } catch {
     return formatName(defaultName);
   }
 }

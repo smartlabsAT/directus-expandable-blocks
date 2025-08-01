@@ -127,7 +127,7 @@ export function validateFilterDepth(obj: any, currentDepth = 0): void {
   
   if (obj && typeof obj === 'object') {
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         validateFilterDepth(obj[key], currentDepth + 1);
       }
     }
@@ -147,8 +147,8 @@ export function validateFilter(filter: any): any {
   if (typeof filter === 'string') {
     try {
       filterObj = JSON.parse(filter);
-    } catch (error) {
-      throw new Error('Invalid JSON in filter parameter');
+    } catch {
+      throw new ValidationError('Invalid JSON in filter parameter');
     }
   }
   
@@ -175,12 +175,12 @@ export function validateSort(sort: any): string[] | undefined {
   } else if (Array.isArray(sort)) {
     sortArray = sort;
   } else {
-    throw new Error('Sort must be a string or array');
+    throw new ValidationError('Sort must be a string or array');
   }
   
   return sortArray.map(field => {
     if (typeof field !== 'string') {
-      throw new Error('Sort fields must be strings');
+      throw new ValidationError('Sort fields must be strings');
     }
     
     const trimmedField = field.trim();
@@ -189,8 +189,8 @@ export function validateSort(sort: any): string[] | undefined {
     const fieldName = trimmedField.startsWith('-') ? trimmedField.substring(1) : trimmedField;
     
     // Validate field name
-    if (!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/.test(fieldName)) {
-      throw new Error(`Invalid sort field: ${fieldName}`);
+    if (!PATTERNS.FIELD_NAME.test(fieldName)) {
+      throw new ValidationError(`Invalid sort field: ${fieldName}`);
     }
     
     return trimmedField;
@@ -207,7 +207,7 @@ export function validatePagination(limit: any, offset: any): { limit: number; of
   if (limit !== undefined) {
     const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
     if (!Number.isInteger(parsedLimit) || parsedLimit < -1 || parsedLimit > 1000) {
-      throw new Error('Invalid limit parameter. Must be between -1 and 1000');
+      throw new ValidationError('Invalid limit parameter. Must be between -1 and 1000');
     }
     validatedLimit = parsedLimit;
   }
@@ -215,7 +215,7 @@ export function validatePagination(limit: any, offset: any): { limit: number; of
   if (offset !== undefined) {
     const parsedOffset = typeof offset === 'string' ? parseInt(offset, 10) : offset;
     if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
-      throw new Error('Invalid offset parameter. Must be >= 0');
+      throw new ValidationError('Invalid offset parameter. Must be >= 0');
     }
     validatedOffset = parsedOffset;
   }

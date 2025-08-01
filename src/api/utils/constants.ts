@@ -31,12 +31,9 @@ export function parseAllowedCollections(
   }
   
   // Handle comma-separated string format
-  if (typeof allowedCollections === 'string') {
-    return allowedCollections
-      .split(',')
-      .map(c => c.trim())
-      .filter(c => c.length > 0);
-  }
-  
-  return [];
+  // No need for typeof check - TypeScript already narrowed the type
+  return allowedCollections
+    .split(',')
+    .map(c => c.trim())
+    .filter(c => c.length > 0);
 }

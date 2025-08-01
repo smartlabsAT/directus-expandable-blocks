@@ -6,9 +6,8 @@ import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
 import { ItemQuery } from '../types/ItemLoaderTypes';
 import type { SearchResponse } from '../schemas/response-schemas';
-import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection, validateFields, validateFilter, validateSort, validatePagination } from '../utils/validation';
-import { getErrorMessage } from '../utils/error-utils';
+import { handleErrorResponse } from '../utils/response-error-handler';
 
 /**
  * Handler for the search endpoint that returns items with optional filtering and pagination
@@ -79,23 +78,7 @@ export class SearchHandler {
 
       res.json(response);
     } catch (error) {
-      // Log error but don't expose internals
-      this.logger.error('Search handler error: ' + getErrorMessage(error));
-      
-      // Send appropriate error response
-      if (error instanceof Error) {
-        if (error.message.includes('not allowed') || error.message.includes('Collection')) {
-          res.status(403).json(createValidationError('Access denied'));
-          return;
-        }
-        if (error.message.includes('Invalid') || error.message.includes('required')) {
-          res.status(400).json(createValidationError(error.message));
-          return;
-        }
-      }
-      
-      // Generic error for unexpected issues
-      res.status(500).json(createValidationError('An error occurred processing your request'));
+      handleErrorResponse(error, res, this.logger, 'Search handler');
     }
   }
 }

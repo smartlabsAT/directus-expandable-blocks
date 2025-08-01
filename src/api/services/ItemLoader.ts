@@ -222,7 +222,7 @@ export class ItemLoader {
         data: minimalItems as T[],
         meta: metadata
       };
-    } catch (error) {
+    } catch {
       // If even minimal access fails, return empty result
       return {
         data: [],
@@ -290,7 +290,7 @@ export class ItemLoader {
       }
       
       return fields;
-    } catch (error) {
+    } catch {
       // On error, return original fields
       return fields;
     }
@@ -310,7 +310,7 @@ export class ItemLoader {
         .first();
       
       return parseInt(String(result?.count || '0'));
-    } catch (error) {
+    } catch {
       return 0;
     }
   }
@@ -341,7 +341,7 @@ export class ItemLoader {
       });
 
       return extractAggregateCount(result);
-    } catch (error) {
+    } catch {
       // Fallback to unfiltered count
       return this.getTotalCount(collection);
     }

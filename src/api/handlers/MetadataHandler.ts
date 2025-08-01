@@ -5,10 +5,10 @@ import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
 import type { MetadataResponse } from '../schemas/response-schemas';
-import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection } from '../utils/validation';
 import type { RelationAnalyzer } from '../services/RelationAnalyzer';
 import { getErrorMessage } from '../utils/error-utils';
+import { handleErrorResponse } from '../utils/response-error-handler';
 import type { FieldAnalyzer } from '../services/FieldAnalyzer';
 
 /**
@@ -57,23 +57,7 @@ export class MetadataHandler {
 
       res.json(metadata);
     } catch (error) {
-      // Log error but don't expose internals
-      this.logger.error('Metadata handler error: ' + getErrorMessage(error));
-      
-      // Send appropriate error response
-      if (error instanceof Error) {
-        if (error.message.includes('not allowed') || error.message.includes('Collection')) {
-          res.status(403).json(createValidationError('Access denied'));
-          return;
-        }
-        if (error.message.includes('Invalid')) {
-          res.status(400).json(createValidationError(error.message));
-          return;
-        }
-      }
-      
-      // Generic error for unexpected issues
-      res.status(500).json(createValidationError('An error occurred processing your request'));
+      handleErrorResponse(error, res, this.logger, 'Metadata handler');
     }
   }
 

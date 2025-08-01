@@ -301,7 +301,7 @@ export class PathBuilderService {
         break;
 
       case 'full':
-      default:
+      default: {
         // Full format with collection, name, and field
         const parts = [];
         
@@ -317,6 +317,7 @@ export class PathBuilderService {
 
         formatted = parts.join(' ');
         break;
+      }
     }
 
     // Apply custom template if provided

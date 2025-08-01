@@ -14,6 +14,13 @@ export default [
         parser: typescriptParser,
         ecmaVersion: 2021,
         sourceType: 'module'
+      },
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        NodeJS: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly'
       }
     },
     plugins: {
@@ -22,7 +29,10 @@ export default [
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_'
+      }],
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],

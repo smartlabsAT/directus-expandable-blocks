@@ -11,6 +11,7 @@ import type { UsageFinderService } from '../services/UsageFinderService';
 import type { PathBuilderService } from '../services/PathBuilderService';
 import type { UsageLocation } from '../types/UsageFinderTypes';
 import { getErrorMessage } from '../utils/error-utils';
+import { handleErrorResponse } from '../utils/response-error-handler';
 
 /**
  * Handler for detail endpoint
@@ -135,23 +136,7 @@ export class DetailHandler {
 
       res.json(response);
     } catch (error) {
-      // Log error but don't expose internals
-      this.logger.error('Detail handler error: ' + getErrorMessage(error));
-      
-      // Send appropriate error response
-      if (error instanceof Error) {
-        if (error.message.includes('not allowed') || error.message.includes('Collection')) {
-          res.status(403).json(createValidationError('Access denied'));
-          return;
-        }
-        if (error.message.includes('Invalid') || error.message.includes('required')) {
-          res.status(400).json(createValidationError(error.message));
-          return;
-        }
-      }
-      
-      // Generic error for unexpected issues
-      res.status(500).json(createValidationError('An error occurred processing your request'));
+      handleErrorResponse(error, res, this.logger, 'Detail handler');
     }
   }
 

@@ -706,7 +706,7 @@ export class UsageFinderService {
       if (!item) return `${collection} #${itemId}`;
       
       return this.findDisplayNameFromObject(item, collection);
-    } catch (error) {
+    } catch {
       return `${collection} #${itemId}`;
     }
   }
@@ -804,7 +804,7 @@ export class UsageFinderService {
           usage.collection_icon = parsed.icon || 'box';
         }
       }
-    } catch (error) {
+    } catch {
       // Keep defaults
     }
 
@@ -824,7 +824,7 @@ export class UsageFinderService {
         if (field && field.meta) {
           usage.field_name = field.meta.display || field.meta.name || usage.field;
         }
-      } catch (error) {
+      } catch {
         // Keep defaults
       }
     }
