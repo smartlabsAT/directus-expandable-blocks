@@ -1,41 +1,31 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import {
   PathBuilderConfig,
   PathStep,
   UsagePath,
-  Breadcrumb,
   PathBuildOptions,
   PathFormatOptions,
   PathCollection,
-  PathVisualization,
   PathTemplateContext
 } from '../types/PathBuilderTypes';
-import { UsageLocation, UsageTree } from '../types/UsageFinderTypes';
+import { UsageLocation } from '../types/UsageFinderTypes';
 import { UsageFinderService } from './UsageFinderService';
 import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
 import { TITLE_FIELDS } from '../../utils/helpers';
 import { getLogger } from '../utils/logger-utils';
-import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
+import type { Logger } from '../types/directus-api';
 
 /**
  * Service for building hierarchical paths from usage information
  */
 export class PathBuilderService {
-  private database: Knex;
-  private services: DirectusServices;
-  private schema?: DirectusSchema;
-  private accountability?: DirectusAccountability;
-  private defaultLocale: string;
-  private usageFinder: UsageFinderService;
-  private cache: CacheService;
-  private logger: Logger;
+  private readonly database: Knex;
+  private readonly usageFinder: UsageFinderService;
+  private readonly cache: CacheService;
+  private readonly logger: Logger;
 
   constructor(config: PathBuilderConfig) {
     this.database = config.database;
-    this.services = config.services;
-    this.schema = config.schema;
-    this.accountability = config.accountability;
-    this.defaultLocale = config.defaultLocale || 'de-DE';
     
     // Use provided UsageFinderService instance instead of creating new one
     this.usageFinder = config.usageFinder;
@@ -105,32 +95,6 @@ export class PathBuilderService {
     );
   }
 
-  /**
-   * Build breadcrumbs for navigation
-   * @param usage The usage location
-   * @param options Build options
-   * @returns Array of breadcrumbs
-   */
-  async buildBreadcrumbs(
-    usage: UsageLocation,
-    options: PathBuildOptions = {}
-  ): Promise<Breadcrumb[]> {
-    const path = await this.buildPath(usage, options);
-    const breadcrumbs: Breadcrumb[] = [];
-
-    path.steps.forEach((step, index) => {
-      breadcrumbs.push({
-        label: step.name,
-        collection: step.collection,
-        id: step.id,
-        url: step.admin_url,
-        icon: step.icon,
-        is_current: index === path.steps.length - 1
-      });
-    });
-
-    return breadcrumbs;
-  }
 
   /**
    * Build all paths for an item
@@ -212,8 +176,6 @@ export class PathBuilderService {
     options: PathFormatOptions = {}
   ): string {
     const {
-      locale = this.defaultLocale,
-      useIcons = false,
       style = 'full',
       html = false,
       templates = {}
@@ -249,74 +211,6 @@ export class PathBuilderService {
     return result;
   }
 
-  /**
-   * Generate visualization data for paths
-   * @param collection The collection of the item
-   * @param itemId The ID of the item
-   * @returns Visualization data
-   */
-  async generateVisualization(
-    collection: string,
-    itemId: string | number
-  ): Promise<PathVisualization> {
-    const pathCollection = await this.buildAllPaths(collection, itemId);
-    const nodes: PathVisualization['nodes'] = [];
-    const edges: PathVisualization['edges'] = [];
-    const nodeMap = new Map<string, boolean>();
-
-    // Add root node
-    const rootId = `${collection}:${itemId}`;
-    nodes.push({
-      id: rootId,
-      label: pathCollection.item.display_name,
-      collection,
-      type: 'item',
-      level: 0
-    });
-    nodeMap.set(rootId, true);
-
-    // Process all paths
-    pathCollection.paths.forEach(path => {
-      let previousId = rootId;
-      
-      path.steps.forEach((step, index) => {
-        const nodeId = `${step.collection}:${step.id}`;
-        
-        // Add node if not exists
-        if (!nodeMap.has(nodeId)) {
-          nodes.push({
-            id: nodeId,
-            label: step.name,
-            collection: step.collection,
-            type: 'item',
-            level: index + 1
-          });
-          nodeMap.set(nodeId, true);
-        }
-
-        // Add edge
-        if (index > 0 || step.id !== itemId) {
-          edges.push({
-            from: previousId,
-            to: nodeId,
-            label: step.field || '',
-            type: 'usage'
-          });
-        }
-
-        previousId = nodeId;
-      });
-    });
-
-    return {
-      nodes,
-      edges,
-      layout: {
-        direction: 'TB',
-        spacing: 100
-      }
-    };
-  }
 
   /**
    * Build path upwards from usage location
@@ -385,17 +279,14 @@ export class PathBuilderService {
     context: PathTemplateContext,
     options: PathFormatOptions
   ): string {
-    const { useIcons = false, templates = {} } = options;
+    const { templates = {} } = options;
     
-    let formatted = '';
+    let formatted;
 
     switch (style) {
       case 'short':
         // Only collection and name
         formatted = step.name;
-        if (useIcons && step.icon) {
-          formatted = `${step.icon} ${formatted}`;
-        }
         break;
 
       case 'breadcrumb':
@@ -422,10 +313,6 @@ export class PathBuilderService {
         }
 
         formatted = parts.join(' ');
-        
-        if (useIcons && step.icon) {
-          formatted = `${step.icon} ${formatted}`;
-        }
         break;
     }
 
@@ -444,7 +331,7 @@ export class PathBuilderService {
    * Apply a template string
    */
   private applyTemplate(template: string, data: any): string {
-    return template.replace(/\{(\w+)\}/g, (match, key) => {
+    return template.replace(/{(\w+)}/g, (match, key) => {
       return data[key] || match;
     });
   }
@@ -489,12 +376,14 @@ export class PathBuilderService {
           current = parent;
         } catch (error) {
           // Parent could not be loaded - end hierarchy here (graceful degradation)
-          this.logger.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}`, error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}:`, errorMessage);
           break;
         }
       }
     } catch (error) {
-      this.logger.error('[PathBuilder] Error building path with relations:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('[PathBuilder] Error building path with relations:', errorMessage);
     }
     
     return path;
@@ -558,7 +447,8 @@ export class PathBuilderService {
         depth: 0
       };
     } catch (error) {
-      this.logger.error('[PathBuilder] Error loading parent:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error('[PathBuilder] Error loading parent:', errorMessage);
     }
     
     return null;
@@ -588,6 +478,8 @@ export class PathBuilderService {
             .map(part => part.charAt(0).toUpperCase() + part.slice(1))
             .join(' ');
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.debug(`[PathBuilder] Failed to get collection display for '${collection}':`, errorMessage);
           return collection;
         }
       },
@@ -620,6 +512,8 @@ export class PathBuilderService {
             .map(part => part.charAt(0).toUpperCase() + part.slice(1))
             .join(' ');
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.debug(`[PathBuilder] Failed to get field display for '${collection}.${field}':`, errorMessage);
           return field;
         }
       },
@@ -655,6 +549,8 @@ export class PathBuilderService {
 
       return `${collection} #${itemId}`;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.debug(`[PathBuilder] Failed to get item display name for ${collection}#${itemId}:`, errorMessage);
       return `${collection} #${itemId}`;
     }
   }
