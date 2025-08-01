@@ -12,20 +12,39 @@ import {
 } from '../types/RelationTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { parseMetadata, humanizeName } from '../utils/relation-utils';
+import type { Knex } from 'knex';
 import { getLogger } from '../utils/logger-utils';
+import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 import { parseAllowedCollections } from '../../utils/helpers';
 
 export class RelationAnalyzer {
-  private readonly services: any;
-  private readonly schema: any;
-  private readonly database: any;
-  private readonly accountability?: any;
+  private readonly services?: DirectusServices;
+  private readonly schema?: DirectusSchema;
+  private readonly database: Knex;
+  private readonly accountability?: DirectusAccountability;
+  private readonly logger: Logger;
 
   constructor(config: RelationAnalyzerConfig) {
     this.services = config.services;
     this.schema = config.schema;
     this.database = config.database;
     this.accountability = config.accountability;
+    this.logger = this.services ? getLogger(this.services) : console as unknown as Logger;
+  }
+
+  /**
+   * Create a service instance with proper configuration
+   */
+  private createService<T>(ServiceClass: new (options: any) => T): T {
+    if (!this.services) {
+      throw new DatabaseQueryError('Services not available');
+    }
+    
+    return new ServiceClass({
+      database: this.database,
+      schema: this.schema,
+      accountability: this.accountability
+    });
   }
 
   /**
@@ -59,12 +78,13 @@ export class RelationAnalyzer {
         collectionMetadata,
         options
       );
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof InvalidCollectionError) {
         throw error;
       }
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new DatabaseQueryError(
-        `Failed to analyze relations for '${targetCollection}': ${error.message || error}`
+        `Failed to analyze relations for '${targetCollection}': ${errorMessage}`
       );
     }
   }
@@ -83,24 +103,17 @@ export class RelationAnalyzer {
         if (!exists && !SYSTEM_COLLECTIONS.includes(collection)) {
           throw new InvalidCollectionError(collection);
         }
-      } catch (error: any) {
+      } catch (error) {
         if (error instanceof InvalidCollectionError) throw error;
-        throw new DatabaseQueryError(`Failed to validate collection: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        throw new DatabaseQueryError(`Failed to validate collection: ${errorMessage}`);
       }
       return;
     }
 
     // Permission-aware check using CollectionsService
-    if (!this.services) {
-      throw new DatabaseQueryError('Services not available');
-    }
-
-    const { CollectionsService } = this.services;
-    const collectionsService = new CollectionsService({
-      database: this.database,
-      schema: this.schema,
-      accountability: this.accountability
-    });
+    const { CollectionsService } = this.services!;
+    const collectionsService = this.createService(CollectionsService);
 
     try {
       const collections = await collectionsService.readByQuery({
@@ -113,9 +126,10 @@ export class RelationAnalyzer {
           throw new InvalidCollectionError(collection);
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof InvalidCollectionError) throw error;
-      throw new DatabaseQueryError(`Failed to validate collection: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new DatabaseQueryError(`Failed to validate collection: ${errorMessage}`);
     }
   }
 
@@ -133,8 +147,9 @@ export class RelationAnalyzer {
         });
 
       return relations || [];
-    } catch (error: any) {
-      throw new DatabaseQueryError(`Failed to load relations directly: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new DatabaseQueryError(`Failed to load relations directly: ${errorMessage}`);
     }
   }
 
@@ -142,16 +157,8 @@ export class RelationAnalyzer {
    * Get all relations for a collection using RelationsService
    */
   private async getRelationsForCollection(targetCollection: string): Promise<DirectusRelationRow[]> {
-    if (!this.services) {
-      throw new DatabaseQueryError('Services not available');
-    }
-
-    const { RelationsService } = this.services;
-    const relationsService = new RelationsService({
-      database: this.database,
-      schema: this.schema,
-      accountability: this.accountability
-    });
+    const { RelationsService } = this.services!;
+    const relationsService = this.createService(RelationsService);
 
     try {
       // Get all relations where our collection is involved
@@ -166,8 +173,9 @@ export class RelationAnalyzer {
       });
 
       return relations || [];
-    } catch (error: any) {
-      throw new DatabaseQueryError(`Failed to load relations: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new DatabaseQueryError(`Failed to load relations: ${errorMessage}`);
     }
   }
 
@@ -210,7 +218,13 @@ export class RelationAnalyzer {
     }
 
     try {
-      let collectionInfos: any[];
+      interface CollectionInfo {
+        collection: string;
+        meta?: any;
+        icon?: string;
+      }
+      
+      let collectionInfos: CollectionInfo[];
 
       if (options.bypassPermissions) {
         // Direct database query
@@ -218,23 +232,15 @@ export class RelationAnalyzer {
           .whereIn('collection', collections);
       } else {
         // Use CollectionsService with permissions
-        if (!this.services) {
-          throw new DatabaseQueryError('Services not available');
-        }
-        
-        const { CollectionsService } = this.services;
-        const collectionsService = new CollectionsService({
-          database: this.database,
-          schema: this.schema,
-          accountability: this.accountability
-        });
+        const { CollectionsService } = this.services!;
+        const collectionsService = this.createService(CollectionsService);
         
         collectionInfos = await collectionsService.readByQuery({
           filter: { collection: { _in: collections } }
         });
       }
 
-      collectionInfos.forEach((info: any) => {
+      collectionInfos.forEach((info: CollectionInfo) => {
         const meta = parseMetadata(info.meta);
         
         // Skip hidden collections if not requested
@@ -269,10 +275,9 @@ export class RelationAnalyzer {
         }
       });
 
-    } catch (error: any) {
-      if (this.services) {
-        getLogger(this.services).warn('Failed to load collection metadata:', error.message);
-      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Failed to load collection metadata:', errorMessage);
       // Return default metadata
       collections.forEach(col => {
         metadata.set(col, {
@@ -302,47 +307,99 @@ export class RelationAnalyzer {
 
     // Process each relation
     relations.forEach(rel => {
-      // M2A relation
-      if (isM2ARelation(rel)) {
-        const allowedCollections = parseAllowedCollections(rel.one_allowed_collections!);
-        if (allowedCollections.includes(targetCollection) && rel.many_collection) {
-          const meta = parseMetadata(rel.meta);
-          const fieldName = meta.one_field || 'content';
-
-          this.addUsageEntry(usageMap, rel.many_collection, fieldName, {
-            field: fieldName,
-            field_name: humanizeName(fieldName),
-            relation_type: 'M2A',
-            junction_table: rel.many_collection,
-            junction_field: rel.junction_field || undefined,
-            item_field: rel.many_field || undefined,
-            collection_field: rel.one_collection_field || undefined,
-            sort_field: rel.sort_field || undefined,
-            relation_id: rel.id
-          });
-        }
-      }
-      // M2O relation
-      else if (isM2ORelation(rel) && rel.one_collection === targetCollection) {
-        this.addUsageEntry(usageMap, rel.many_collection!, rel.many_field!, {
-          field: rel.many_field!,
-          field_name: humanizeName(rel.many_field!),
-          relation_type: 'M2O',
-          relation_id: rel.id
-        });
-      }
-      // O2M relation
-      else if (rel.many_collection === targetCollection && rel.one_collection && rel.one_field) {
-        this.addUsageEntry(usageMap, rel.one_collection, rel.one_field, {
-          field: rel.one_field,
-          field_name: humanizeName(rel.one_field),
-          relation_type: 'O2M',
-          relation_id: rel.id
-        });
-      }
+      this.processRelation(rel, targetCollection, usageMap);
     });
 
     // Convert map to array of PossibleUsageLocation
+    return this.convertUsageMapToLocations(usageMap, collectionMetadata);
+  }
+
+  /**
+   * Process a single relation and add to usage map
+   */
+  private processRelation(
+    rel: DirectusRelationRow,
+    targetCollection: string,
+    usageMap: Map<string, { fields: Set<string>; relationDetails: RelationDetail[] }>
+  ): void {
+    // M2A relation
+    if (isM2ARelation(rel)) {
+      this.processM2ARelation(rel, targetCollection, usageMap);
+    }
+    // M2O relation
+    else if (isM2ORelation(rel) && rel.one_collection === targetCollection) {
+      this.processM2ORelation(rel, usageMap);
+    }
+    // O2M relation
+    else if (rel.many_collection === targetCollection && rel.one_collection && rel.one_field) {
+      this.processO2MRelation(rel, usageMap);
+    }
+  }
+
+  /**
+   * Process M2A relation
+   */
+  private processM2ARelation(
+    rel: DirectusRelationRow,
+    targetCollection: string,
+    usageMap: Map<string, { fields: Set<string>; relationDetails: RelationDetail[] }>
+  ): void {
+    const allowedCollections = parseAllowedCollections(rel.one_allowed_collections!);
+    if (allowedCollections.includes(targetCollection) && rel.many_collection) {
+      const meta = parseMetadata(rel.meta);
+      const fieldName = meta.one_field || 'content';
+
+      this.addUsageEntry(usageMap, rel.many_collection, fieldName, {
+        field: fieldName,
+        field_name: humanizeName(fieldName),
+        relation_type: 'M2A',
+        junction_table: rel.many_collection,
+        junction_field: rel.junction_field || undefined,
+        item_field: rel.many_field || undefined,
+        collection_field: rel.one_collection_field || undefined,
+        sort_field: rel.sort_field || undefined,
+        relation_id: rel.id
+      });
+    }
+  }
+
+  /**
+   * Process M2O relation
+   */
+  private processM2ORelation(
+    rel: DirectusRelationRow,
+    usageMap: Map<string, { fields: Set<string>; relationDetails: RelationDetail[] }>
+  ): void {
+    this.addUsageEntry(usageMap, rel.many_collection!, rel.many_field!, {
+      field: rel.many_field!,
+      field_name: humanizeName(rel.many_field!),
+      relation_type: 'M2O',
+      relation_id: rel.id
+    });
+  }
+
+  /**
+   * Process O2M relation
+   */
+  private processO2MRelation(
+    rel: DirectusRelationRow,
+    usageMap: Map<string, { fields: Set<string>; relationDetails: RelationDetail[] }>
+  ): void {
+    this.addUsageEntry(usageMap, rel.one_collection!, rel.one_field!, {
+      field: rel.one_field!,
+      field_name: humanizeName(rel.one_field!),
+      relation_type: 'O2M',
+      relation_id: rel.id
+    });
+  }
+
+  /**
+   * Convert usage map to array of PossibleUsageLocation
+   */
+  private convertUsageMapToLocations(
+    usageMap: Map<string, { fields: Set<string>; relationDetails: RelationDetail[] }>,
+    collectionMetadata: Map<string, CollectionMetadata>
+  ): PossibleUsageLocation[] {
     const results: PossibleUsageLocation[] = [];
     
     usageMap.forEach((data, collection) => {
