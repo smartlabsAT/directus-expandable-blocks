@@ -12,20 +12,16 @@ import { InvalidCollectionError } from '../types/errors';
 import {
   TranslationInfo,
   TranslationField,
-  TranslationFieldMapping,
   Language,
   TranslationAnalysisOptions,
   TranslationPattern,
-  TranslationCoverage,
   TRANSLATION_TABLE_PATTERNS,
   LANGUAGE_FIELD_NAMES,
-  LINK_FIELD_PATTERNS,
   EXCLUDED_TRANSLATION_FIELDS,
 } from '../types/TranslationFieldAnalyzerTypes';
 import { getLogger } from '../utils/logger-utils';
-import { checkTableExists } from '../utils/database-utils';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 
 // ============================================================================
 // Constants
@@ -109,11 +105,11 @@ function isJSONTranslationField(field: RawField): boolean {
  * Now includes integrated translation analysis capabilities
  */
 export class FieldAnalyzer {
-  private services: DirectusServices;
-  private schema: DirectusSchema;
-  private database?: Knex;
-  private accountability?: DirectusAccountability;
-  private logger: Logger;
+  private readonly services: DirectusServices;
+  private readonly schema: DirectusSchema;
+  private readonly database?: Knex;
+  private readonly accountability?: DirectusAccountability;
+  private readonly logger: Logger;
 
   private analysisCache: Map<string, { timestamp: number; data: any }> = new Map();
   private cacheTimeout = 5 * 60 * 1000;
@@ -157,7 +153,18 @@ export class FieldAnalyzer {
 
       const allFields = await fieldsService.readAll(collection);
       if (!allFields || allFields.length === 0) {
-        throw new InvalidCollectionError(collection);
+        return {
+          searchableFields: [],
+          translationInfo: {
+            hasTranslations: false,
+            translationType: TranslationType.NONE
+          },
+          collectionMetadata: {
+            totalFields: 0,
+            translatableCount: 0,
+            systemFieldsCount: 0,
+          }
+        };
       }
 
       const translationInfo = await this.analyzeTranslations(collection, options?.translationOptions);
@@ -177,27 +184,15 @@ export class FieldAnalyzer {
       this.setCachedResult(cacheKey, result);
 
       return result;
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof InvalidCollectionError) {
         throw error;
       }
-      throw new Error(`Failed to analyze collection '${collection}': ${error.message || error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to analyze collection '${collection}': ${errorMessage}`);
     }
   }
 
-  /**
-   * Get searchable fields for a collection
-   * @param collection The collection to analyze
-   * @param options Analysis options
-   * @returns Array of searchable fields
-   */
-  async getSearchableFields(collection: string, options: FieldAnalyzerOptions = {}): Promise<SearchableField[]> {
-    const result = await this.analyzeCollectionComplete(collection, {
-      fieldOptions: options,
-    });
-
-    return result.searchableFields;
-  }
 
   // ============================================================================
   // Private Field Processing Methods
@@ -230,12 +225,9 @@ export class FieldAnalyzer {
       return false;
     }
 
-    if (options.interfaces.length > 0 && (!field.meta?.interface || !options.interfaces.includes(field.meta.interface))) {
-      return false;
-    }
-
-    return true;
+    return !(options.interfaces.length > 0 && (!field.meta?.interface || !options.interfaces.includes(field.meta.interface)));
   }
+
 
   /**
    * Transform a raw field to SearchableField format
@@ -429,7 +421,7 @@ export class FieldAnalyzer {
 
     for (const pattern of patterns) {
       const tableName = pattern.replace('{collection}', collection);
-      if (this.database && await checkTableExists(this.database, tableName)) {
+      if (this.database && await this.database.schema.hasTable(tableName)) {
         return {
           type: TranslationType.COMBINED, confidence: 1.0, details: {tableName, isCombined: true},
         };
@@ -471,8 +463,9 @@ export class FieldAnalyzer {
       return {
         tableName: translationTable, fields: contentFields, linkField, languageField,
       };
-    } catch (error: any) {
-      this.logger.debug(`[FieldAnalyzer] Failed to analyze translation table '${translationTable}':`, error.message);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.debug(`[FieldAnalyzer] Failed to analyze translation table '${translationTable}':`, errorMessage);
       return null;
     }
   }
@@ -493,25 +486,6 @@ export class FieldAnalyzer {
     return fields.filter(isJSONTranslationField);
   }
 
-  /**
-   * Check if a table exists in the database
-   */
-  private async checkTableExists(tableName: string): Promise<boolean> {
-    try {
-      if (!this.database) {
-        return false;
-      }
-
-      if (!/^[a-zA-Z0-9_-]+$/.test(tableName) || tableName.length > 64) {
-        return false;
-      }
-
-      return await this.database.schema.hasTable(tableName);
-    } catch (error: any) {
-      this.logger.debug(`[FieldAnalyzer] Error checking table '${tableName}':`, error.message);
-      return false;
-    }
-  }
 
   /**
    * Get fields from a collection (shared helper)
@@ -526,8 +500,9 @@ export class FieldAnalyzer {
 
       const fields = await fieldsService.readAll(collection);
       return fields.filter((f: any) => !f.collection || f.collection === collection);
-    } catch (error: any) {
-      this.logger.warn(`[FieldAnalyzer] Failed to get fields for collection '${collection}':`, error.message);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`[FieldAnalyzer] Failed to get fields for collection '${collection}':`, errorMessage);
       return [];
     }
   }
