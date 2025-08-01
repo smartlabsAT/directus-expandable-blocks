@@ -1,27 +1,42 @@
 import type { Response } from 'express';
 import type { DirectusRequest } from '../types/directus-api';
+import type { DirectusItem, Logger } from '../types/common';
 import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheKeys, CacheTTL } from '../types/CacheTypes';
 import type { DetailResponse, UsageLocation, UsageSummary } from '../schemas/response-schemas';
 import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection, validateIds, validateFields } from '../utils/validation';
+import type { UsageFinderService } from '../services/UsageFinderService';
+import type { PathBuilderService } from '../services/PathBuilderService';
 
 /**
  * Handler for detail endpoint
  */
+/**
+ * Handler for the detail endpoint that returns items with their usage information
+ * 
+ * @example
+ * POST /api/expandable-blocks-api/{collection}/detail
+ * Body: { ids: [1, 2, 3], fields: ['*'] }
+ */
 export class DetailHandler {
   constructor(
     private readonly serviceFactory: ServiceFactory,
-    private readonly logger: any
+    private readonly logger: Logger
   ) {}
 
   /**
-   * Handle detail request
+   * Handle detail request for retrieving items with usage information
+   * 
+   * @param req - The incoming request with collection in params and ids/fields in body
+   * @param res - Express response object
+   * @returns Promise that resolves when response is sent
+   * @throws Will return appropriate HTTP error codes for validation or permission errors
    */
-  handle = async (req: DirectusRequest, res: Response): Promise<void> => {
+  public async handle(req: DirectusRequest, res: Response): Promise<void> {
     try {
-      const cache = (req as any).cache as DirectusCacheWrapper | null;
+      const cache = (req as DirectusRequest & { cache?: DirectusCacheWrapper }).cache || null;
 
       // Validate collection against whitelist
       const collection = req.params.collection;
@@ -141,14 +156,25 @@ export class DetailHandler {
   /**
    * Batch load items with usage information
    */
+  /**
+   * Batch load usage information for multiple items
+   * 
+   * @param items - Array of items to process
+   * @param collection - Collection name
+   * @param usageFinder - Usage finder service instance
+   * @param pathBuilder - Path builder service instance or null
+   * @param cache - Cache wrapper instance or null
+   * @param fields - Fields that were requested
+   * @returns Array of items with usage information added
+   */
   private async batchLoadItemsWithUsage(
-    items: any[],
+    items: DirectusItem[],
     collection: string,
-    usageFinder: any,
-    pathBuilder: any | null,
+    usageFinder: UsageFinderService,
+    pathBuilder: PathBuilderService | null,
     cache: DirectusCacheWrapper | null,
     fields: string[]
-  ): Promise<any[]> {
+  ): Promise<DirectusItem[]> {
     if (items.length === 0) {
       return [];
     }
@@ -219,12 +245,21 @@ export class DetailHandler {
   /**
    * Load item with usage information
    */
+  /**
+   * Load usage information for a single item
+   * 
+   * @param item - The item to process
+   * @param collection - Collection name
+   * @param usageFinder - Usage finder service instance
+   * @param pathBuilder - Path builder service instance or null
+   * @returns Item with usage information added
+   */
   private async loadItemWithUsage(
-    item: any,
+    item: DirectusItem,
     collection: string,
-    usageFinder: any,
-    pathBuilder: any
-  ): Promise<any> {
+    usageFinder: UsageFinderService,
+    pathBuilder: PathBuilderService | null
+  ): Promise<DirectusItem> {
     try {
       // Find direct usages only, excluding translations
       const directUsages = await usageFinder.findDirectUsages(collection, item.id, {
@@ -257,9 +292,16 @@ export class DetailHandler {
   /**
    * Build usage locations with full path information
    */
+  /**
+   * Build usage location objects from raw usage data
+   * 
+   * @param directUsages - Raw usage data from usage finder
+   * @param pathBuilder - Path builder service instance or null
+   * @returns Array of formatted usage locations
+   */
   private async buildUsageLocations(
-    directUsages: any[],
-    pathBuilder: any | null
+    directUsages: UsageLocation[],
+    pathBuilder: PathBuilderService | null
   ): Promise<UsageLocation[]> {
     const locations: UsageLocation[] = [];
     

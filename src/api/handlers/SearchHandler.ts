@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import type { DirectusRequest } from '../types/directus-api';
+import type { Logger } from '../types/common';
 import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
@@ -9,24 +10,32 @@ import { createValidationError } from '../schemas/response-schemas';
 import { validateCollection, validateFields, validateFilter, validateSort, validatePagination } from '../utils/validation';
 
 /**
- * Handler for search endpoint
+ * Handler for the search endpoint that returns items with optional filtering and pagination
+ * 
+ * @example
+ * GET /api/expandable-blocks-api/{collection}/search?search=term&limit=10&offset=0
  */
 export class SearchHandler {
   constructor(
     private readonly serviceFactory: ServiceFactory,
-    private readonly logger: any
+    private readonly logger: Logger
   ) {}
 
   /**
-   * Handle search request
+   * Handle search request with filtering, pagination, and field selection
+   * 
+   * @param req - The incoming request with collection in params and query parameters
+   * @param res - Express response object
+   * @returns Promise that resolves when response is sent
+   * @throws Will return appropriate HTTP error codes for validation or permission errors
    */
-  handle = async (req: DirectusRequest, res: Response): Promise<void> => {
+  public async handle(req: DirectusRequest, res: Response): Promise<void> {
     try {
       // Validate collection
       const collection = req.params.collection;
       validateCollection(collection);
       
-      const cache = (req as any).cache as DirectusCacheWrapper | null;
+      const cache = (req as DirectusRequest & { cache?: DirectusCacheWrapper }).cache || null;
 
       // Validate and parse query parameters
       const { limit, offset } = validatePagination(req.query.limit, req.query.offset);

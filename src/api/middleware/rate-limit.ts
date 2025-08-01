@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { SecurityConfig } from '../utils/validation';
+import { API_LIMITS, ERROR_MESSAGES, HEADERS } from '../constants';
 import { createValidationError } from '../schemas/response-schemas';
 
 interface RateLimitStore {
@@ -21,7 +21,7 @@ setInterval(() => {
       delete rateLimitStore[key];
     }
   }
-}, 60000); // Clean every minute
+}, API_LIMITS.CACHE_CLEANUP_INTERVAL_MS);
 
 /**
  * Simple rate limiting middleware
@@ -37,7 +37,7 @@ export function rateLimitMiddleware() {
     // Get client identifier (IP or user ID)
     const clientId = getClientIdentifier(req);
     const now = Date.now();
-    const windowStart = now - SecurityConfig.RATE_LIMIT_WINDOW_MS;
+    const windowStart = now - API_LIMITS.RATE_LIMIT_WINDOW_MS;
     
     // Get or create rate limit entry
     let entry = rateLimitStore[clientId];
@@ -46,7 +46,7 @@ export function rateLimitMiddleware() {
       // Create new entry
       entry = {
         count: 1,
-        resetTime: now + SecurityConfig.RATE_LIMIT_WINDOW_MS
+        resetTime: now + API_LIMITS.RATE_LIMIT_WINDOW_MS
       };
       rateLimitStore[clientId] = entry;
     } else {
@@ -55,27 +55,27 @@ export function rateLimitMiddleware() {
     }
     
     // Check if limit exceeded
-    if (entry.count > SecurityConfig.RATE_LIMIT_MAX_REQUESTS) {
+    if (entry.count > API_LIMITS.RATE_LIMIT_MAX_REQUESTS) {
       // Calculate retry after
       const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
       
-      res.setHeader('X-RateLimit-Limit', SecurityConfig.RATE_LIMIT_MAX_REQUESTS.toString());
-      res.setHeader('X-RateLimit-Remaining', '0');
-      res.setHeader('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
-      res.setHeader('Retry-After', retryAfter.toString());
+      res.setHeader(HEADERS.RATE_LIMIT, API_LIMITS.RATE_LIMIT_MAX_REQUESTS.toString());
+      res.setHeader(HEADERS.RATE_LIMIT_REMAINING, '0');
+      res.setHeader(HEADERS.RATE_LIMIT_RESET, new Date(entry.resetTime).toISOString());
+      res.setHeader(HEADERS.RETRY_AFTER, retryAfter.toString());
       
       res.status(429).json(
         createValidationError(
-          `Rate limit exceeded. Please retry after ${retryAfter} seconds.`
+          `${ERROR_MESSAGES.RATE_LIMIT_EXCEEDED} ${retryAfter} seconds`
         )
       );
       return;
     }
     
     // Set rate limit headers
-    res.setHeader('X-RateLimit-Limit', SecurityConfig.RATE_LIMIT_MAX_REQUESTS.toString());
-    res.setHeader('X-RateLimit-Remaining', (SecurityConfig.RATE_LIMIT_MAX_REQUESTS - entry.count).toString());
-    res.setHeader('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
+    res.setHeader(HEADERS.RATE_LIMIT, API_LIMITS.RATE_LIMIT_MAX_REQUESTS.toString());
+    res.setHeader(HEADERS.RATE_LIMIT_REMAINING, (API_LIMITS.RATE_LIMIT_MAX_REQUESTS - entry.count).toString());
+    res.setHeader(HEADERS.RATE_LIMIT_RESET, new Date(entry.resetTime).toISOString());
     
     next();
   };

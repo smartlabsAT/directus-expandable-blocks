@@ -1,55 +1,27 @@
-import { InvalidCollectionError } from '../types/errors';
-
-/**
- * Security configuration for API validation
- */
-export const SecurityConfig = {
-  // Maximum allowed IDs in a single request
-  MAX_IDS_PER_REQUEST: 100,
-  
-  // Maximum allowed field depth to prevent deep queries
-  MAX_FIELD_DEPTH: 3,
-  
-  // Maximum allowed filter complexity
-  MAX_FILTER_DEPTH: 5,
-  
-  // Rate limiting
-  RATE_LIMIT_WINDOW_MS: 60 * 1000, // 1 minute
-  RATE_LIMIT_MAX_REQUESTS: 100,
-  
-  // Allowed ID patterns (alphanumeric, uuid, numeric)
-  ID_PATTERNS: {
-    numeric: /^\d+$/,
-    uuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    alphanumeric: /^[a-zA-Z0-9_-]+$/
-  }
-};
+import { ValidationError, CollectionError } from '../errors';
+import { 
+  API_LIMITS, 
+  PATTERNS, 
+  ERROR_MESSAGES, 
+  DEFAULT_ALLOWED_COLLECTIONS,
+  ENV_VARS,
+  ENVIRONMENTS,
+  FIELD_CONSTANTS
+} from '../constants';
 
 /**
  * Get allowed collections from environment or use defaults
  * In production, this should be configured via environment variables
  */
 export function getAllowedCollections(): Set<string> {
-  const envCollections = process.env.EXPANDABLE_BLOCKS_ALLOWED_COLLECTIONS;
+  const envCollections = process.env[ENV_VARS.ALLOWED_COLLECTIONS];
   
   if (envCollections) {
     return new Set(envCollections.split(',').map(c => c.trim()));
   }
   
   // Default allowed collections - should be configured per deployment
-  return new Set([
-    'content_headline',
-    'content_text',
-    'content_image',
-    'content_button',
-    'content_video',
-    'content_gallery',
-    'content_accordion',
-    'content_quote',
-    'test_all_fields',
-    'pages',
-    'page_blocks'
-  ]);
+  return new Set(DEFAULT_ALLOWED_COLLECTIONS);
 }
 
 /**
@@ -57,18 +29,18 @@ export function getAllowedCollections(): Set<string> {
  */
 export function validateCollection(collection: string): void {
   if (!collection || typeof collection !== 'string') {
-    throw new InvalidCollectionError('Collection name is required');
+    throw new ValidationError(ERROR_MESSAGES.COLLECTION_REQUIRED);
+  }
+  
+  // Additional security check for collection name format
+  if (!PATTERNS.COLLECTION_NAME.test(collection)) {
+    throw new ValidationError(ERROR_MESSAGES.COLLECTION_INVALID_FORMAT);
   }
   
   // Check against whitelist
   const allowedCollections = getAllowedCollections();
   if (!allowedCollections.has(collection)) {
-    throw new InvalidCollectionError(`Collection '${collection}' is not allowed`);
-  }
-  
-  // Additional security check for collection name format
-  if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(collection)) {
-    throw new InvalidCollectionError('Invalid collection name format');
+    throw new CollectionError(collection);
   }
 }
 
@@ -77,15 +49,15 @@ export function validateCollection(collection: string): void {
  */
 export function validateIds(ids: any[]): (string | number)[] {
   if (!Array.isArray(ids)) {
-    throw new Error('IDs must be an array');
+    throw new ValidationError('IDs must be an array');
   }
   
   if (ids.length === 0) {
-    throw new Error('At least one ID is required');
+    throw new ValidationError(ERROR_MESSAGES.IDS_EMPTY);
   }
   
-  if (ids.length > SecurityConfig.MAX_IDS_PER_REQUEST) {
-    throw new Error(`Too many IDs requested. Maximum allowed: ${SecurityConfig.MAX_IDS_PER_REQUEST}`);
+  if (ids.length > API_LIMITS.MAX_IDS_PER_REQUEST) {
+    throw new ValidationError(ERROR_MESSAGES.IDS_TOO_MANY);
   }
   
   return ids.map((id, index) => {
@@ -99,22 +71,22 @@ export function validateIds(ids: any[]): (string | number)[] {
       const trimmedId = id.trim();
       
       // Check numeric string
-      if (SecurityConfig.ID_PATTERNS.numeric.test(trimmedId)) {
+      if (PATTERNS.NUMERIC_ID.test(trimmedId)) {
         return parseInt(trimmedId, 10);
       }
       
       // Check UUID
-      if (SecurityConfig.ID_PATTERNS.uuid.test(trimmedId)) {
+      if (PATTERNS.UUID_ID.test(trimmedId)) {
         return trimmedId;
       }
       
       // Check alphanumeric
-      if (SecurityConfig.ID_PATTERNS.alphanumeric.test(trimmedId) && trimmedId.length <= 255) {
+      if (PATTERNS.ALPHANUMERIC_ID.test(trimmedId) && trimmedId.length <= 255) {
         return trimmedId;
       }
     }
     
-    throw new Error(`Invalid ID at index ${index}: ${JSON.stringify(id)}`);
+    throw new ValidationError(`${ERROR_MESSAGES.INVALID_ID} at index ${index}: ${JSON.stringify(id)}`);
   });
 }
 
@@ -123,26 +95,26 @@ export function validateIds(ids: any[]): (string | number)[] {
  */
 export function validateFields(fields: any): string[] {
   if (!fields) {
-    return ['*'];
+    return [FIELD_CONSTANTS.ALL_FIELDS];
   }
   
   let fieldArray: string[];
   
   if (typeof fields === 'string') {
-    if (fields === '*') {
-      return ['*'];
+    if (fields === FIELD_CONSTANTS.ALL_FIELDS) {
+      return [FIELD_CONSTANTS.ALL_FIELDS];
     }
     fieldArray = fields.split(',').map(f => f.trim());
   } else if (Array.isArray(fields)) {
     fieldArray = fields;
   } else {
-    throw new Error('Fields must be a string or array');
+    throw new ValidationError('Fields must be a string or array');
   }
   
   // Validate each field
   return fieldArray.map(field => {
     if (typeof field !== 'string') {
-      throw new Error('Field names must be strings');
+      throw new ValidationError('Field names must be strings');
     }
     
     const trimmedField = field.trim();
@@ -153,14 +125,14 @@ export function validateFields(fields: any): string[] {
     }
     
     // Check field name format (alphanumeric, underscore, dot for relations)
-    if (!/^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/.test(trimmedField)) {
-      throw new Error(`Invalid field name: ${trimmedField}`);
+    if (!PATTERNS.FIELD_NAME.test(trimmedField)) {
+      throw new ValidationError(`${ERROR_MESSAGES.INVALID_FIELD}: ${trimmedField}`);
     }
     
     // Check field depth
-    const depth = trimmedField.split('.').length;
-    if (depth > SecurityConfig.MAX_FIELD_DEPTH) {
-      throw new Error(`Field depth exceeds maximum allowed (${SecurityConfig.MAX_FIELD_DEPTH}): ${trimmedField}`);
+    const depth = trimmedField.split(FIELD_CONSTANTS.FIELD_SEPARATOR).length;
+    if (depth > API_LIMITS.MAX_FIELD_DEPTH) {
+      throw new ValidationError(`Field depth exceeds maximum allowed (${API_LIMITS.MAX_FIELD_DEPTH}): ${trimmedField}`);
     }
     
     return trimmedField;
@@ -171,8 +143,8 @@ export function validateFields(fields: any): string[] {
  * Validate filter object depth to prevent complex queries
  */
 export function validateFilterDepth(obj: any, currentDepth = 0): void {
-  if (currentDepth > SecurityConfig.MAX_FILTER_DEPTH) {
-    throw new Error(`Filter depth exceeds maximum allowed (${SecurityConfig.MAX_FILTER_DEPTH})`);
+  if (currentDepth > API_LIMITS.MAX_FILTER_DEPTH) {
+    throw new ValidationError(`Filter depth exceeds maximum allowed (${API_LIMITS.MAX_FILTER_DEPTH})`);
   }
   
   if (obj && typeof obj === 'object') {
