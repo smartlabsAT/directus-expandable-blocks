@@ -5,8 +5,6 @@ import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
 import { ItemQuery } from '../types/ItemLoaderTypes';
 import type { SearchResponse } from '../schemas/response-schemas';
-import type { SearchRequest } from '../schemas/request-schemas';
-import { parseSearchQuery } from '../schemas/request-schemas';
 
 /**
  * Handler for search endpoint
@@ -20,12 +18,28 @@ export class SearchHandler {
   /**
    * Handle search request
    */
-  handle = async (req: DirectusRequest & SearchRequest, res: Response): Promise<void> => {
-    const { collection } = req.params;
+  handle = async (req: DirectusRequest, res: Response): Promise<void> => {
+    // Extract collection from path
+    const collection = req.params.collection;
     const cache = (req as any).cache as DirectusCacheWrapper | null;
 
-    // Parse and validate query parameters
-    const parsedQuery = parseSearchQuery(req.query);
+    // Parse query parameters
+    const parsedQuery = {
+      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+      offset: req.query.offset ? parseInt(req.query.offset as string, 10) : 0,
+      fields: req.query.fields ? 
+        (typeof req.query.fields === 'string' ? 
+          (req.query.fields === '*' ? ['*'] : req.query.fields.split(',').map(f => f.trim())) 
+          : req.query.fields as string[]
+        ) : ['*'],
+      search: req.query.search as string | undefined,
+      filter: req.query.filter ? 
+        (typeof req.query.filter === 'string' ? JSON.parse(req.query.filter) : req.query.filter) 
+        : undefined,
+      sort: req.query.sort ? 
+        (typeof req.query.sort === 'string' ? req.query.sort.split(',').map(s => s.trim()) : req.query.sort as string[]) 
+        : undefined
+    };
 
     // Get item loader service
     const itemLoader = await this.serviceFactory.getItemLoader();

@@ -5,8 +5,6 @@ import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheKeys, CacheTTL } from '../types/CacheTypes';
 import type { DetailResponse, UsageLocation, UsageSummary } from '../schemas/response-schemas';
 import { createValidationError } from '../schemas/response-schemas';
-import type { DetailRequest } from '../schemas/request-schemas';
-import { validateDetailRequest } from '../schemas/request-schemas';
 
 /**
  * Handler for detail endpoint
@@ -20,20 +18,37 @@ export class DetailHandler {
   /**
    * Handle detail request
    */
-  handle = async (req: DirectusRequest & DetailRequest, res: Response): Promise<void> => {
-    const { collection } = req.params;
+  handle = async (req: DirectusRequest, res: Response): Promise<void> => {
     const cache = (req as any).cache as DirectusCacheWrapper | null;
 
-    // Validate request
-    let validatedRequest;
-    try {
-      validatedRequest = validateDetailRequest(req.body);
-    } catch (error) {
-      res.status(400).json(createValidationError(error instanceof Error ? error.message : 'Invalid request'));
+    // Extract collection from path
+    const collection = req.params.collection;
+    
+    // Get request data (body for POST, query for GET)
+    const requestData = req.method === 'POST' ? req.body : req.query;
+    
+    // Validate request data
+    if (!requestData || !requestData.ids) {
+      res.status(400).json(createValidationError('ids array is required'));
       return;
     }
-
-    const { ids, fields } = validatedRequest;
+    
+    // Ensure ids is an array
+    const ids = Array.isArray(requestData.ids) ? requestData.ids : [requestData.ids];
+    if (ids.length === 0) {
+      res.status(400).json(createValidationError('At least one ID is required'));
+      return;
+    }
+    if (ids.length > 100) {
+      res.status(400).json(createValidationError('Too many IDs requested'));
+      return;
+    }
+    
+    // Get fields (default to all)
+    let fields = requestData.fields || ['*'];
+    if (typeof fields === 'string') {
+      fields = fields === '*' ? ['*'] : fields.split(',').map(f => f.trim());
+    }
 
     // Get services
     const itemLoader = await this.serviceFactory.getItemLoader();

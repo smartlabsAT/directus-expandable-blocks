@@ -4,7 +4,6 @@ import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
 import type { MetadataResponse } from '../schemas/response-schemas';
-import type { MetadataRequest } from '../schemas/request-schemas';
 
 /**
  * Handler for metadata endpoint
@@ -18,8 +17,9 @@ export class MetadataHandler {
   /**
    * Handle metadata request
    */
-  handle = async (req: DirectusRequest & MetadataRequest, res: Response): Promise<void> => {
-    const { collection } = req.params;
+  handle = async (req: DirectusRequest, res: Response): Promise<void> => {
+    // Extract collection from path
+    const collection = req.params.collection;
     const cache = (req as any).cache as DirectusCacheWrapper | null;
 
     // Get services

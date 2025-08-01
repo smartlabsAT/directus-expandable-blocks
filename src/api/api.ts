@@ -5,6 +5,8 @@ import { SearchHandler } from './handlers/SearchHandler';
 import { DetailHandler } from './handlers/DetailHandler';
 import { errorHandler } from './middleware/error-handler';
 import { cacheMiddleware } from './middleware/cache';
+import { securityHeaders, corsMiddleware } from './middleware/security-headers';
+import { openAPISpec } from './docs/openapi';
 
 export default defineEndpoint({
     id: 'expandable-blocks-api',
@@ -16,8 +18,22 @@ export default defineEndpoint({
         const searchHandler = new SearchHandler(serviceFactory, context.logger);
         const detailHandler = new DetailHandler(serviceFactory, context.logger);
 
-        // Apply cache middleware
+        // Apply middleware
+        router.use(corsMiddleware());
+        router.use(securityHeaders());
         router.use(cacheMiddleware(context));
+
+        /**
+         * OpenAPI Documentation
+         */
+        router.get('/docs', (req, res) => {
+            res.json(openAPISpec);
+        });
+
+        router.get('/docs.yaml', (req, res) => {
+            res.setHeader('Content-Type', 'application/x-yaml');
+            res.send(JSON.stringify(openAPISpec, null, 2));
+        });
 
         /**
          * Route 1: Metadata Endpoint

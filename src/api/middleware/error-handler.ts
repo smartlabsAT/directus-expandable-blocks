@@ -26,13 +26,18 @@ export function errorHandler(context: any) {
       return next(err);
     }
 
+    // Handle validation errors
+    if (err instanceof Error && err.name === 'ValidationError') {
+      return res.status(400).json(createErrorResponse(err.message, 'VALIDATION_ERROR'));
+    }
+
     // Handle permission errors
     if (isPermissionError(err)) {
       return res.status(403).json(createPermissionError());
     }
 
-    // Handle validation errors
-    if (err instanceof Error && err.message.includes('invalid')) {
+    // Handle other validation-like errors
+    if (err instanceof Error && err.message.toLowerCase().includes('invalid')) {
       return res.status(400).json(createErrorResponse(err.message, 'INVALID_PAYLOAD'));
     }
 
