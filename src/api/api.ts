@@ -6,6 +6,8 @@ import { DetailHandler } from './handlers/DetailHandler';
 import { errorHandler } from './middleware/error-handler';
 import { cacheMiddleware } from './middleware/cache';
 import { securityHeaders, corsMiddleware } from './middleware/security-headers';
+import { rateLimitMiddleware } from './middleware/rate-limit';
+import { requestIdMiddleware } from './middleware/request-id';
 import { openAPISpec } from './docs/openapi';
 
 export default defineEndpoint({
@@ -19,8 +21,10 @@ export default defineEndpoint({
         const detailHandler = new DetailHandler(serviceFactory, context.logger);
 
         // Apply middleware
+        router.use(requestIdMiddleware());
         router.use(corsMiddleware());
         router.use(securityHeaders());
+        router.use(rateLimitMiddleware());
         router.use(cacheMiddleware(context));
 
         /**

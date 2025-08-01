@@ -4,6 +4,8 @@ import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
 import type { MetadataResponse } from '../schemas/response-schemas';
+import { createValidationError } from '../schemas/response-schemas';
+import { validateCollection } from '../utils/validation';
 
 /**
  * Handler for metadata endpoint
@@ -18,26 +20,48 @@ export class MetadataHandler {
    * Handle metadata request
    */
   handle = async (req: DirectusRequest, res: Response): Promise<void> => {
-    // Extract collection from path
-    const collection = req.params.collection;
-    const cache = (req as any).cache as DirectusCacheWrapper | null;
+    try {
+      // Validate collection
+      const collection = req.params.collection;
+      validateCollection(collection);
+      
+      const cache = (req as any).cache as DirectusCacheWrapper | null;
 
-    // Get services
-    const relationAnalyzer = await this.serviceFactory.getRelationAnalyzer();
-    const fieldAnalyzer = await this.serviceFactory.getFieldAnalyzer();
+      // Get services
+      const relationAnalyzer = await this.serviceFactory.getRelationAnalyzer();
+      const fieldAnalyzer = await this.serviceFactory.getFieldAnalyzer();
 
-    // Get all metadata
-    const cacheKey = `metadata:complete:${collection}`;
-    
-    const metadata = cache
-      ? await cache.getOrSet(
-          cacheKey,
-          () => this.loadMetadata(collection, relationAnalyzer, fieldAnalyzer),
-          { ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG }
-        )
-      : await this.loadMetadata(collection, relationAnalyzer, fieldAnalyzer);
+      // Get all metadata
+      const cacheKey = `metadata:complete:${collection}`;
+      
+      const metadata = cache
+        ? await cache.getOrSet(
+            cacheKey,
+            () => this.loadMetadata(collection, relationAnalyzer, fieldAnalyzer),
+            { ttl: cache.getTTLForDataType('metadata') || CacheTTL.LONG }
+          )
+        : await this.loadMetadata(collection, relationAnalyzer, fieldAnalyzer);
 
-    res.json(metadata);
+      res.json(metadata);
+    } catch (error) {
+      // Log error but don't expose internals
+      this.logger.error('Metadata handler error:', error);
+      
+      // Send appropriate error response
+      if (error instanceof Error) {
+        if (error.message.includes('not allowed') || error.message.includes('Collection')) {
+          res.status(403).json(createValidationError('Access denied'));
+          return;
+        }
+        if (error.message.includes('Invalid')) {
+          res.status(400).json(createValidationError(error.message));
+          return;
+        }
+      }
+      
+      // Generic error for unexpected issues
+      res.status(500).json(createValidationError('An error occurred processing your request'));
+    }
   }
 
   /**

@@ -53,6 +53,46 @@ export function securityHeaders() {
 }
 
 /**
+ * Get allowed origins from environment or defaults
+ */
+function getAllowedOrigins(): string[] {
+  const envOrigins = process.env.EXPANDABLE_BLOCKS_ALLOWED_ORIGINS;
+  
+  if (envOrigins) {
+    return envOrigins.split(',').map(origin => origin.trim());
+  }
+  
+  // Default origins for development
+  return [
+    'http://localhost:8055',
+    'https://backend.smartlabs.dev',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+}
+
+/**
+ * Check if origin matches allowed patterns
+ */
+function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+  return allowedOrigins.some(allowed => {
+    // Exact match
+    if (allowed === origin) {
+      return true;
+    }
+    
+    // Wildcard subdomain match (e.g., *.example.com)
+    if (allowed.startsWith('*.')) {
+      const domain = allowed.substring(2);
+      const originDomain = origin.replace(/^https?:\/\//, '');
+      return originDomain.endsWith(domain);
+    }
+    
+    return false;
+  });
+}
+
+/**
  * CORS configuration for the API
  * This should be configured based on your specific requirements
  */
@@ -60,16 +100,15 @@ export function corsMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
     const origin = req.headers.origin;
     
-    // List of allowed origins - adjust based on your needs
-    const allowedOrigins = [
-      'http://localhost:8055',
-      'https://backend.smartlabs.dev',
-      // Add more allowed origins as needed
-    ];
+    // Get allowed origins from environment
+    const allowedOrigins = getAllowedOrigins();
     
     // Check if origin is allowed
-    if (origin && allowedOrigins.includes(origin)) {
+    if (origin && isOriginAllowed(origin, allowedOrigins)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (!origin) {
+      // Allow requests without origin (e.g., server-side requests)
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
     
     // Allow credentials

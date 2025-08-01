@@ -107,6 +107,82 @@ export class UsageFinderService {
   }
 
   /**
+   * Batch find direct usages for multiple items
+   * @param collection The collection of the items
+   * @param itemIds Array of item IDs
+   * @param options Search options
+   * @returns Array of usages for all items
+   */
+  async findBatchUsages(
+    collection: string,
+    itemIds: (string | number)[],
+    options: FindUsageOptions = {}
+  ): Promise<Usage[]> {
+    if (itemIds.length === 0) {
+      return [];
+    }
+    
+    // Build batch cache key
+    const cacheKey = `batch:${collection}:${itemIds.sort().join(',')}:${JSON.stringify(options)}`;
+    const cached = this.getCache(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+    
+    const {
+      includeTranslations = false,
+      includeFieldMetadata = true,
+      excludeTranslations = false,
+      groupDuplicates = false
+    } = options;
+    
+    // Get all relations pointing to this collection
+    const relationsToCollection = await this.relationAnalyzer.getRelationsToCollection(
+      collection,
+      { bypassPermissions: true }
+    );
+    
+    if (relationsToCollection.length === 0) {
+      this.setCache(cacheKey, []);
+      return [];
+    }
+    
+    const usages: Usage[] = [];
+    
+    // Process each relation in batch
+    for (const relation of relationsToCollection) {
+      try {
+        const relationUsages = await this.findUsagesInRelationBatch(
+          relation,
+          collection,
+          itemIds,
+          includeFieldMetadata
+        );
+        
+        if (relationUsages.length > 0) {
+          usages.push(...relationUsages);
+        }
+      } catch (error) {
+        this.logger.error(`Error finding batch usages in relation:`, {
+          relation: relation.collection,
+          field: relation.field,
+          error
+        });
+      }
+    }
+    
+    // Filter translations if needed
+    let filteredUsages = usages;
+    if (excludeTranslations && !includeTranslations) {
+      filteredUsages = usages.filter(usage => !this.isTranslationCollection(usage.collection));
+    }
+    
+    this.setCache(cacheKey, filteredUsages);
+    return filteredUsages;
+  }
+
+  /**
    * Find all usages (direct and indirect) building a tree structure
    * @param collection The collection of the item
    * @param itemId The ID of the item

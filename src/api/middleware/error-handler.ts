@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { getErrorMessage, isPermissionError } from '../utils/error-utils';
 import { createErrorResponse, createPermissionError } from '../schemas/response-schemas';
+import { isProduction } from '../utils/validation';
 
 /**
  * Error handler middleware factory for API endpoints
@@ -14,12 +15,19 @@ export function errorHandler(context: any) {
     }
 
     // Log error for debugging
-    context.logger.error('API Error:', {
+    const errorLog: any = {
+      requestId: (req as any).id,
       path: req.path,
       method: req.method,
-      error: getErrorMessage(err),
-      stack: err instanceof Error ? err.stack : undefined
-    });
+      error: getErrorMessage(err)
+    };
+    
+    // Only include stack trace in development
+    if (!isProduction() && err instanceof Error) {
+      errorLog.stack = err.stack;
+    }
+    
+    context.logger.error('API Error:', errorLog);
 
     // Check if response was already sent
     if (res.headersSent) {
