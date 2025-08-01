@@ -24,6 +24,7 @@ export function parseMetadata(meta: any): ParsedMetadata {
 
 /**
  * Converts snake_case or kebab-case strings to Title Case
+ * @deprecated Use formatName() from string-utils instead
  * @param name The string to humanize
  * @returns Human-readable string
  */

@@ -8,7 +8,31 @@
  * @returns A string error message
  */
 export function getErrorMessage(error: unknown): string {
+  // Check for Directus structured error format first
+  if (error && typeof error === 'object') {
+    // Check for Directus structured error format
+    if ('errors' in error && Array.isArray((error as any).errors) && (error as any).errors[0]?.message) {
+      return (error as any).errors[0].message;
+    }
+    
+    // Check for Directus API response error
+    if ('response' in error && (error as any).response?.data?.errors?.[0]?.message) {
+      return (error as any).response.data.errors[0].message;
+    }
+  }
+  
+  // Standard error handling
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Extract a meaningful error message from various Directus error formats
+ * @deprecated Use getErrorMessage() instead
+ * @param error The error object from Directus
+ * @returns A user-friendly error message
+ */
+export function extractDirectusErrorMessage(error: any): string {
+  return getErrorMessage(error);
 }
 
 /**

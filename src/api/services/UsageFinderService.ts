@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import {
   UsageFinderConfig,
   UsageLocation,
@@ -9,22 +9,32 @@ import {
   UsageCacheEntry
 } from '../types/UsageFinderTypes';
 import { createServiceLogger } from '../utils/logger-utils';
-import { buildCacheKey } from '../utils/cache-utils';
-import { TITLE_FIELDS, METADATA_FIELDS, parseAllowedCollections } from '../../utils/helpers';
+import { buildCacheKey, itemCacheKey } from '../utils/cache-utils';
+import { TITLE_FIELDS, METADATA_FIELDS, parseAllowedCollections } from '../utils/constants';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 /**
  * Service for finding where items are used across collections
  */
 export class UsageFinderService {
-  private database: Knex;
-  private services: DirectusServices;
-  private schema?: DirectusSchema;
-  private accountability?: DirectusAccountability;
-  private incomingRelations: RelationInfo[];
-  private cache: Map<string, UsageCacheEntry> = new Map();
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  private logger: Logger;
+  // Constants
+  private static readonly CACHE_TTL_MINUTES = 5;
+  private static readonly CACHE_TTL = UsageFinderService.CACHE_TTL_MINUTES * 60 * 1000;
+  private static readonly DEFAULT_MAX_DEPTH = 5;
+  private static readonly MAX_DISPLAY_NAME_LENGTH = 100;
+  private static readonly ADDITIONAL_DISPLAY_FIELDS = [
+    'display_name', 'slug', 'description', 'text', 'content',
+    'page_title', 'menu_title', 'caption', 'subject'
+  ];
+  
+  // Instance properties
+  private readonly database: Knex;
+  private readonly services: DirectusServices;
+  private readonly schema?: DirectusSchema;
+  private readonly accountability?: DirectusAccountability;
+  private readonly incomingRelations: RelationInfo[];
+  private readonly cache: Map<string, UsageCacheEntry> = new Map();
+  private readonly logger: Logger;
 
   constructor(config: UsageFinderConfig) {
     this.database = config.database;
@@ -47,7 +57,7 @@ export class UsageFinderService {
     itemId: string | number,
     options: FindUsageOptions = {}
   ): Promise<UsageLocation[]> {
-    const cacheKey = buildCacheKey('direct', collection, itemId);
+    const cacheKey = itemCacheKey('direct-usages', collection, itemId);
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached as UsageLocation[];
 
@@ -55,10 +65,9 @@ export class UsageFinderService {
       includeInactive = true,
       limitPerCollection,
       excludeCollections = [],
-      includeItemDetails = false,
       includeFieldMetadata = true,
-      groupDuplicates = true,  // New option to group duplicates
-      excludeTranslations = false  // New option to exclude translation references
+      groupDuplicates = true,
+      excludeTranslations = false
     } = options;
 
     this.logger.debug(`Finding direct usages for ${collection}/${itemId}`);
@@ -79,77 +88,11 @@ export class UsageFinderService {
       try {
         // Handle M2A relations
         if (relation.one_collection === null && relation.one_allowed_collections) {
-          const allowedCollections = parseAllowedCollections(relation.one_allowed_collections);
-          if (!allowedCollections.includes(collection)) continue;
-
-          const junctionUsages = await this.findM2AUsages(
-            relation,
-            collection,
-            itemId,
-            includeInactive,
-            limitPerCollection,
-            groupDuplicates
-          );
-
-          for (const usage of junctionUsages) {
-            const enrichedUsage = await this.enrichUsageLocation(
-              usage,
-              includeItemDetails,
-              includeFieldMetadata
-            );
-            
-            if (groupDuplicates) {
-              // Create unique key for this usage
-              const usageKey = `${usage.collection}:${usage.item_id}:${usage.field}`;
-              
-              // Only add if not already present or update with additional info
-              if (!usageMap.has(usageKey)) {
-                usageMap.set(usageKey, enrichedUsage);
-              } else {
-                // Could merge additional info here if needed
-                const existing = usageMap.get(usageKey)!;
-                // For M2A, we might want to track multiple junction entries
-                if (!existing.usage_count) existing.usage_count = 1;
-                existing.usage_count++;
-              }
-            } else {
-              usages.push(enrichedUsage);
-            }
-          }
+          await this.processM2ARelations(relation, collection, itemId, options, usageMap, usages);
         }
         // Handle regular M2O relations
         else if (relation.many_collection && relation.many_field) {
-          const directUsages = await this.findM2OUsages(
-            relation,
-            itemId,
-            includeInactive,
-            limitPerCollection
-          );
-
-          for (const usage of directUsages) {
-            const enrichedUsage = await this.enrichUsageLocation(
-              usage,
-              includeItemDetails,
-              includeFieldMetadata
-            );
-            
-            if (groupDuplicates) {
-              // Create unique key for this usage
-              const usageKey = `${usage.collection}:${usage.item_id}:${usage.field}`;
-              
-              // Only add if not already present
-              if (!usageMap.has(usageKey)) {
-                usageMap.set(usageKey, enrichedUsage);
-              } else {
-                // For M2O, duplicates shouldn't happen but handle anyway
-                const existing = usageMap.get(usageKey)!;
-                if (!existing.usage_count) existing.usage_count = 1;
-                existing.usage_count++;
-              }
-            } else {
-              usages.push(enrichedUsage);
-            }
-          }
+          await this.processM2ORelations(relation, itemId, options, usageMap, usages);
         }
       } catch (error) {
         this.logger.error(`Error checking relation:`, error);
@@ -175,7 +118,7 @@ export class UsageFinderService {
     itemId: string | number,
     options: FindUsageOptions = {}
   ): Promise<UsageTree> {
-    const { maxDepth = 5 } = options;
+    const { maxDepth = UsageFinderService.DEFAULT_MAX_DEPTH } = options;
     const visited = new Set<string>();
     
     return this.buildUsageTree(
@@ -255,6 +198,179 @@ export class UsageFinderService {
   }
 
   /**
+   * Create a unique key for a usage location
+   */
+  private createUsageKey(usage: UsageLocation): string {
+    return `${usage.collection}:${usage.item_id}:${usage.field}`;
+  }
+
+  /**
+   * Handle duplicate usage tracking
+   */
+  private handleDuplicateUsage(
+    usage: UsageLocation,
+    enrichedUsage: UsageLocation,
+    usageMap: Map<string, UsageLocation>,
+    usages: UsageLocation[],
+    groupDuplicates: boolean
+  ): void {
+    if (groupDuplicates) {
+      const usageKey = this.createUsageKey(usage);
+      
+      if (!usageMap.has(usageKey)) {
+        usageMap.set(usageKey, enrichedUsage);
+      } else {
+        const existing = usageMap.get(usageKey)!;
+        if (!existing.usage_count) existing.usage_count = 1;
+        existing.usage_count++;
+      }
+    } else {
+      usages.push(enrichedUsage);
+    }
+  }
+
+  /**
+   * Process M2A relations for finding usages
+   */
+  private async processM2ARelations(
+    relation: RelationInfo,
+    collection: string,
+    itemId: string | number,
+    options: FindUsageOptions,
+    usageMap: Map<string, UsageLocation>,
+    usages: UsageLocation[]
+  ): Promise<void> {
+    const allowedCollections = parseAllowedCollections(relation.one_allowed_collections!);
+    if (!allowedCollections.includes(collection)) return;
+
+    const junctionUsages = await this.findM2AUsages(
+      relation,
+      collection,
+      itemId,
+      options.includeInactive ?? true,
+      options.limitPerCollection,
+      options.groupDuplicates ?? true
+    );
+
+    for (const usage of junctionUsages) {
+      const enrichedUsage = await this.enrichUsageLocation(
+        usage,
+        options.includeFieldMetadata ?? true
+      );
+      
+      this.handleDuplicateUsage(usage, enrichedUsage, usageMap, usages, options.groupDuplicates ?? true);
+    }
+  }
+
+  /**
+   * Process M2O relations for finding usages
+   */
+  private async processM2ORelations(
+    relation: RelationInfo,
+    itemId: string | number,
+    options: FindUsageOptions,
+    usageMap: Map<string, UsageLocation>,
+    usages: UsageLocation[]
+  ): Promise<void> {
+    const directUsages = await this.findM2OUsages(
+      relation,
+      itemId,
+      options.includeInactive ?? true,
+      options.limitPerCollection
+    );
+
+    for (const usage of directUsages) {
+      const enrichedUsage = await this.enrichUsageLocation(
+        usage,
+        options.includeFieldMetadata ?? true
+      );
+      
+      this.handleDuplicateUsage(usage, enrichedUsage, usageMap, usages, options.groupDuplicates ?? true);
+    }
+  }
+
+  /**
+   * Load junction entries for M2A relations
+   */
+  private async loadJunctionEntries(
+    junctionTable: string,
+    itemField: string,
+    collectionField: string,
+    itemId: string | number,
+    collection: string,
+    limit?: number
+  ): Promise<any[]> {
+    let query = this.database(junctionTable)
+      .where(itemField, String(itemId))
+      .where(collectionField, collection);
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    return await query;
+  }
+
+  /**
+   * Group junction entries by parent ID
+   */
+  private groupJunctionEntriesByParent(
+    junctionEntries: any[],
+    junctionField: string
+  ): Map<string, any[]> {
+    const parentGroups = new Map<string, any[]>();
+    
+    for (const entry of junctionEntries) {
+      const parentId = String(entry[junctionField]);
+      if (!parentGroups.has(parentId)) {
+        parentGroups.set(parentId, []);
+      }
+      parentGroups.get(parentId)!.push(entry);
+    }
+    
+    return parentGroups;
+  }
+
+  /**
+   * Build usage location from parent data
+   */
+  private buildUsageLocation(
+    parentId: string,
+    parent: any,
+    parentCollection: string,
+    fieldName: string,
+    junctionTable: string,
+    entries: any[],
+    groupDuplicates: boolean
+  ): UsageLocation | UsageLocation[] {
+    const baseUsage = {
+      collection: parentCollection,
+      collection_name: parentCollection,
+      item_id: parentId,
+      item_name: this.findDisplayNameFromObject(parent, parentCollection),
+      field: fieldName,
+      field_name: fieldName,
+      relation_type: 'M2A' as const,
+      junction_table: junctionTable,
+      status: parent.status || null,
+      depth: 0
+    };
+
+    if (groupDuplicates) {
+      return {
+        ...baseUsage,
+        sort: entries[0].sort || null,
+        usage_count: entries.length
+      };
+    } else {
+      return entries.map(entry => ({
+        ...baseUsage,
+        sort: entry.sort || null
+      }));
+    }
+  }
+
+  /**
    * Build usage tree recursively
    */
   private async buildUsageTree(
@@ -265,7 +381,7 @@ export class UsageFinderService {
     visited: Set<string>,
     options: FindUsageOptions
   ): Promise<UsageTree> {
-    const nodeKey = `${collection}:${itemId}`;
+    const nodeKey = buildCacheKey('node', collection, itemId);
     
     // Check for circular reference
     if (visited.has(nodeKey)) {
@@ -349,22 +465,21 @@ export class UsageFinderService {
     const collectionField = relation.one_collection_field || 'collection';
     const junctionField = relation.junction_field!;
 
-    // Query junction table
-    let query = this.database(junctionTable)
-      .where(itemField, String(itemId))
-      .where(collectionField, collection);
+    // Load junction entries
+    const junctionEntries = await this.loadJunctionEntries(
+      junctionTable,
+      itemField,
+      collectionField,
+      itemId,
+      collection,
+      limit
+    );
 
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    const junctionEntries = await query;
-    const usages: UsageLocation[] = [];
+    if (junctionEntries.length === 0) return [];
 
     // Get unique parent IDs
     const parentIds = [...new Set(junctionEntries.map(e => e[junctionField]))];
-    if (parentIds.length === 0) return usages;
-
+    
     // Determine parent collection from junction table name
     const parentCollection = this.extractParentCollection(junctionTable, junctionField);
     
@@ -372,17 +487,12 @@ export class UsageFinderService {
     const parentItems = await this.loadItemsByIds(parentCollection, parentIds);
     const parentMap = new Map(parentItems.map(item => [String(item.id), item]));
 
-    // Group junction entries by parent ID to count duplicates
-    const parentGroups = new Map<string, any[]>();
-    for (const entry of junctionEntries) {
-      const parentId = String(entry[junctionField]);
-      if (!parentGroups.has(parentId)) {
-        parentGroups.set(parentId, []);
-      }
-      parentGroups.get(parentId)!.push(entry);
-    }
+    // Group junction entries by parent ID
+    const parentGroups = this.groupJunctionEntriesByParent(junctionEntries, junctionField);
 
     // Build usage locations
+    const usages: UsageLocation[] = [];
+    
     for (const [parentId, entries] of parentGroups) {
       const parent = parentMap.get(parentId);
       
@@ -392,41 +502,20 @@ export class UsageFinderService {
       // Get field name from relation or junction table
       const fieldName = this.extractFieldName(junctionTable, parentCollection);
       
-      if (groupDuplicates) {
-        // Group duplicates: one entry per parent with usage count
-        const firstEntry = entries[0];
-        usages.push({
-          collection: parentCollection,
-          collection_name: parentCollection,
-          item_id: parentId,
-          item_name: this.findDisplayNameFromObject(parent, parentCollection),
-          field: fieldName,
-          field_name: fieldName,
-          relation_type: 'M2A',
-          junction_table: junctionTable,
-          sort: firstEntry.sort || null,
-          status: parent.status || null,
-          depth: 0,
-          usage_count: entries.length  // Track how many times used
-        });
+      const locationOrLocations = this.buildUsageLocation(
+        parentId,
+        parent,
+        parentCollection,
+        fieldName,
+        junctionTable,
+        entries,
+        groupDuplicates
+      );
+      
+      if (Array.isArray(locationOrLocations)) {
+        usages.push(...locationOrLocations);
       } else {
-        // Don't group duplicates: one entry per junction entry
-        for (const entry of entries) {
-          usages.push({
-            collection: parentCollection,
-            collection_name: parentCollection,
-            item_id: parentId,
-            item_name: this.findDisplayNameFromObject(parent, parentCollection),
-            field: fieldName,
-            field_name: fieldName,
-            relation_type: 'M2A',
-            junction_table: junctionTable,
-            sort: entry.sort || null,
-            status: parent.status || null,
-            depth: 0,
-            // Don't include usage_count when not grouping
-          });
-        }
+        usages.push(locationOrLocations);
       }
     }
 
@@ -528,8 +617,7 @@ export class UsageFinderService {
     // Common field names for display - use TITLE_FIELDS first, then additional fields
     const displayFields = [
       ...TITLE_FIELDS,
-      'display_name', 'slug', 'description', 'text', 'content',
-      'page_title', 'menu_title', 'caption', 'subject'
+      ...UsageFinderService.ADDITIONAL_DISPLAY_FIELDS
     ];
 
     // Find first non-empty field
@@ -543,7 +631,7 @@ export class UsageFinderService {
     for (const [key, value] of Object.entries(obj)) {
       if (value && typeof value === 'string' &&
           ![...METADATA_FIELDS, 'status', 'sort'].includes(key) &&
-          value.trim().length > 0 && value.trim().length < 100) {
+          value.trim().length > 0 && value.trim().length < UsageFinderService.MAX_DISPLAY_NAME_LENGTH) {
         return value;
       }
     }
@@ -593,7 +681,6 @@ export class UsageFinderService {
    */
   private async enrichUsageLocation(
     usage: UsageLocation,
-    includeItemDetails: boolean,
     includeFieldMetadata: boolean
   ): Promise<UsageLocation> {
     // Get collection metadata
@@ -689,7 +776,7 @@ export class UsageFinderService {
       key,
       result,
       timestamp: Date.now(),
-      ttl: this.CACHE_TTL
+      ttl: UsageFinderService.CACHE_TTL
     });
   }
 

@@ -12,7 +12,7 @@ import { UsageLocation } from '../types/UsageFinderTypes';
 import { UsageFinderService } from './UsageFinderService';
 import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
 import { buildCacheKey, collectionCacheKey, fieldCacheKey } from '../utils/cache-utils';
-import { TITLE_FIELDS } from '../../utils/helpers';
+import { TITLE_FIELDS } from '../utils/constants';
 import { createServiceLogger } from '../utils/logger-utils';
 import { getErrorMessage } from '../utils/error-utils';
 import { formatCollectionName, formatFieldName } from '../utils/string-utils';

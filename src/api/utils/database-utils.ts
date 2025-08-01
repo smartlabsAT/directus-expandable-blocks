@@ -1,4 +1,7 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
+
+// Re-export from error-utils for backward compatibility
+export { extractDirectusErrorMessage } from './error-utils';
 
 /**
  * Check if a table exists in the database
@@ -31,30 +34,6 @@ export async function checkTableExists(database: Knex, tableName: string): Promi
   }
 }
 
-/**
- * Extract a meaningful error message from various Directus error formats
- * @param error The error object from Directus
- * @returns A user-friendly error message
- */
-export function extractDirectusErrorMessage(error: any): string {
-  // Check for Directus structured error format
-  if (error?.errors?.[0]?.message) {
-    return error.errors[0].message;
-  }
-  
-  // Check for Directus API response error
-  if (error?.response?.data?.errors?.[0]?.message) {
-    return error.response.data.errors[0].message;
-  }
-  
-  // Check for standard error message
-  if (error?.message) {
-    return error.message;
-  }
-  
-  // Fallback
-  return 'An unknown error occurred';
-}
 
 /**
  * Extract count from Directus aggregate query results

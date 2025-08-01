@@ -3,29 +3,36 @@
  */
 
 /**
- * Format a collection name for display
- * Converts snake_case to Title Case
- * @param collection The collection name (e.g., 'user_profiles')
+ * Format a name for display
+ * Converts snake_case or kebab-case to Title Case
+ * @param name The name to format (e.g., 'user_profiles' or 'user-profiles')
  * @returns Formatted name (e.g., 'User Profiles')
  */
-export function formatCollectionName(collection: string): string {
-  return collection
-    .split('_')
+export function formatName(name: string): string {
+  return name
+    .split(/[_-]/)
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 }
 
 /**
+ * Format a collection name for display
+ * @deprecated Use formatName() instead
+ * @param collection The collection name
+ * @returns Formatted name
+ */
+export function formatCollectionName(collection: string): string {
+  return formatName(collection);
+}
+
+/**
  * Format a field name for display
- * Converts snake_case to Title Case
- * @param field The field name (e.g., 'created_at')
- * @returns Formatted name (e.g., 'Created At')
+ * @deprecated Use formatName() instead
+ * @param field The field name
+ * @returns Formatted name
  */
 export function formatFieldName(field: string): string {
-  return field
-    .split('_')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+  return formatName(field);
 }
 
 /**

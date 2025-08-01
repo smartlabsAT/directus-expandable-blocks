@@ -95,6 +95,17 @@ export interface DirectusPermission {
   fields?: string[] | null;
 }
 
+import type { Request } from 'express';
+
+/**
+ * Directus Request type for API endpoints
+ * Extends Express Request with Directus-specific properties
+ */
+export interface DirectusRequest extends Request {
+  accountability?: DirectusAccountability;
+  schema?: DirectusSchema;
+}
+
 /**
  * Field definition as returned by FieldsService
  */

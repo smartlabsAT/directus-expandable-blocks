@@ -15,8 +15,8 @@ import { parseMetadata, humanizeName } from '../utils/relation-utils';
 import type { Knex } from 'knex';
 import { createServiceLogger } from '../utils/logger-utils';
 import { getErrorMessage } from '../utils/error-utils';
+import { parseAllowedCollections } from '../utils/constants';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
-import { parseAllowedCollections } from '../../utils/helpers';
 
 export class RelationAnalyzer {
   private readonly services?: DirectusServices;
