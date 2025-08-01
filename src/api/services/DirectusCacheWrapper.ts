@@ -1,5 +1,5 @@
 import {
-  CacheService, CacheServiceConfig, CacheOptions, CacheStats, CacheTTL,
+  CacheService, CacheServiceConfig, CacheOptions, CacheStats
 } from '../types/CacheTypes';
 import { getLogger } from '../utils/logger-utils';
 
@@ -19,10 +19,8 @@ interface CacheEntry<T> {
  */
 export const CacheTTLHelper = {
   // Helper functions
-  seconds: (n: number) => n * 1000,
   minutes: (n: number) => n * 60 * 1000,
   hours: (n: number) => n * 60 * 60 * 1000,
-  days: (n: number) => n * 24 * 60 * 60 * 1000,
 
   // Presets (in milliseconds)
   SHORT: 5 * 60 * 1000,      // 5 minutes
@@ -37,14 +35,14 @@ export const CacheTTLHelper = {
  * Provides our cache interface with a built-in memory cache implementation
  */
 export class DirectusCacheWrapper implements CacheService {
-  private cache: Map<string, CacheEntry<any>>;
-  private prefix: string;
-  private defaultTTL: number;
-  private maxKeys: number;
-  private cleanupInterval: NodeJS.Timer | null = null;
+  private readonly cache: Map<string, CacheEntry<any>>;
+  private readonly prefix: string;
+  private readonly defaultTTL: number;
+  private readonly maxKeys: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
   private nextExpirationCheck: number = Infinity;
-  private logger: any;
-  private ttlOverrides: CacheServiceConfig['ttlOverrides'];
+  private readonly logger: ReturnType<typeof getLogger>;
+  private readonly ttlOverrides: CacheServiceConfig['ttlOverrides'];
 
   // Statistics
   private stats: CacheStats = {
@@ -122,14 +120,14 @@ export class DirectusCacheWrapper implements CacheService {
   /**
    * Get multiple values from cache
    */
-  async mget<T>(keys: string[]): Promise<(T | null)[]> {
+  async multiGet<T>(keys: string[]): Promise<(T | null)[]> {
     return Promise.all(keys.map(key => this.get<T>(key)));
   }
 
   /**
    * Set multiple values in cache
    */
-  async mset(items: { key: string; value: any; options?: CacheOptions }[]): Promise<void> {
+  async multiSet(items: { key: string; value: any; options?: CacheOptions }[]): Promise<void> {
     await Promise.all(items.map(item => this.set(item.key, item.value, item.options)));
   }
 
@@ -143,7 +141,10 @@ export class DirectusCacheWrapper implements CacheService {
     const regex = new RegExp('^' + pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
 
     for (const key of this.cache.keys()) {
-      if (regex.test(key)) this.deleteEntry(key), deletedCount++;
+      if (regex.test(key)) {
+        this.deleteEntry(key);
+        deletedCount++;
+      }
     }
 
     return deletedCount;
@@ -191,15 +192,6 @@ export class DirectusCacheWrapper implements CacheService {
     return value;
   }
 
-  /**
-   * Get cache statistics
-   */
-  getStats(): CacheStats {
-    return {
-      ...this.stats,
-      hitRate: this.stats.hits + this.stats.misses > 0 ? this.stats.hits / (this.stats.hits + this.stats.misses) : 0,
-    };
-  }
 
   /**
    * Utility method to add prefix to keys
@@ -228,33 +220,6 @@ export class DirectusCacheWrapper implements CacheService {
     this.updateStats();
   }
 
-  /**
-   * Start cleanup interval for expired entries
-   */
-  private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      if (now < this.nextExpirationCheck) return;
-
-      let deletedCount = 0;
-      this.nextExpirationCheck = Infinity;
-
-      for (const [key, entry] of this.cache.entries()) {
-        if (entry.expiresAt && entry.expiresAt < now) {
-          this.deleteEntry(key);
-          deletedCount++;
-        } else if (entry.expiresAt && entry.expiresAt < this.nextExpirationCheck) {
-          this.nextExpirationCheck = entry.expiresAt;
-        }
-      }
-
-      if (deletedCount > 0) {
-        this.logger.debug(`\[DirectusCacheWrapper\] Cleaned up ${deletedCount} expired entries`);
-      }
-    }, 30000);
-
-    this.cleanupInterval?.unref?.();
-  }
 
   /**
    * Setup process handlers for cleanup

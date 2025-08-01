@@ -90,13 +90,13 @@ export interface CacheService {
    * @param keys Array of cache keys
    * @returns Array of values (null for missing/expired)
    */
-  mget<T>(keys: string[]): Promise<(T | null)[]>;
+  multiGet<T>(keys: string[]): Promise<(T | null)[]>;
   
   /**
    * Set multiple values in cache
    * @param items Array of cache items
    */
-  mset(items: { key: string; value: any; options?: CacheOptions }[]): Promise<void>;
+  multiSet(items: { key: string; value: any; options?: CacheOptions }[]): Promise<void>;
   
   /**
    * Delete all keys matching a pattern
