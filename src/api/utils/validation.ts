@@ -1,46 +1,25 @@
-import { ValidationError, CollectionError } from '../errors';
+import { ValidationError } from '../errors';
 import { 
   API_LIMITS, 
   PATTERNS, 
   ERROR_MESSAGES, 
-  DEFAULT_ALLOWED_COLLECTIONS,
-  ENV_VARS,
   FIELD_CONSTANTS
 } from '../constants';
 
 /**
- * Get allowed collections from environment or use defaults
- * In production, this should be configured via environment variables
- */
-export function getAllowedCollections(): Set<string> {
-  const envCollections = process.env[ENV_VARS.ALLOWED_COLLECTIONS];
-  
-  if (envCollections) {
-    return new Set(envCollections.split(',').map(c => c.trim()));
-  }
-  
-  // Default allowed collections - should be configured per deployment
-  return new Set(DEFAULT_ALLOWED_COLLECTIONS);
-}
-
-/**
- * Validate collection name against whitelist
+ * Validate collection name format for security
  */
 export function validateCollection(collection: string): void {
   if (!collection) {
     throw new ValidationError(ERROR_MESSAGES.COLLECTION_REQUIRED);
   }
   
-  // Additional security check for collection name format
+  // Security check for collection name format to prevent injection attacks
   if (!PATTERNS.COLLECTION_NAME.test(collection)) {
     throw new ValidationError(ERROR_MESSAGES.COLLECTION_INVALID_FORMAT);
   }
   
-  // Check against whitelist
-  const allowedCollections = getAllowedCollections();
-  if (!allowedCollections.has(collection)) {
-    throw new CollectionError(collection);
-  }
+  // No whitelist check - rely on Directus permissions instead
 }
 
 /**

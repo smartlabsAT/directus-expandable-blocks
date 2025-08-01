@@ -21,7 +21,7 @@ export function useM2AData(
   // Destructure what we need from context
   const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInternalUpdate, isInitialLoad, isFullyInitialized } = ctx.state;
   const { getItemId, isNewItem, updateOriginalState, markBlockDirty } = ctx.stateFns;
-  const { api, props, stores: { relationsStore, fieldsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
+  const { api, props, stores: { relationsStore, fieldsStore, collectionsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
   const { mergedOptions } = ctx.ui;
   const { relationInfo, allowedCollections, allowedCollectionsForExisting, m2aStructure } = ctx.data;
 
@@ -122,43 +122,21 @@ export function useM2AData(
       }
     }
     
-    // Map collections to proper format
+    // Map collections to proper format using Directus stores instead of API
     if (collections.length > 0) {
       try {
-        const mappedCollections = await Promise.all(
-          collections.map(async (col: string) => {
-            try {
-              const response = await api.get(`/expandable-blocks-api/${col}/metadata`);
-              const metadata = response?.data;
-              
-              // Ensure metadata exists and has expected structure
-              if (!metadata || typeof metadata !== 'object') {
-                logger.warn(`Invalid metadata response for ${col}`, metadata);
-                return {
-                  collection: col,
-                  name: col,
-                  icon: 'box',
-                  singleton: false
-                };
-              }
-              
-              return {
-                collection: col,
-                name: metadata.collectionMetadata?.name || metadata.collection || col,
-                icon: metadata.collectionMetadata?.icon || 'box',
-                singleton: metadata.collectionMetadata?.singleton || false
-              };
-            } catch (error) {
-              logger.warn(`Failed to load metadata for ${col}, using fallback:`, error);
-              return {
-                collection: col,
-                name: col,
-                icon: 'box',
-                singleton: false
-              };
-            }
-          })
-        );
+        const mappedCollections = collections.map((col: string) => {
+          // Get collection info directly from Directus store
+          const collectionInfo = collectionsStore.getCollection(col);
+          
+          return {
+            collection: col,
+            name: collectionInfo?.name || col,
+            icon: collectionInfo?.meta?.icon || 'box',
+            singleton: collectionInfo?.meta?.singleton || false
+          };
+        });
+        
         allowedCollections.value = mappedCollections;
         logger.debug('Loaded allowed collections:', mappedCollections);
       } catch (error) {
@@ -188,40 +166,18 @@ export function useM2AData(
       const collections = fieldOptions.allowedCollectionsForExisting;
       
       try {
-        const mappedCollections = await Promise.all(
-          collections.map(async (col: string) => {
-            try {
-              const response = await api.get(`/expandable-blocks-api/${col}/metadata`);
-              const metadata = response?.data;
-              
-              // Ensure metadata exists and has expected structure
-              if (!metadata || typeof metadata !== 'object') {
-                logger.warn(`Invalid metadata response for ${col}`, metadata);
-                return {
-                  collection: col,
-                  name: col,
-                  icon: 'box',
-                  singleton: false
-                };
-              }
-              
-              return {
-                collection: col,
-                name: metadata.collectionMetadata?.name || metadata.collection || col,
-                icon: metadata.collectionMetadata?.icon || 'box',
-                singleton: metadata.collectionMetadata?.singleton || false
-              };
-            } catch (error) {
-              logger.warn(`Failed to load metadata for ${col}, using fallback:`, error);
-              return {
-                collection: col,
-                name: col,
-                icon: 'box',
-                singleton: false
-              };
-            }
-          })
-        );
+        const mappedCollections = collections.map((col: string) => {
+          // Get collection info directly from Directus store
+          const collectionInfo = collectionsStore.getCollection(col);
+          
+          return {
+            collection: col,
+            name: collectionInfo?.name || col,
+            icon: collectionInfo?.meta?.icon || 'box',
+            singleton: collectionInfo?.meta?.singleton || false
+          };
+        });
+        
         allowedCollectionsForExisting.value = mappedCollections;
       } catch (error) {
         logger.error('Error loading collection details for existing:', error);

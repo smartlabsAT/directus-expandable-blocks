@@ -50,18 +50,6 @@ export class ValidationError extends APIError {
   }
 }
 
-/**
- * Collection Validation Error - 403 Forbidden
- * Used when collection is not allowed or doesn't exist
- */
-export class CollectionError extends APIError {
-  public readonly collection: string;
-
-  constructor(collection: string, message = ERROR_MESSAGES.COLLECTION_NOT_ALLOWED) {
-    super(message, HTTP_STATUS.FORBIDDEN, 'INVALID_COLLECTION');
-    this.collection = collection;
-  }
-}
 
 /**
  * Permission Error - 403 Forbidden
@@ -165,9 +153,6 @@ export function createValidationError(field: string, value?: unknown): Validatio
   return new ValidationError(message);
 }
 
-export function createCollectionError(collection: string): CollectionError {
-  return new CollectionError(collection);
-}
 
 export function createPermissionError(resource?: string): PermissionError {
   const message = resource

@@ -20,7 +20,6 @@ export const HTTP_STATUS = {
  */
 export const ERROR_MESSAGES = {
   COLLECTION_REQUIRED: 'Collection name is required',
-  COLLECTION_NOT_ALLOWED: 'Collection is not allowed',
   COLLECTION_INVALID_FORMAT: 'Invalid collection name format',
   IDS_REQUIRED: 'ids array is required',
   IDS_EMPTY: 'At least one ID is required',
@@ -78,34 +77,17 @@ export const API_LIMITS = {
  */
 export const PATTERNS = {
   COLLECTION_NAME: /^[a-zA-Z][a-zA-Z0-9_]*$/,
-  FIELD_NAME: /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*$/,
+  FIELD_NAME: /^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)*(\.\*)?$/,
   NUMERIC_ID: /^\d+$/,
   UUID_ID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   ALPHANUMERIC_ID: /^[a-zA-Z0-9_-]+$/,
 } as const;
 
-/**
- * Default Collections (if not configured via environment)
- */
-export const DEFAULT_ALLOWED_COLLECTIONS = [
-  'content_headline',
-  'content_text',
-  'content_image',
-  'content_button',
-  'content_video',
-  'content_gallery',
-  'content_accordion',
-  'content_quote',
-  'test_all_fields',
-  'pages',
-  'page_blocks'
-] as const;
 
 /**
  * Environment Variable Names
  */
 export const ENV_VARS = {
-  ALLOWED_COLLECTIONS: 'EXPANDABLE_BLOCKS_ALLOWED_COLLECTIONS',
   ALLOWED_ORIGINS: 'EXPANDABLE_BLOCKS_ALLOWED_ORIGINS',
   NODE_ENV: 'NODE_ENV',
 } as const;

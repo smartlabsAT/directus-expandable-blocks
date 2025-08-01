@@ -132,9 +132,7 @@ export class MetadataHandler {
         field_name: field.name,
         type: field.type
       })),
-      translationInfo: {
-        hasTranslations: fieldAnalysis.translationInfo.hasTranslations
-      },
+      translationInfo: fieldAnalysis.translationInfo,
       collectionMetadata: fieldAnalysis.collectionMetadata,
       cached_at: new Date().toISOString()
     };
