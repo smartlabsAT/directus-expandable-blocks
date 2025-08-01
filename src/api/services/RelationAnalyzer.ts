@@ -95,18 +95,12 @@ export class RelationAnalyzer {
   private async validateCollectionExists(collection: string, bypassPermissions?: boolean): Promise<void> {
     if (bypassPermissions) {
       // Direct database check
-      try {
-        const exists = await this.database('directus_collections')
-          .where('collection', collection)
-          .first();
-        
-        if (!exists && !SYSTEM_COLLECTIONS.includes(collection)) {
-          throw new InvalidCollectionError(collection);
-        }
-      } catch (error) {
-        if (error instanceof InvalidCollectionError) throw error;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        throw new DatabaseQueryError(`Failed to validate collection: ${errorMessage}`);
+      const exists = await this.database('directus_collections')
+        .where('collection', collection)
+        .first();
+      
+      if (!exists && !SYSTEM_COLLECTIONS.includes(collection)) {
+        throw new InvalidCollectionError(collection);
       }
       return;
     }
@@ -115,21 +109,15 @@ export class RelationAnalyzer {
     const { CollectionsService } = this.services!;
     const collectionsService = this.createService(CollectionsService);
 
-    try {
-      const collections = await collectionsService.readByQuery({
-        filter: { collection: { _eq: collection } },
-        limit: 1
-      });
+    const collections = await collectionsService.readByQuery({
+      filter: { collection: { _eq: collection } },
+      limit: 1
+    });
 
-      if (!collections || collections.length === 0) {
-        if (!SYSTEM_COLLECTIONS.includes(collection)) {
-          throw new InvalidCollectionError(collection);
-        }
+    if (!collections || collections.length === 0) {
+      if (!SYSTEM_COLLECTIONS.includes(collection)) {
+        throw new InvalidCollectionError(collection);
       }
-    } catch (error) {
-      if (error instanceof InvalidCollectionError) throw error;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new DatabaseQueryError(`Failed to validate collection: ${errorMessage}`);
     }
   }
 
@@ -298,7 +286,7 @@ export class RelationAnalyzer {
     relations: DirectusRelationRow[],
     targetCollection: string,
     collectionMetadata: Map<string, CollectionMetadata>,
-    options: GetUsageLocationsOptions
+    _options: GetUsageLocationsOptions
   ): PossibleUsageLocation[] {
     const usageMap = new Map<string, {
       fields: Set<string>;
