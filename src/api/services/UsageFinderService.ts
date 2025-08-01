@@ -8,7 +8,8 @@ import {
   RelationInfo,
   UsageCacheEntry
 } from '../types/UsageFinderTypes';
-import { getLogger } from '../utils/logger-utils';
+import { createServiceLogger } from '../utils/logger-utils';
+import { buildCacheKey } from '../utils/cache-utils';
 import { TITLE_FIELDS, METADATA_FIELDS, parseAllowedCollections } from '../../utils/helpers';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
@@ -31,7 +32,7 @@ export class UsageFinderService {
     this.schema = config.schema;
     this.accountability = config.accountability;
     this.incomingRelations = config.incomingRelations;
-    this.logger = getLogger(config.services);
+    this.logger = createServiceLogger('UsageFinder', config.services);
   }
 
   /**
@@ -46,7 +47,7 @@ export class UsageFinderService {
     itemId: string | number,
     options: FindUsageOptions = {}
   ): Promise<UsageLocation[]> {
-    const cacheKey = `direct:${collection}:${itemId}`;
+    const cacheKey = buildCacheKey('direct', collection, itemId);
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached as UsageLocation[];
 
@@ -60,7 +61,7 @@ export class UsageFinderService {
       excludeTranslations = false  // New option to exclude translation references
     } = options;
 
-    this.logger.debug(`[UsageFinder] Finding direct usages for ${collection}/${itemId}`);
+    this.logger.debug(`Finding direct usages for ${collection}/${itemId}`);
 
     // Use pre-loaded relations instead of querying again
     const relations = this.incomingRelations;
@@ -151,7 +152,7 @@ export class UsageFinderService {
           }
         }
       } catch (error) {
-        this.logger.error(`[UsageFinder] Error checking relation:`, error);
+        this.logger.error(`Error checking relation:`, error);
       }
     }
 
@@ -491,7 +492,7 @@ export class UsageFinderService {
         .whereIn('id', ids.map(id => String(id)));
       return items;
     } catch (error) {
-      this.logger.error(`[UsageFinder] Error loading items from ${collection}:`, error);
+      this.logger.error(`Error loading items from ${collection}:`, error);
       return [];
     }
   }

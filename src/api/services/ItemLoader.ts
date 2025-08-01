@@ -9,6 +9,7 @@ import {
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { FieldAnalyzer } from './FieldAnalyzer';
 import { checkTableExists, extractDirectusErrorMessage, extractAggregateCount } from '../utils/database-utils';
+import { getErrorMessage } from '../utils/error-utils';
 import { normalizeQuery } from '../utils/query-utils';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
@@ -100,7 +101,7 @@ export class ItemLoader {
         throw error;
       }
       
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorMsg = getErrorMessage(error);
       const errorCode = error instanceof Error && 'code' in error ? (error as any).code : undefined;
       
       // Log error for debugging

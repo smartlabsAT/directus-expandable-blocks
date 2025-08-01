@@ -1,7 +1,7 @@
 import {
   CacheService, CacheServiceConfig, CacheOptions, CacheStats
 } from '../types/CacheTypes';
-import { getLogger } from '../utils/logger-utils';
+import { createServiceLogger } from '../utils/logger-utils';
 
 
 
@@ -41,7 +41,7 @@ export class DirectusCacheWrapper implements CacheService {
   private readonly maxKeys: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
   private nextExpirationCheck: number = Infinity;
-  private readonly logger: ReturnType<typeof getLogger>;
+  private readonly logger: ReturnType<typeof createServiceLogger>;
   private readonly ttlOverrides: CacheServiceConfig['ttlOverrides'];
 
   // Statistics
@@ -57,14 +57,14 @@ export class DirectusCacheWrapper implements CacheService {
     this.defaultTTL = config.defaultTTL || CacheTTLHelper.SHORT;
     this.maxKeys = config.maxKeys || 50000; // Allow configuration of max keys
     this.ttlOverrides = config.ttlOverrides;
-    this.logger = getLogger(config.services);
+    this.logger = createServiceLogger('DirectusCacheWrapper', config.services);
 
     // Note: In production, you might want to use Redis through Directus' cache service
     // For now, we use a simple in-memory implementation
-    this.logger.debug(`[DirectusCacheWrapper] Initialized with in-memory cache (max ${this.maxKeys} keys, default TTL: ${this.defaultTTL}ms)`);
+    this.logger.debug(`Initialized with in-memory cache (max ${this.maxKeys} keys, default TTL: ${this.defaultTTL}ms)`);
 
     if (this.ttlOverrides) {
-      this.logger.debug(`[DirectusCacheWrapper] TTL overrides configured:`, this.ttlOverrides);
+      this.logger.debug(`TTL overrides configured:`, this.ttlOverrides);
     }
 
     this.setupProcessHandlers();

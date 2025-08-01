@@ -11,8 +11,11 @@ import {
 import { UsageLocation } from '../types/UsageFinderTypes';
 import { UsageFinderService } from './UsageFinderService';
 import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
+import { buildCacheKey, collectionCacheKey, fieldCacheKey } from '../utils/cache-utils';
 import { TITLE_FIELDS } from '../../utils/helpers';
-import { getLogger } from '../utils/logger-utils';
+import { createServiceLogger } from '../utils/logger-utils';
+import { getErrorMessage } from '../utils/error-utils';
+import { formatCollectionName, formatFieldName } from '../utils/string-utils';
 import type { Logger } from '../types/directus-api';
 
 /**
@@ -30,7 +33,7 @@ export class PathBuilderService {
     // Use provided UsageFinderService instance instead of creating new one
     this.usageFinder = config.usageFinder;
     this.cache = config.cache;
-    this.logger = getLogger(config.services);
+    this.logger = createServiceLogger('PathBuilder', config.services);
   }
 
   /**
@@ -44,7 +47,7 @@ export class PathBuilderService {
     options: PathBuildOptions = {}
   ): Promise<UsagePath> {
     // Create cache key from usage location and options
-    const cacheKey = `path:${usage.collection}:${usage.item_id}:${usage.field || 'none'}:${JSON.stringify(options)}`;
+    const cacheKey = buildCacheKey('path', usage.collection, usage.item_id, usage.field || 'none', JSON.stringify(options));
     
     return this.cache.getOrSet(
       cacheKey,
@@ -232,7 +235,7 @@ export class PathBuilderService {
       
       // Check for circular reference
       if (visited.has(key)) {
-        this.logger.warn(`[PathBuilder] Circular reference detected at ${key}`);
+        this.logger.warn(`Circular reference detected at ${key}`);
         break;
       }
       visited.add(key);
@@ -376,14 +379,14 @@ export class PathBuilderService {
           current = parent;
         } catch (error) {
           // Parent could not be loaded - end hierarchy here (graceful degradation)
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.debug(`[PathBuilder] Parent loading failed for ${current.collection}/${current.item_id}:`, errorMessage);
+          const errorMessage = getErrorMessage(error);
+          this.logger.debug(`Parent loading failed for ${current.collection}/${current.item_id}:`, errorMessage);
           break;
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error('[PathBuilder] Error building path with relations:', errorMessage);
+      const errorMessage = getErrorMessage(error);
+      this.logger.error('Error building path with relations:', errorMessage);
     }
     
     return path;
@@ -447,8 +450,8 @@ export class PathBuilderService {
         depth: 0
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error('[PathBuilder] Error loading parent:', errorMessage);
+      const errorMessage = getErrorMessage(error);
+      this.logger.error('Error loading parent:', errorMessage);
     }
     
     return null;
@@ -458,7 +461,7 @@ export class PathBuilderService {
    * Get collection display name
    */
   private async getCollectionDisplay(collection: string): Promise<string> {
-    const cacheKey = `collection_display:${collection}`;
+    const cacheKey = collectionCacheKey('display', collection);
     
     return this.cache.getOrSet(
       cacheKey,
@@ -473,13 +476,10 @@ export class PathBuilderService {
           }
           
           // Fallback to formatted collection name
-          return collection
-            .split('_')
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ');
+          return formatCollectionName(collection);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.debug(`[PathBuilder] Failed to get collection display for '${collection}':`, errorMessage);
+          const errorMessage = getErrorMessage(error);
+          this.logger.debug(`Failed to get collection display for '${collection}':`, errorMessage);
           return collection;
         }
       },
@@ -491,7 +491,7 @@ export class PathBuilderService {
    * Get field display name
    */
   private async getFieldDisplay(collection: string, field: string): Promise<string> {
-    const cacheKey = `field_display:${collection}:${field}`;
+    const cacheKey = fieldCacheKey('display', collection, field);
     
     return this.cache.getOrSet(
       cacheKey,
@@ -507,13 +507,10 @@ export class PathBuilderService {
           }
           
           // Fallback to formatted field name
-          return field
-            .split('_')
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ');
+          return formatFieldName(field);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.debug(`[PathBuilder] Failed to get field display for '${collection}.${field}':`, errorMessage);
+          const errorMessage = getErrorMessage(error);
+          this.logger.debug(`Failed to get field display for '${collection}.${field}':`, errorMessage);
           return field;
         }
       },
@@ -549,8 +546,8 @@ export class PathBuilderService {
 
       return `${collection} #${itemId}`;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.debug(`[PathBuilder] Failed to get item display name for ${collection}#${itemId}:`, errorMessage);
+      const errorMessage = getErrorMessage(error);
+      this.logger.debug(`Failed to get item display name for ${collection}#${itemId}:`, errorMessage);
       return `${collection} #${itemId}`;
     }
   }

@@ -13,7 +13,8 @@ import {
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { parseMetadata, humanizeName } from '../utils/relation-utils';
 import type { Knex } from 'knex';
-import { getLogger } from '../utils/logger-utils';
+import { createServiceLogger } from '../utils/logger-utils';
+import { getErrorMessage } from '../utils/error-utils';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 import { parseAllowedCollections } from '../../utils/helpers';
 
@@ -29,7 +30,7 @@ export class RelationAnalyzer {
     this.schema = config.schema;
     this.database = config.database;
     this.accountability = config.accountability;
-    this.logger = this.services ? getLogger(this.services) : console as unknown as Logger;
+    this.logger = createServiceLogger('RelationAnalyzer', this.services);
   }
 
   /**
@@ -82,7 +83,7 @@ export class RelationAnalyzer {
       if (error instanceof InvalidCollectionError) {
         throw error;
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       throw new DatabaseQueryError(
         `Failed to analyze relations for '${targetCollection}': ${errorMessage}`
       );
@@ -136,7 +137,7 @@ export class RelationAnalyzer {
 
       return relations || [];
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       throw new DatabaseQueryError(`Failed to load relations directly: ${errorMessage}`);
     }
   }
@@ -162,7 +163,7 @@ export class RelationAnalyzer {
 
       return relations || [];
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       throw new DatabaseQueryError(`Failed to load relations: ${errorMessage}`);
     }
   }
@@ -264,7 +265,7 @@ export class RelationAnalyzer {
       });
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       this.logger.warn('Failed to load collection metadata:', errorMessage);
       // Return default metadata
       collections.forEach(col => {

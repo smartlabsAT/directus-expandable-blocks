@@ -19,7 +19,8 @@ import {
   LANGUAGE_FIELD_NAMES,
   EXCLUDED_TRANSLATION_FIELDS,
 } from '../types/TranslationFieldAnalyzerTypes';
-import { getLogger } from '../utils/logger-utils';
+import { createServiceLogger } from '../utils/logger-utils';
+import { getErrorMessage } from '../utils/error-utils';
 import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 import type { Knex } from 'knex';
 
@@ -119,7 +120,7 @@ export class FieldAnalyzer {
     this.schema = config.schema;
     this.database = config.database;
     this.accountability = config.accountability;
-    this.logger = getLogger(config.services);
+    this.logger = createServiceLogger('FieldAnalyzer', config.services);
   }
 
   // ============================================================================
@@ -188,7 +189,7 @@ export class FieldAnalyzer {
       if (error instanceof InvalidCollectionError) {
         throw error;
       }
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrorMessage(error);
       throw new Error(`Failed to analyze collection '${collection}': ${errorMessage}`);
     }
   }
@@ -464,8 +465,8 @@ export class FieldAnalyzer {
         tableName: translationTable, fields: contentFields, linkField, languageField,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.debug(`[FieldAnalyzer] Failed to analyze translation table '${translationTable}':`, errorMessage);
+      const errorMessage = getErrorMessage(error);
+      this.logger.debug(`Failed to analyze translation table '${translationTable}':`, errorMessage);
       return null;
     }
   }
@@ -501,8 +502,8 @@ export class FieldAnalyzer {
       const fields = await fieldsService.readAll(collection);
       return fields.filter((f: any) => !f.collection || f.collection === collection);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`[FieldAnalyzer] Failed to get fields for collection '${collection}':`, errorMessage);
+      const errorMessage = getErrorMessage(error);
+      this.logger.warn(`Failed to get fields for collection '${collection}':`, errorMessage);
       return [];
     }
   }
