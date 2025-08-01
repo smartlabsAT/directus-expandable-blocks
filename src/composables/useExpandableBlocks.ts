@@ -1,4 +1,4 @@
-import { ref, computed, nextTick, type Ref, type ComputedRef } from 'vue';
+import { ref, computed, nextTick, markRaw, type Ref, type ComputedRef } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
 import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
@@ -68,9 +68,9 @@ export function useExpandableBlocks(
     { value: 'archived', label: 'Archived' }
   ];
   
-  // Usage data state - use a non-reactive object to avoid Vue reactivity issues
-  let blockUsageDataStore: Record<string, any> = {};
-  const blockUsageData = computed(() => blockUsageDataStore);
+  // Usage data state - use markRaw to prevent Vue reactivity
+  const blockUsageDataStore = ref<Record<string, any>>(markRaw({}));
+  const blockUsageData = computed(() => blockUsageDataStore.value);
 
   // Computed properties
   const sortable = computed(() => mergedOptions.value?.enableSorting !== false);
@@ -392,7 +392,6 @@ export function useExpandableBlocks(
    */
   async function loadBlockUsageData() {
     try {
-      
       // Get all existing item IDs grouped by collection
       const itemsByCollection = new Map<string, (string | number)[]>();
       
@@ -511,8 +510,8 @@ export function useExpandableBlocks(
       await Promise.all(usagePromises);
       
       // Update blockUsageData once with all collected data
-      // Simply update the non-reactive store
-      blockUsageDataStore = { ...blockUsageDataStore, ...newUsageData };
+      // Create new marked raw object to prevent reactivity
+      blockUsageDataStore.value = markRaw({ ...blockUsageDataStore.value, ...newUsageData });
       
     } catch (error) {
       logError('Error loading block usage data', error);
@@ -536,12 +535,12 @@ export function useExpandableBlocks(
       }
       
       const key = `${collection}:${itemId}`;
-      if (!blockUsageData.value || typeof blockUsageData.value !== 'object') {
+      if (!blockUsageDataStore.value || typeof blockUsageDataStore.value !== 'object') {
         return null;
       }
       
       // Return a plain object to avoid Vue reactivity issues
-      const data = blockUsageData.value[key];
+      const data = blockUsageDataStore.value[key];
       if (!data) return null;
       
       // Create a shallow copy to avoid reactivity chains

@@ -7,21 +7,19 @@ import {
   RelationDetail,
   SYSTEM_COLLECTIONS,
   DEFAULT_COLLECTION_ICON,
-  ParsedMetadata,
   isM2ARelation,
   isM2ORelation
 } from '../types/RelationTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
-import { parseMetadata, humanizeName, getDisplayName } from '../utils/relation-utils';
+import { parseMetadata, humanizeName } from '../utils/relation-utils';
 import { getLogger } from '../utils/logger-utils';
 import { parseAllowedCollections } from '../../utils/helpers';
-import type { Logger } from '../types/directus-api';
 
 export class RelationAnalyzer {
-  private services: any;
-  private schema: any;
-  private database: any;
-  private accountability?: any;
+  private readonly services: any;
+  private readonly schema: any;
+  private readonly database: any;
+  private readonly accountability?: any;
 
   constructor(config: RelationAnalyzerConfig) {
     this.services = config.services;
@@ -55,14 +53,12 @@ export class RelationAnalyzer {
       const collectionMetadata = await this.getCollectionMetadata(relatedCollections, options);
 
       // Transform relations to usage locations
-      const usageLocations = this.transformRelationsToUsageLocations(
+      return this.transformRelationsToUsageLocations(
         relations,
         targetCollection,
         collectionMetadata,
         options
       );
-
-      return usageLocations;
     } catch (error: any) {
       if (error instanceof InvalidCollectionError) {
         throw error;
@@ -88,9 +84,7 @@ export class RelationAnalyzer {
           throw new InvalidCollectionError(collection);
         }
       } catch (error: any) {
-        if (error instanceof InvalidCollectionError) {
-          throw error;
-        }
+        if (error instanceof InvalidCollectionError) throw error;
         throw new DatabaseQueryError(`Failed to validate collection: ${error.message}`);
       }
       return;
@@ -120,9 +114,7 @@ export class RelationAnalyzer {
         }
       }
     } catch (error: any) {
-      if (error instanceof InvalidCollectionError) {
-        throw error;
-      }
+      if (error instanceof InvalidCollectionError) throw error;
       throw new DatabaseQueryError(`Failed to validate collection: ${error.message}`);
     }
   }
@@ -134,7 +126,7 @@ export class RelationAnalyzer {
   private async getRelationsDirectly(targetCollection: string): Promise<DirectusRelationRow[]> {
     try {
       const relations = await this.database('directus_relations')
-        .where(function() {
+        .where(function(this: any) {
           this.where('one_collection', targetCollection)
               .orWhere('many_collection', targetCollection)
               .orWhere('one_allowed_collections', 'like', `%${targetCollection}%`);
