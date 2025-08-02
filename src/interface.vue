@@ -162,7 +162,7 @@ const {
   confirmDeleteItem,
   duplicateItem,
   discardChanges,
-  updateItemStatus: _updateItemStatus,
+  updateItemStatus,
   onSort,
   hasStatusField: _hasStatusField,
   getItemStatus: _getItemStatus,
