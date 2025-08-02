@@ -55,14 +55,16 @@
                 small
                 class="sort-icon"
             />
-            <span class="field-label-text">{{ getFieldLabel(field) }}</span>
-            <v-icon 
-                v-if="isFieldTranslatable && isFieldTranslatable(field)" 
-                name="translate" 
-                x-small
-                v-tooltip.top="'Translatable field'"
-                class="field-translation-icon"
-            />
+            <span class="field-label-text">
+              {{ getFieldLabel(field) }}
+              <v-icon 
+                  v-if="isFieldTranslatable && isFieldTranslatable(field)" 
+                  name="translate" 
+                  x-small
+                  v-tooltip.top="'Translatable field'"
+                  class="field-translation-icon"
+              />
+            </span>
           </span>
           <v-button
               v-show="hoveredField === field || activeColumnSettings === field"
@@ -895,12 +897,17 @@ function handleTitleClick() {
   white-space: nowrap;
   min-width: 0;
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
   flex-shrink: 0;
+  display: inline-flex;
+  margin-left: 2px;
 }
 
 /* Special handling for title header label */
