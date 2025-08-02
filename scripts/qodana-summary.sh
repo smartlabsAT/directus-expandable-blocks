@@ -1,11 +1,15 @@
 #!/bin/bash
 # Extract Qodana Issues Summary
 
-SARIF_FILE=".qodana/qodana.sarif.json"
+SARIF_FILE="test-output/qodana/qodana.sarif.json"
 
+# Check both locations for backward compatibility
 if [ ! -f "$SARIF_FILE" ]; then
-    echo "❌ No SARIF report found. Run 'npm run qodana' first."
-    exit 1
+    SARIF_FILE=".qodana/qodana.sarif.json"
+    if [ ! -f "$SARIF_FILE" ]; then
+        echo "❌ No SARIF report found. Run 'npm run qodana' first."
+        exit 1
+    fi
 fi
 
 echo "🔍 Qodana Issues Summary"

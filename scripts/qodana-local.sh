@@ -24,7 +24,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # Create results directory
-mkdir -p "$PROJECT_ROOT/.qodana"
+mkdir -p "$PROJECT_ROOT/test-output/qodana"
 
 echo -e "${YELLOW}📦 Pulling Qodana image...${NC}"
 docker pull jetbrains/qodana-js:2023.3
@@ -37,7 +37,8 @@ if [ -n "$QODANA_TOKEN" ]; then
     echo -e "${GREEN}✓ Using Qodana Cloud token${NC}"
     docker run --rm \
         -v "$PROJECT_ROOT:/data/project/" \
-        -v "$PROJECT_ROOT/.qodana:/data/results/" \
+        -v "$PROJECT_ROOT/test-output/qodana:/data/results/" \
+        -v "$PROJECT_ROOT/config/qodana.yaml:/data/project/qodana.yaml" \
         -e QODANA_TOKEN="$QODANA_TOKEN" \
         -p 8080:8080 \
         jetbrains/qodana-js:2023.3 \
@@ -46,7 +47,8 @@ else
     echo -e "${YELLOW}⚠️  Running without Qodana Cloud (Community mode)${NC}"
     docker run --rm \
         -v "$PROJECT_ROOT:/data/project/" \
-        -v "$PROJECT_ROOT/.qodana:/data/results/" \
+        -v "$PROJECT_ROOT/test-output/qodana:/data/results/" \
+        -v "$PROJECT_ROOT/config/qodana.yaml:/data/project/qodana.yaml" \
         -p 8080:8080 \
         jetbrains/qodana-js:community \
         --show-report
