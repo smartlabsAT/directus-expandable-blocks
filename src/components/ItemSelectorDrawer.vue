@@ -71,7 +71,6 @@
               :sort-direction="sortDirection"
               :items-per-page="itemsPerPageLocal"
               :show-last-update="showLastUpdate"
-              :view-mode="viewMode"
               :remember-search="rememberSearch"
               :drawer-width="drawerWidth"
               @toggle-field="toggleFieldDisplay"
@@ -82,7 +81,6 @@
               @update:sort-field="updateSortField"
               @toggle-sort-direction="toggleSortDirection"
               @update:items-per-page="updateItemsPerPage"
-              @change-view-mode="handleViewModeChange"
               @toggle-remember-search="toggleRememberSearch"
               @update:drawer-width="updateDrawerWidth"
               @reset-column-widths="handleResetColumnWidths"
@@ -90,8 +88,8 @@
         </div>
       </div>
 
-      <!-- Items List View -->
-      <v-list v-if="items.length > 0 && viewMode === 'list'" class="items-list">
+      <!-- List view removed - only table view available now -->
+      <div v-if="false">
         <v-list-item
             v-for="item in items"
             :key="item.id || item"
@@ -190,11 +188,11 @@
             </div>
           </v-list-item-content>
         </v-list-item>
-      </v-list>
+      </div>
       
-      <!-- Items Table View -->
+      <!-- Items Table View (always shown) -->
       <ItemSelectorTable
-          v-else-if="items.length > 0 && viewMode === 'table'"
+          v-if="items.length > 0"
           ref="tableRef"
           :items="items"
           :selected-items="selectedItems"
@@ -356,7 +354,8 @@ const showLastUpdate = ref(false);
 const sortField = ref<string | null>(null);
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const itemsPerPageLocal = ref(100);
-const viewMode = ref<'list' | 'table'>('table');
+// View mode is always table now - removed list view option
+const viewMode = ref<'list' | 'table'>('table'); // Always 'table', kept for compatibility
 const rememberSearch = ref(false);
 const drawerWidth = ref(856);
 const showSearchHelp = ref(false);
@@ -763,19 +762,7 @@ function toggleAll(value: boolean) {
   }
 }
 
-async function handleViewModeChange(mode: 'list' | 'table') {
-  viewMode.value = mode;
-  
-  // Save to presets if collection is set
-  if (props.collection) {
-    try {
-      await userPresets.saveViewMode(props.collection, mode);
-      logger.debug('Saved view mode preference', { collection: props.collection, viewMode: mode });
-    } catch {
-      logger.error('Failed to save view mode preference');
-    }
-  }
-}
+// View mode switcher removed - always table view
 
 async function toggleRememberSearch() {
   rememberSearch.value = !rememberSearch.value;
@@ -918,7 +905,7 @@ watch(() => props.open, async (isOpen) => {
       sortField.value = userPresets.getSortField(props.collection);
       sortDirection.value = userPresets.getSortDirection(props.collection);
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
-      viewMode.value = userPresets.getViewMode(props.collection);
+      // View mode is always table now
       rememberSearch.value = userPresets.getRememberSearch(props.collection);
       drawerWidth.value = userPresets.getDrawerWidth(props.collection);
       
@@ -944,7 +931,6 @@ watch(() => props.open, async (isOpen) => {
         sortField: sortField.value,
         sortDirection: sortDirection.value,
         itemsPerPage: itemsPerPageLocal.value,
-        viewMode: viewMode.value,
         rememberSearch: rememberSearch.value,
         lastSearch: searchQuery.value,
         drawerWidth: drawerWidth.value
@@ -975,7 +961,7 @@ watch(() => props.collection, async (collection) => {
     sortField.value = userPresets.getSortField(collection);
     sortDirection.value = userPresets.getSortDirection(collection);
     itemsPerPageLocal.value = userPresets.getItemsPerPage(collection);
-    viewMode.value = userPresets.getViewMode(collection);
+    // View mode is always table now
     rememberSearch.value = userPresets.getRememberSearch(collection);
     
     // Load last search if remember search is enabled
@@ -1002,7 +988,7 @@ watch(() => props.collection, async (collection) => {
       sortField: sortField.value,
       sortDirection: sortDirection.value,
       itemsPerPage: itemsPerPageLocal.value,
-      viewMode: viewMode.value,
+      // viewMode: 'table', // Always table, no longer saved
       rememberSearch: rememberSearch.value,
       lastSearch: searchQuery.value
     });
@@ -1079,7 +1065,7 @@ onMounted(async () => {
       sortField.value = userPresets.getSortField(props.collection);
       sortDirection.value = userPresets.getSortDirection(props.collection);
       itemsPerPageLocal.value = userPresets.getItemsPerPage(props.collection);
-      viewMode.value = userPresets.getViewMode(props.collection);
+      // View mode is always table now
       rememberSearch.value = userPresets.getRememberSearch(props.collection);
       drawerWidth.value = userPresets.getDrawerWidth(props.collection);
       

@@ -50,41 +50,6 @@
             </v-list-item>
             <v-divider/>
             
-            <!-- View Mode -->
-            <v-list-item disabled>
-              <v-list-item-content>
-                <div class="field-selector-header">
-                  <v-icon name="view_module" small />
-                  View Mode
-                </div>
-              </v-list-item-content>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-content>
-                <div class="view-mode-buttons">
-                  <v-button
-                      :secondary="viewMode !== 'list'"
-                      :primary="viewMode === 'list'"
-                      small
-                      @click="$emit('change-view-mode', 'list')"
-                  >
-                    <v-icon name="view_list" small />
-                    List
-                  </v-button>
-                  <v-button
-                      :secondary="viewMode !== 'table'"
-                      :primary="viewMode === 'table'"
-                      small
-                      @click="$emit('change-view-mode', 'table')"
-                  >
-                    <v-icon name="table_chart" small />
-                    Table
-                  </v-button>
-                </div>
-              </v-list-item-content>
-            </v-list-item>
-            <v-divider/>
-            
             <!-- Items per Page -->
             <v-list-item disabled>
               <v-list-item-content>
@@ -318,7 +283,6 @@ interface Props {
   sortField?: string | null;
   sortDirection?: 'asc' | 'desc';
   itemsPerPage?: number;
-  viewMode?: 'list' | 'table';
   rememberSearch?: boolean;
   drawerWidth?: number;
 }
@@ -333,7 +297,6 @@ const props = withDefaults(defineProps<Props>(), {
   sortField: null,
   sortDirection: 'asc',
   itemsPerPage: 100,
-  viewMode: 'table',
   rememberSearch: false,
   drawerWidth: 856
 });
@@ -347,7 +310,6 @@ defineEmits<{
   'update:sort-field': [field: string | null];
   'toggle-sort-direction': [];
   'update:items-per-page': [value: number];
-  'change-view-mode': [mode: 'list' | 'table'];
   'toggle-remember-search': [];
   'update:drawer-width': [width: number];
   'reset-column-widths': [];
