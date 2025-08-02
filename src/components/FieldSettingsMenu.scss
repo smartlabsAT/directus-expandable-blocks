@@ -55,3 +55,13 @@
 .v-select {
   min-height: 36px;
 }
+
+/* Fix for drawer width slider being cut off */
+.slider-content {
+  overflow: visible !important;
+}
+
+/* Fallback for browsers supporting :has() */
+.v-list-item-content:has(.v-slider) {
+  overflow: visible;
+}

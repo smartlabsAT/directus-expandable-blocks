@@ -141,8 +141,8 @@
                 </div>
               </v-list-item-content>
             </v-list-item>
-            <v-list-item>
-              <v-list-item-content>
+            <v-list-item class="slider-list-item">
+              <v-list-item-content class="slider-content">
                 <v-slider
                     :model-value="drawerWidth"
                     :min="600"
@@ -459,7 +459,26 @@ function capitalizeField(fieldName: string): string {
   text-align: center;
   font-size: 12px;
   color: var(--foreground-subdued);
-  margin-top: 4px;
+  margin-top: -8px;
+}
+
+/* Fix for drawer width slider being cut off */
+.slider-content {
+  overflow: visible !important;
+}
+
+.slider-content .v-slider {
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+
+.slider-list-item {
+  overflow: visible !important;
+}
+
+/* Fallback for browsers supporting :has() */
+.v-list-item:has(.slider-content) {
+  overflow: visible !important;
 }
 
 /* Sort controls */
