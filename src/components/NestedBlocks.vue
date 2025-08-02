@@ -50,6 +50,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { extractItemTitle } from '../utils/helpers';
 
 interface Props {
   blocks: any[];
@@ -88,14 +89,10 @@ function getBlockIcon(block: any): string {
 }
 
 function getBlockLabel(block: any): string {
-  const item = block.item;
-  if (!item) return `Block #${block.id}`;
+  if (!block.item) return `Block #${block.id}`;
   
-  return item.title || 
-         item.name || 
-         item.headline || 
-         item.label ||
-         `${block.collection} #${block.id}`;
+  const title = extractItemTitle(block);
+  return title !== 'Untitled Block' ? title : `${block.collection} #${block.id}`;
 }
 
 function getBlockFields(block: any): any[] {

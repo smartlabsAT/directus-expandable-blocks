@@ -21,7 +21,6 @@
     "cms"
   ],
   "type": "module",
-  "main": "dist/index.js",
   "files": [
     "dist/",
     "README.md",
@@ -32,44 +31,86 @@
     "node": ">=16"
   },
   "directus:extension": {
-    "type": "interface",
-    "path": "dist/index.js",
-    "source": "src/index.ts",
+    "type": "bundle",
+    "path": {
+      "app": "dist/index.js",
+      "api": "dist/api.js"
+    },
+    "entries": [
+      {
+        "type": "interface",
+        "name": "expandable-blocks",
+        "source": "src/index.ts"
+      },
+      {
+        "type": "endpoint",
+        "name": "items-with-relations",
+        "source": "src/api/api.ts"
+      }
+    ],
     "host": "^11.0.0"
   },
   "scripts": {
     "build": "directus-extension build",
-    "build-dev": "directus-extension build --no-minify",
     "dev": "directus-extension build -w --no-minify",
     "link": "directus-extension link",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "prepublishOnly": "npm run build && npm run test -- --run",
+    "type-check": "tsc --noEmit && echo '✅ TypeScript type-check passed!'",
+    "type-check:strict": "tsc --noEmit --project config/tsconfig.strict.json",
+    "type-check:quality": "tsc --noEmit --project config/tsconfig.quality.json",
+    "test": "vitest --config config/vitest.config.ts",
+    "test:ui": "vitest --ui --config config/vitest.config.ts",
+    "test:coverage": "vitest --coverage --config config/vitest.config.ts",
+    "prepublishOnly": "npm run type-check && npm run build && npm run test -- --run",
     "version": "npm run build && git add dist/",
     "postversion": "git push && git push --tags",
     "release:patch": "npm version patch",
     "release:minor": "npm version minor",
-    "release:major": "npm version major"
+    "release:major": "npm version major",
+    "lint": "eslint . -c config/eslint.config.js",
+    "lint:fix": "eslint . -c config/eslint.config.js --fix",
+    "lint:api": "eslint src/api -c config/eslint.config.js",
+    "lint:fix:api": "eslint src/api -c config/eslint.config.js --fix",
+    "qodana": "./config/scripts/qodana-local.sh",
+    "test:e2e": "playwright test --config config/playwright.config.ts",
+    "test:e2e:ui": "playwright test --ui --config config/playwright.config.ts",
+    "test:e2e:debug": "playwright test --debug --config config/playwright.config.ts",
+    "test:e2e:headed": "playwright test --headed --config config/playwright.config.ts",
+    "demo:record": "playwright test --config=config/playwright-demo.config.ts",
+    "demo:product": "playwright test --config=config/playwright-demo.config.ts test/demo/product-demo.spec.ts --grep=\"Complete Product Demonstration\"",
+    "demo:highlights": "DEMO_HEADLESS=true playwright test --config=config/playwright-demo.config.ts --grep=\"Feature Highlights\"",
+    "clean:outputs": "./config/scripts/cleanup-outputs.sh",
+    "precommit": "npm run type-check && npm run lint",
+    "precommit:api": "npm run type-check && npm run lint:api"
   },
   "devDependencies": {
-    "@directus/extensions-sdk": "10.1.11",
+    "@directus/extensions-sdk": "^11.0.0",
+    "@directus/types": "^13.2.0",
+    "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.54.2",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/vue": "^8.0.1",
+    "@types/express": "^4.17.21",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.10.5",
-    "typescript": "^5.3.3",
-    "vue": "^3.3.11",
-    "@vue/test-utils": "^2.4.3",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@vitejs/plugin-vue": "^4.6.2",
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
+    "@vue/test-utils": "^2.4.3",
+    "dotenv": "^17.2.1",
+    "eslint": "^9.32.0",
+    "eslint-plugin-vue": "^10.4.0",
     "happy-dom": "^12.10.3",
+    "knex": "^3.1.0",
+    "sass": "^1.89.2",
+    "typescript": "^5.3.3",
     "vitest": "^1.1.0",
-    "@testing-library/vue": "^8.0.1",
-    "@testing-library/jest-dom": "^6.1.5",
-    "@playwright/test": "^1.40.1"
+    "vue": "^3.3.11",
+    "vue-eslint-parser": "^10.2.0"
   },
   "dependencies": {
+    "lodash-es": "^4.17.21",
     "vuedraggable": "^4.1.0"
   }
 }

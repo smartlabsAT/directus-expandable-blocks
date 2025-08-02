@@ -1,0 +1,35 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // Essential Code Quality Checks
+    "noUnusedLocals": true,                  // Report errors on unused locals
+    "noUnusedParameters": true,              // Report errors on unused parameters
+    "noImplicitReturns": true,               // Report error when not all code paths in function return a value
+    "noFallthroughCasesInSwitch": true,     // Report errors for fallthrough cases in switch statements
+    "allowUnreachableCode": false,           // Do not allow unreachable code
+    "allowUnusedLabels": false,              // Do not allow unused labels
+    
+    // Moderate Strictness for Better Type Safety
+    "strictNullChecks": true,                // Enable strict null checks
+    "strictFunctionTypes": true,             // Enable strict checking of function types
+    "noImplicitAny": true,                   // Error on expressions and declarations with an implied 'any' type
+    
+    // Keep Pragmatic Settings
+    "skipLibCheck": true,                    // Skip type checking of declaration files for performance
+    "exactOptionalPropertyTypes": false,     // Too strict for existing codebase
+    "noUncheckedIndexedAccess": false,       // Too strict for existing codebase
+    "verbatimModuleSyntax": false           // Not compatible with current setup
+  },
+  "include": [
+    "../src/**/*",
+    "../test/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test-output",
+    "coverage",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

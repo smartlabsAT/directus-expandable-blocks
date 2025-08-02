@@ -1,71 +1,32 @@
 /**
- * Type definitions for the expandable-blocks extension
+ * Central export point for all types in the expandable-blocks extension
+ * 
+ * Types are organized into logical modules:
+ * - options.ts: Configuration options
+ * - data.ts: Data structures (Junction, Item, Collection)
+ * - relations.ts: Relation and M2A types
+ * - props.ts: Component prop types
+ * - directus.ts: Directus-specific types and re-exports
+ * - composable-context.ts: Composable context types
  */
 
-export interface ExpandableBlocksOptions {
-  enableSorting?: boolean;
-  startExpanded?: boolean;
-  accordionMode?: boolean;
-  showFieldsFilter?: string[];
-  compactMode?: boolean;
-  allowedCollections?: string[];
-  showItemId?: boolean;
-  isAllowedDelete?: boolean;
-  isAllowedDuplicate?: boolean;
-  maxBlocks?: number | null;
-  
-  // AI Configuration
-  enableAI?: boolean;
-  aiProvider?: 'openai' | 'claude' | 'custom';
-  aiApiKey?: string;
-  aiModel?: string;
-  aiTemperature?: number;
-  aiMaxTokens?: number;
-  aiCustomUrl?: string;
-}
+// Configuration options
+export * from './options';
 
-export interface JunctionRecord {
-  id: string | number;
-  collection: string;
-  item: string | number | ItemRecord;
-  sort?: number;
-  [foreignKey: string]: any;
-}
+// Data structures
+export * from './data';
 
-export interface ItemRecord {
-  id: string | number;
-  title?: string;
-  name?: string;
-  headline?: string;
-  label?: string;
-  heading?: string;
-  status?: 'published' | 'draft' | 'archived';
-  [key: string]: any;
-}
+// Relation types
+export * from './relations';
 
-export interface CollectionInfo {
-  collection: string;
-  name: string;
-  meta?: {
-    icon?: string;
-    [key: string]: any;
-  };
-}
+// Component props
+export * from './props';
 
-export interface RelationInfo {
-  collection: string;
-  field: string;
-  related_collection?: string | null;
-  meta?: {
-    one_allowed_collections?: string[] | string | null;
-    junction_field?: string;
-    sort_field?: string;
-    [key: string]: any;
-  };
-  junctionCollection?: string;
-  foreignKeyField?: string;
-  sort_field?: string;
-}
-
-// Re-export Directus types
+// Directus types
 export * from './directus';
+
+// Composable context types
+export * from './composable-context';
+
+// Translation types
+export * from './translations';

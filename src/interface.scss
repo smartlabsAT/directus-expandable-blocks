@@ -1,0 +1,1334 @@
+/* Directus theme variables are available globally in the extension context */
+/* See directus-theme.css for IDE support and variable documentation */
+
+// SCSS Variables for consistent spacing and transitions
+$spacing-xs: 8px;
+$spacing-sm: 12px;
+$spacing-md: 16px;
+$spacing-lg: 20px;
+
+$transition-fast: 0.2s ease;
+$transition-normal: 0.3s ease;
+
+$border-width: 2px;
+$expanded-border-width: 5px;
+
+// Main container
+.expandable-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+// Block item with nested styles
+.block-item {
+  background: var(--background-normal);
+  border: $border-width solid var(--border-normal);
+  border-radius: var(--border-radius);
+  transition: all $transition-normal;
+
+  // Expanded state
+  &.expanded {
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px -4px rgba(var(--primary-rgb), 0.2);
+
+    .block-header {
+      background: var(--theme--sidebar--section--toggle--background) !important;
+      border-bottom-color: var(--border-normal);
+    }
+
+    .block-content {
+      border-left: $expanded-border-width solid var(--theme--sidebar--section--toggle--background);
+      margin-top: -5px;
+      padding: 15px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .v-form.grid {
+      gap: 10px var(--theme--form--column-gap);
+    }
+  }
+
+  // Disabled state
+  &.disabled {
+    opacity: 0.6;
+
+    .block-header {
+      cursor: default;
+
+      &:hover {
+        background: var(--background-page);
+      }
+    }
+  }
+  
+  // Read-only state (no update permissions)
+  &.read-only {
+    .block-header {
+      background: var(--background-subdued);
+      opacity: 0.9;
+    }
+    
+    .block-content {
+      background: var(--background-normal-alt);
+      
+      :deep(.v-form) {
+        opacity: 0.8;
+      }
+    }
+  }
+  
+  // No permission state (no read permissions)
+  &.no-permission {
+    .block-header {
+      background: var(--background-normal-alt);
+      opacity: 0.7;
+      cursor: not-allowed;
+      
+      &:hover {
+        background: var(--background-normal-alt);
+      }
+      
+      .block-title {
+        color: var(--foreground-subdued);
+        font-style: italic;
+      }
+    }
+  }
+
+  // Compact mode
+  &.compact {
+    .block-header {
+      padding: $spacing-xs $spacing-sm;
+    }
+  }
+}
+
+// Block header
+.block-header {
+  display: flex;
+  align-items: center;
+  padding: $spacing-sm $spacing-md;
+  cursor: pointer;
+  user-select: none;
+  gap: $spacing-sm;
+  background: var(--theme--background-subdued);
+  transition: all $transition-fast;
+  border-bottom: 1px solid var(--border-subdued);
+  margin-bottom: 5px;
+
+  &:hover {
+    background: var(--background-normal);
+  }
+}
+
+// Drag handle with hover state
+.drag-handle {
+  cursor: move;
+  color: var(--foreground-subdued);
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--foreground-normal);
+  }
+}
+
+.icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.collection-icon {
+  color: var(--primary);
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.dirty-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  border: 2px solid var(--background-page);
+  box-shadow: 0 0 0 1px var(--primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+.new-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  border: 2px solid var(--background-page);
+  box-shadow: 0 0 0 1px var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.block-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.block-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.block-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--foreground-normal);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.block-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--foreground-subdued);
+  margin-top: 4px;
+}
+
+.item-id {
+  font-size: 12px;
+  color: var(--foreground-subdued);
+  white-space: nowrap;
+}
+
+.collection-chip {
+  font-size: 11px !important;
+}
+
+
+.expand-indicator {
+  color: var(--foreground-subdued);
+  transition: color 0.2s;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.expand-indicator:hover {
+  color: var(--foreground-normal);
+}
+
+.expand-icon-container {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: absolute;
+  left: 50px;
+}
+
+.block-actions {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.block-actions .danger {
+  --v-button-background-color-hover: var(--danger-10);
+  --v-button-color-hover: var(--danger);
+}
+
+.block-content {
+  padding: 20px;
+  border-top: 1px solid var(--border-subdued);
+  background: var(--background-subdued);
+  border-radius: 0 0 calc(var(--border-radius) - 2px) calc(var(--border-radius) - 2px);
+}
+
+.block-content .interface {
+  margin-bottom: 20px;
+}
+
+.block-content .interface:last-child {
+  margin-bottom: 0;
+}
+
+.add-block-container {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+
+.add-block-wrapper {
+  display: inline-block;
+  margin: 0;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-block-container v-button {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Add Block Button - M2A Style */
+.add-block-button {
+  margin: 0px;
+}
+
+.add-block-button.with-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.add-block-button.with-dropdown span {
+  margin: 0;
+}
+
+.add-block-button.with-dropdown .v-icon:last-child {
+  margin-left: 4px;
+  opacity: 1;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--foreground-subdued);
+}
+
+// Item Selector Drawer Styles - Directus Conform
+.item-selector-drawer {
+  // Default width, will be overridden by inline style
+}
+
+// v-drawer content styles (not nested)
+.drawer-collection-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--primary-10);
+  border-radius: 8px;
+
+  .v-icon {
+    --v-icon-color: var(--primary);
+  }
+}
+
+.header-content {
+  flex: 1;
+}
+
+.header-name {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--foreground-normal);
+}
+
+.header-count {
+  font-size: 14px;
+  color: var(--foreground-subdued);
+}
+
+// Main Content Body
+.drawer-collection-body {
+  padding-left: var(--content-padding);
+  padding-right: var(--content-padding);
+
+  display: flex;
+  flex-direction: column;
+
+  .search-container {
+    padding: 16px 0;
+    background-color: var(--background-page);
+    border-bottom: 1px solid var(--border-subdued);
+
+    .search-input {
+      width: 100%;
+    }
+
+    // Rotating help icon
+    .v-icon.rotated {
+      transform: rotate(180deg);
+      transition: transform 0.3s ease;
+    }
+
+    // Help icon hover state
+    .v-icon[name="help_outline"] {
+      cursor: help;
+
+      &:hover {
+        color: var(--theme--primary);
+      }
+    }
+  }
+
+  // Search Help Panel
+  .search-help-panel {
+    margin-top: 12px;
+    background: var(--theme--background-subdued);
+    border: 1px solid var(--theme--border-subdued);
+    border-radius: var(--theme--border-radius);
+    overflow: hidden;
+  }
+
+  .search-help-content {
+    padding: 16px;
+  }
+
+  .search-help-section {
+    &:not(:last-child) {
+      margin-bottom: 20px;
+    }
+
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+
+  // Field chips in help
+  .field-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .field-chip {
+    background: var(--theme--background);
+    border: 1px solid var(--theme--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--theme--primary-background);
+      border-color: var(--theme--primary);
+      transform: translateY(-1px);
+    }
+
+    .v-icon {
+      margin-right: 4px;
+      color: var(--theme--primary);
+    }
+
+    .field-type {
+      margin-left: 4px;
+      font-size: 11px;
+      color: var(--theme--foreground-subdued);
+      opacity: 0.7;
+    }
+  }
+
+  // Operators grid
+  .operators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .operator-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background: var(--theme--background);
+    border: 1px solid var(--theme--border-color);
+    border-radius: var(--theme--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--theme--primary-background);
+      border-color: var(--theme--primary);
+    }
+
+    .operator-button {
+      min-width: 40px;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .operator-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .operator-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--theme--foreground);
+    }
+
+    .operator-example {
+      font-size: 11px;
+      color: var(--theme--foreground-subdued);
+      font-family: monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .search-operators-table {
+    width: 100%;
+    font-size: 12px;
+
+    tr {
+      td {
+        padding: 4px 8px 4px 0;
+
+        &:first-child {
+          width: 60px;
+          font-family: var(--theme--fonts--monospace--font-family);
+        }
+
+        &:nth-child(2) {
+          color: var(--theme--foreground-subdued);
+        }
+
+        &:last-child {
+          text-align: right;
+          opacity: 0.7;
+        }
+
+        code {
+          background: var(--theme--background-normal);
+          padding: 2px 4px;
+          border-radius: 2px;
+          font-size: 11px;
+        }
+      }
+    }
+  }
+
+  .search-help-tips {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--theme--border-subdued);
+    font-size: 12px;
+    color: var(--theme--foreground-subdued);
+
+    strong {
+      color: var(--theme--foreground);
+    }
+  }
+
+  // Logical operators
+  .logical-operators-grid {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .logical-operator-button {
+    min-width: 60px;
+    padding: 4px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    border: 1px solid;
+    border-radius: var(--theme--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: none;
+    text-transform: uppercase;
+    
+    &.and-button {
+      background-color: var(--theme--success-background);
+      color: var(--theme--success);
+      border-color: var(--theme--success);
+      
+      &:hover,
+      &.active {
+        background-color: var(--theme--success);
+        color: var(--white);
+      }
+    }
+    
+    &.or-button {
+      background-color: var(--theme--info-background);
+      color: var(--theme--info);
+      border-color: var(--theme--info);
+      
+      &:hover,
+      &.active {
+        background-color: var(--theme--info);
+        color: var(--white);
+      }
+    }
+  }
+
+  .logical-examples {
+    font-size: 12px;
+    
+    p {
+      margin: 0 0 8px 0;
+      font-weight: 500;
+    }
+    
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    li {
+      margin-bottom: 4px;
+      color: var(--theme--foreground-subdued);
+    }
+    
+    code {
+      background: var(--theme--background);
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-size: 11px;
+    }
+    
+    &.info-note {
+      color: var(--theme--info);
+      font-style: italic;
+      
+      .v-icon {
+        margin-right: 4px;
+      }
+    }
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 24px;
+    color: var(--foreground-subdued);
+    gap: 16px;
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+
+  // v-list component is used for items
+  .items-list {
+    // Styles are handled by v-list component
+  }
+
+  // v-notice is used for empty state
+  .v-notice {
+    margin: 80px 24px;
+  }
+
+  .search-info-bar {
+    position: sticky;
+    top: 59px;
+    z-index: 10;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background-color: var(--background-normal-alt);
+    border-bottom: 1px solid var(--border-subdued);
+    gap: 16px;
+    border-radius: var(--theme--border-radius);
+
+    .results-info {
+      font-size: 12px;
+      color: var(--foreground-subdued);
+
+      span {
+        font-weight: 600;
+      }
+    }
+
+    .v-pagination {
+      margin: 0;
+    }
+
+    .search-pagination {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .page-info {
+        font-size: 12px;
+        color: var(--foreground-subdued);
+        margin: 0 8px;
+      }
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      // Settings button - gleiche Größe wie Pagination
+      > .v-button {
+        height: 36px !important;
+        width: 36px !important;
+
+        .v-icon {
+          --v-icon-size: 18px; // Etwas größeres Icon
+        }
+      }
+    }
+
+    .selection-info-inline {
+      //margin-left: 8px;
+
+      a.deselect-link {
+        color: var(--primary) !important;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color var(--fast);
+        margin: 0 4px;
+
+        &:hover {
+          color: var(--primary-75) !important;
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
+  // v-list component is used for items
+  .items-list {
+    .custom-list-item {
+      // Checkbox alignment
+      .v-list-item-icon {
+        align-self: flex-start !important;
+        padding-top: 8px !important; // Gleiche Höhe wie Titel
+      }
+
+      // Content container
+      .v-list-item-content {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+    }
+
+    // Titel-Zeile mit fester Positionierung
+    .item-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 45px; // Mindesthöhe
+      padding: 8px 0 ; // Vertikaler Padding
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--foreground-subdued);
+        flex-shrink: 0;
+        margin-right: -2px;
+
+        &.status-published {
+          background: var(--theme--primary);
+        }
+
+        &.status-draft {
+          background: var(--theme--foreground);
+        }
+
+        &.status-archived {
+          background: var(--theme--warning);
+        }
+      }
+    }
+
+    .item-title {
+      font-weight: 600;
+      color: var(--theme--foreground);
+      line-height: 24px; // Feste Zeilenhöhe
+    }
+
+    .item-id-badge {
+      --v-chip-color: var(--theme--foreground-subdued);
+      --v-chip-background-color: var(--theme--background-accent);
+      font-family: var(--theme--fonts--monospace--font-family);
+      font-size: 11px;
+      flex-shrink: 0; // Verhindert Schrumpfen
+    }
+
+    // Additional fields
+    .item-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      margin-top: -4px; // Reduziert Abstand zum Titel
+      padding-bottom: 8px;
+    }
+
+    .field-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .field-label {
+      color: var(--theme--foreground-subdued);
+      font-weight: 500;
+    }
+
+    .field-value {
+      color: var(--theme--foreground);
+    }
+
+    // Boolean badges
+    .boolean-true {
+      --v-chip-background-color: var(--theme--success-background);
+      --v-chip-color: var(--theme--success);
+    }
+
+    .boolean-false {
+      --v-chip-background-color: var(--theme--danger-background);
+      --v-chip-color: var(--theme--danger);
+    }
+
+
+    .usage-indicator {
+      margin-left: auto; // Rechtsbündig
+
+      .usage-chip {
+        --v-chip-background-color: var(--theme--warning-background);
+        --v-chip-color: var(--theme--warning);
+        cursor: pointer;
+
+        &:hover {
+          --v-chip-background-color: var(--theme--warning);
+          --v-chip-color: var(--white);
+        }
+
+        .v-icon {
+          margin-right: 4px;
+        }
+      }
+    }
+
+    .usage-warning {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--theme--warning);
+
+      .v-icon {
+        --v-icon-color: var(--theme--warning);
+      }
+    }
+
+    .usage-details {
+      padding: 12px;
+      min-width: 300px;
+      max-width: 400px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .usage-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--theme--foreground-subdued);
+    }
+
+    .usage-item {
+      margin-top: 12px;
+
+      &:first-child {
+        margin-top: 8px;
+      }
+    }
+
+    .usage-collection {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+      font-size: 13px;
+
+      strong {
+        color: var(--theme--foreground);
+      }
+
+      .usage-count {
+        color: var(--theme--foreground-subdued);
+        font-size: 12px;
+      }
+    }
+
+    .usage-list {
+      padding-left: 20px;
+      font-size: 12px;
+      color: var(--theme--foreground-subdued);
+    }
+
+    .usage-entry {
+      padding: 2px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .usage-more {
+      padding: 2px 0;
+      font-style: italic;
+      color: var(--theme--foreground-subdued);
+    }
+
+  }
+
+
+
+}
+
+// Menu content height fix - global scope with higher specificity
+.expandable-blocks .v-menu-content,
+.expandable-blocks-interface .v-menu-content,
+.v-menu-content {
+  height: auto !important;
+  max-height: none !important;
+}
+
+// Field selector styles
+.field-selector-header {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--theme--foreground-subdued);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-selector-title {
+  font-weight: 600 !important;
+  font-size: 14px;
+}
+
+// Disabled header item styling
+.v-list-item[disabled] {
+  pointer-events: none;
+  background-color: var(--theme--background-subdued);
+
+  .v-list-item-content {
+    padding: 8px 16px;
+  }
+}
+
+// Removed - drawer footer is now handled by v-drawer's actions-append slot
+
+// Empty state icons are handled by v-notice component
+
+.drag-ghost {
+  opacity: 0.5;
+  transform: rotate(2deg);
+}
+
+// Status display with nested styles
+.status-display {
+  width:80px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px $spacing-xs;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  transition: background-color $transition-fast;
+  
+  &.status-readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    
+    &:hover {
+      background-color: transparent;
+    }
+  }
+
+  &.clickable {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--background-normal-alt);
+    }
+  }
+  
+  &.status-placeholder {
+    opacity: 0.5;
+  }
+}
+
+// Status dot with variants
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--foreground-subdued);
+  flex-shrink: 0;
+
+  &.status-published {
+    background: var(--theme--primary);
+  }
+
+  &.status-draft {
+    background: var(--theme--foreground);
+  }
+
+  &.status-archived {
+    background: var(--theme--warning);
+  }
+  
+  &.status-unknown {
+    background: var(--border-normal);
+    opacity: 0.5;
+  }
+}
+
+.status-text {
+  color: var(--foreground-subdued);
+  text-transform: capitalize;
+  font-size: 12px;
+}
+
+/* Error styles */
+.error-notice {
+  margin-bottom: 16px;
+}
+
+/* Loading styles */
+.loading-skeleton {
+  height: 60px;
+  background: var(--background-normal);
+  border: 2px solid var(--border-normal);
+  border-radius: var(--border-radius);
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+                  90deg,
+                  rgba(255, 255, 255, 0) 0%,
+                  rgba(255, 255, 255, 0.2) 50%,
+                  rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Danger list item */
+.v-list-item.danger {
+  --v-list-item-color: var(--danger);
+  --v-list-item-color-hover: var(--danger);
+  --v-list-item-background-color-hover: var(--danger-10);
+}
+
+/* Danger styles from BlockActions component */
+.block-actions .danger {
+  --v-list-item-color: var(--danger);
+  --v-list-item-color-hover: var(--danger);
+  --v-list-item-icon-color: var(--danger);
+}
+
+/* Divider in menus */
+.v-divider {
+  margin: 4px 0;
+}
+
+/* Max blocks message */
+.max-blocks-message {
+  margin-top: 12px;
+}
+
+/* Compact mode adjustments */
+.block-item.compact .block-content {
+  padding: 12px;
+}
+
+.block-item.compact .block-meta {
+  display: none;
+}
+
+/* Delete dialog styles */
+.delete-dialog-content {
+  min-width: 400px;
+}
+
+/* Hover state for block header */
+.block-header:hover:not(.disabled) {
+  background: var(--background-normal-alt);
+}
+
+/* Dragging styles */
+.sortable-ghost {
+  opacity: 0.5;
+}
+
+.sortable-drag {
+  opacity: 0;
+}
+
+/* Expand/Collapse Animation */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.expand-enter-from {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.expand-enter-to {
+  opacity: 1;
+  max-height: 1000px; // Increased to accommodate forms with notices
+}
+
+.expand-leave-from {
+  opacity: 1;
+  max-height: 1000px; // Increased to accommodate forms with notices
+}
+
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Form adjustments for inline editing */
+.block-content :deep(.v-form) {
+  --form-vertical-gap: 20px;
+  --form-horizontal-gap: 20px;
+}
+
+.block-content :deep(.field) {
+  margin-bottom: 20px;
+}
+
+.block-content :deep(.field:last-child) {
+  margin-bottom: 0;
+}
+
+.block-content :deep(.type-label) {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Fix v-notice positioning within block-content */
+.block-content :deep(.v-notice) {
+  position: relative !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Ensure v-form empty state notice is properly positioned */
+.block-content :deep(.v-form .v-notice) {
+  position: relative !important;
+  margin: 16px 0 !important;
+  transform: none !important;
+}
+
+/* Status dropdown styles */
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon {
+  margin-right: 12px;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--foreground-subdued);
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot.status-published {
+  background: var(--theme--primary) !important;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot.status-draft {
+  background: var(--theme--foreground) !important;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list) .v-list-item-icon .status-dot.status-archived {
+  background: var(--theme--warning) !important;
+}
+
+/* Ensure hover states work properly in dropdown */
+.expandable-blocks-interface .v-menu :deep(.v-list-item):hover .status-dot.status-published {
+  background: var(--theme--primary) !important;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list-item):hover .status-dot.status-draft {
+  background: var(--theme--foreground) !important;
+}
+
+.expandable-blocks-interface .v-menu :deep(.v-list-item):hover .status-dot.status-archived {
+  background: var(--theme--warning) !important;
+}
+
+/* Override Directus default status colors in any v-list */
+.expandable-blocks-interface :deep(.v-list .v-list-item-icon .status-dot.status-published) {
+  background: var(--theme--primary) !important;
+}
+
+.expandable-blocks-interface :deep(.v-list .v-list-item-icon .status-dot.status-draft) {
+  background: var(--theme--foreground) !important;
+}
+
+.expandable-blocks-interface :deep(.v-list .v-list-item-icon .status-dot.status-archived) {
+  background: var(--theme--warning) !important;
+}
+
+/* Global override for v-list status dots - match Directus specificity */
+.v-list .v-list-item-icon .status-dot.status-published {
+  background: var(--theme--primary) !important;
+}
+
+.v-list .v-list-item-icon .status-dot.status-draft {
+  background: var(--theme--foreground) !important;
+}
+
+.v-list .v-list-item-icon .status-dot.status-archived {
+  background: var(--theme--warning) !important;
+}
+
+/* Blocks with unsaved changes */
+.block-item.has-changes {
+  border-color: var(--warning);
+  border-style: dashed;
+  position: relative;
+}
+
+.block-item.has-changes::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: var(--warning);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--background-page);
+}
+
+.block-item.has-changes .block-header {
+  background: linear-gradient(to right, var(--warning-10) 0%, transparent 100%);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .block-item.expanded {
+    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.4);
+  }
+
+  .block-item.has-changes::after {
+    box-shadow: 0 0 0 2px var(--background-normal);
+  }
+}
+
+.close-outline {
+  background: red !important;
+  border-left: 1px dashed gray;
+  padding-left: 1px;
+  border-radius: 0 var(--theme--border-radius) var(--theme--border-radius) 0;
+  right: -10px;
+}
+
+/* Table View Styles */
+.item-selector-table-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--background-page);
+  
+  .table-header {
+    background: var(--background-page);
+    border-bottom: 2px solid var(--border-normal);
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    
+    .header-row {
+      background: var(--background-normal-alt);
+      min-height: 48px;
+    }
+
+
+
+  }
+  .table-header.is-sticky {
+    position: sticky;
+    z-index: 2;
+  }
+  .table-body {
+    flex: 1;
+    overflow: auto;
+    background: var(--background-page);
+  }
+}

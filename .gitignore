@@ -3,6 +3,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
 
 # Production builds
 dist/
@@ -35,9 +36,14 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-# Test results
+# Test & Report Outputs
+/test-output/
 test-results/
 playwright-report/
+demo-results/
+demo-test-results/
+reports/
+screenshots/
 playwright/.cache/
 
 # Logs
@@ -61,3 +67,13 @@ temp/
 # Wiki (managed separately on GitHub)
 wiki/
 wiki-repo/
+
+# Qodana
+.qodana/
+qodana.sarif.json
+
+# Socket files and IPC
+auto
+*.sock
+*.socket
+

@@ -1,14 +1,9 @@
-import { logger } from './logger';
+import { logger } from './logger-wrapper';
+import { isNotNullish } from './validation';
+import { METADATA_FIELDS } from './helpers';
+import type { M2AFieldInfo } from '../types';
 
-export interface M2AFieldInfo {
-  field: string;
-  collection: string;
-  junctionCollection: string;
-  foreignKeyField: string;
-  allowedCollections: string[];
-  hasNestedM2A?: boolean;
-  nestedM2AFields?: Record<string, M2AFieldInfo>;
-}
+export type { M2AFieldInfo };
 
 export class M2AHelper {
   private api: any;
@@ -33,7 +28,17 @@ export class M2AHelper {
     const relation = relations?.[0];
     
     if (!relation) {
-      throw new Error(`No relation found for ${collection}.${field}`);
+      logger.debug(`No relation found for ${collection}.${field}, returning minimal structure`);
+      // Return a minimal structure instead of throwing
+      return {
+        field,
+        collection,
+        junctionCollection: `${collection}_${field}`,
+        junctionField: field,
+        foreignKeyField: `${collection}_id`,
+        allowedCollections: [],
+        nestedM2AFields: {}
+      };
     }
 
     // Determine junction collection name
@@ -60,7 +65,7 @@ export class M2AHelper {
           allowedCollections = fieldConfig.meta.options.allowedCollections;
         }
       } catch (e) {
-        console.log('Could not get field options:', e);
+        logger.debug('Could not get field options:', e);
       }
     }
 
@@ -68,6 +73,7 @@ export class M2AHelper {
       field,
       collection,
       junctionCollection,
+      junctionField: field, // The field name is the junction field
       foreignKeyField,
       allowedCollections,
       nestedM2AFields: {}
@@ -84,16 +90,21 @@ export class M2AHelper {
         if (m2aFields.length > 0) {
           fieldInfo.hasNestedM2A = true;
           for (const nestedField of m2aFields) {
-            // Recursively analyze nested M2A
-            const nestedInfo = await this.analyzeM2AStructure(
-              allowedCollection, 
-              nestedField.field
-            );
-            fieldInfo.nestedM2AFields![allowedCollection] = nestedInfo;
+            try {
+              // Recursively analyze nested M2A
+              const nestedInfo = await this.analyzeM2AStructure(
+                allowedCollection, 
+                nestedField.field
+              );
+              fieldInfo.nestedM2AFields![allowedCollection] = nestedInfo;
+            } catch (nestedError) {
+              logger.warn(`Could not analyze nested field ${allowedCollection}.${nestedField.field}:`, nestedError);
+              // Continue with other fields
+            }
           }
         }
       } catch (error) {
-        console.warn(`Could not analyze ${allowedCollection}:`, error);
+        logger.warn(`Could not analyze ${allowedCollection}:`, error);
       }
     }
 
@@ -110,7 +121,7 @@ export class M2AHelper {
     maxDepth: number = 3
   ): Promise<any[]> {
     if (depth >= maxDepth) {
-      console.warn('Max nesting depth reached');
+      logger.warn('Max nesting depth reached');
       return [];
     }
 
@@ -178,7 +189,7 @@ export class M2AHelper {
 
       return records;
     } catch (error) {
-      console.error(`Error loading M2A data for ${fieldInfo.collection}.${fieldInfo.field}:`, error);
+      logger.error(`Error loading M2A data for ${fieldInfo.collection}.${fieldInfo.field}:`, error);
       throw error; // Re-throw to match test expectations
     }
   }
@@ -195,7 +206,7 @@ export class M2AHelper {
       // Process each field
       fields.forEach((field: any) => {
         // Skip system fields
-        if (['id', 'user_created', 'user_updated', 'date_created', 'date_updated'].includes(field.field)) {
+        if (METADATA_FIELDS.includes(field.field)) {
           return;
         }
         
@@ -205,7 +216,7 @@ export class M2AHelper {
         }
         
         // Use schema default if available
-        if (field.schema?.default_value !== null && field.schema?.default_value !== undefined) {
+        if (isNotNullish(field.schema?.default_value)) {
           defaultData[field.field] = field.schema.default_value;
           return;
         }

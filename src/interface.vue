@@ -1,370 +1,275 @@
 <template>
   <div class="expandable-blocks">
-    <draggable
-      v-if="items.length > 0"
-      v-model="items"
-      :disabled="!sortable || disabled"
-      item-key="id"
-      handle=".drag-handle"
-      :animation="200"
-      @end="onSort"
-    >
-      <template #item="{ element: item, index }">
-        <div 
-          class="block-item" 
-          :class="{ 
-            expanded: expandedItems.includes(getItemId(item)),
-            compact: mergedOptions?.compactMode,
-            disabled: disabled
-          }"
-        >
-          <!-- Block Header -->
-          <div 
-            class="block-header" 
-            @click="!disabled && toggleExpand(getItemId(item))"
-          >
-            <!-- Drag Handle -->
-            <v-icon 
-              v-if="sortable && !disabled" 
-              name="drag_indicator" 
-              class="drag-handle" 
-              @click.stop
-            />
-            
-            <!-- Collection Icon with Dirty Indicator -->
-            <div class="icon-wrapper">
-              <v-icon 
-                :name="getCollectionIcon(item) || 'box'" 
-                class="collection-icon"
-              />
-              <div 
-                v-if="isBlockDirty(getItemId(item), item.item)"
-                class="dirty-indicator"
-                v-tooltip="'Unsaved changes'"
-              />
-            </div>
-            
-            <!-- Main Info Section -->
-            <div class="block-info">
-              <div class="block-main">
-                <span class="block-title">{{ getItemTitle(item) }}</span>
-                <v-chip x-small outline class="collection-chip">
-                  {{ getCollectionName(item) }}
-                </v-chip>
-                <span v-if="shouldShowItemId && !isNewItem(item)" class="item-id">
-                  ID: {{ getActualItemId(item) }}
-                </span>
-              </div>
-              
-              <!-- Status Display -->
-              <v-menu 
-                v-if="hasStatusField(item) && !mergedOptions?.compactMode"
-                placement="bottom" 
-                show-arrow
-              >
-                <template #activator="{ toggle }">
-                  <div 
-                    class="status-display"
-                    @click.stop="toggle"
-                  >
-                    <span class="status-dot" :class="`status-${getItemStatus(item)}`" />
-                    <span class="status-text">{{ getStatusLabel(getItemStatus(item)) }}</span>
-                  </div>
-                </template>
-                
-                <v-list>
-                  <v-list-item
-                    v-for="status in availableStatuses"
-                    :key="status.value"
-                    :active="getItemStatus(item) === status.value"
-                    clickable
-                    @click="updateItemStatus(item, index, status.value)"
-                  >
-                    <v-list-item-icon>
-                      <span class="status-dot" :class="`status-${status.value}`" />
-                    </v-list-item-icon>
-                    <v-list-item-content>{{ status.label }}</v-list-item-content>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-            
-            <!-- Right Section -->
-            <div class="block-actions">
-              <!-- AI Assistant Button -->
+    <block-list
+        v-model="items"
+        :expanded-items="expandedItems"
+        :loading="loading"
+        :sortable="sortable && canSort"
+        :disabled="disabled"
+        :compact-mode="mergedOptions?.compactMode"
+        :show-item-id="shouldShowItemId"
+        :show-collection-name="shouldShowCollectionName"
+        :allow-duplicate="mergedOptions?.isAllowedDuplicate !== false && canDuplicate"
+        :allow-delete="mergedOptions?.isAllowedDelete !== false && canDelete"
+        :allow-status-change="canChangeStatus"
+        :available-statuses="availableStatuses"
+        :expandable-blocks="expandableBlocks"
+        @toggle-expand="toggleExpand"
+        @update-item="updateItem"
+        @update-status="updateItemStatus"
+        @duplicate="duplicateItem"
+        @discard-changes="discardChanges"
+        @unlink="unlinkItem"
+        @delete="showDeleteDialog"
+        @sort="onSort"
+    />
 
-              
-              <!-- DEBUG: Show AI status -->
-<!--              <div v-if="!disabled" style="font-size: 10px; color: red;">-->
-<!--              </div>-->
-              
-              <!-- Expand/Collapse Icon or Placeholder -->
-              <div class="expand-icon-container">
-                <v-icon 
-                  v-if="expandedItems.includes(getItemId(item))"
-                  name="unfold_less"
-                  class="expand-indicator"
-                  @click.stop="toggleExpand(getItemId(item))"
-                />
-              </div>
+    <add-block-button
+        :disabled="disabled || !canAddBlocks"
+        :collections="allowedCollectionsWithPermissions"
+        :collections-for-existing="allowedCollectionsForExistingWithPermissions"
+        :can-add="canAddMoreBlocks && canAddBlocks"
+        :allow-link-existing="mergedOptions?.allowLinkExisting"
+        :allow-duplicate-existing="mergedOptions?.allowDuplicateExisting"
+        @add-item="addNewItem"
+        @add-existing="itemSelector.open"
+    />
 
-              <!-- More Options Menu -->
-              <v-menu 
-                v-if="!disabled && (mergedOptions?.isAllowedDuplicate !== false || mergedOptions?.isAllowedDelete !== false)"
-                placement="bottom-end" 
-                show-arrow
-              >
-                <template #activator="{ toggle }">
-                  <v-button
-                    v-tooltip="'More options'"
-                    x-small
-                    icon
-                    secondary
-                    @click.stop="toggle"
-                  >
-                    <v-icon name="more_vert" />
-                  </v-button>
-                </template>
-                
-                <v-list>
-                  <v-list-item 
-                    v-if="mergedOptions?.isAllowedDuplicate !== false"
-                    clickable 
-                    @click="duplicateItem(item, index)"
-                  >
-                    <v-list-item-icon>
-                      <v-icon name="content_copy" />
-                    </v-list-item-icon>
-                    <v-list-item-content>Duplicate</v-list-item-content>
-                  </v-list-item>
-                  
-                  <v-list-item 
-                    v-if="isBlockDirty(getItemId(item), item.item)"
-                    clickable 
-                    @click="discardChanges(item, index)"
-                  >
-                    <v-list-item-icon>
-                      <v-icon name="undo" />
-                    </v-list-item-icon>
-                    <v-list-item-content>Discard Changes</v-list-item-content>
-                  </v-list-item>
-                  
-                  <v-divider v-if="(mergedOptions?.isAllowedDuplicate !== false || isBlockDirty(getItemId(item), item.item)) && mergedOptions?.isAllowedDelete !== false" />
-                  
-                  <v-list-item 
-                    v-if="mergedOptions?.isAllowedDelete !== false"
-                    clickable 
-                    class="danger" 
-                    @click="showDeleteDialog(item, index)"
-                  >
-                    <v-list-item-icon>
-                      <v-icon name="delete" />
-                    </v-list-item-icon>
-                    <v-list-item-content>Delete</v-list-item-content>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </div>
-          
-          <!-- Inline Form (Expanded Content) -->
-          <transition name="expand">
-            <div v-if="expandedItems.includes(getItemId(item))" class="block-content">
-              <div v-if="loading[getItemId(item)]" class="loading-state">
-                <v-progress-circular indeterminate />
-              </div>
-              
-              <v-form
-                v-else
-                :initial-values="item.item || item"
-                :fields="getFieldsForItem(item)"
-                :model-value="item.item || item"
-                :primary-key="(item.item || item).id"
-                :disabled="disabled"
-                :badge="null"
-                :autofocus="false"
-                :show-validation-errors="false"
-                @update:model-value="updateItem(index, $event)"
-              />
-              
-              <!-- Show nested M2A blocks if present -->
-              <template v-if="hasNestedM2A(item)">
-                <div v-for="(fieldValue, fieldName) in getM2AFields(item)" :key="fieldName">
-                  <nested-blocks
-                    v-if="fieldValue && fieldValue.length > 0"
-                    :blocks="fieldValue"
-                    :title="formatFieldName(fieldName)"
-                  />
-                </div>
-              </template>
-            </div>
-          </transition>
-        </div>
-      </template>
-    </draggable>
-    
-    <!-- Empty State -->
-    <div v-else-if="!disabled" class="empty-state">
-      <p>No blocks yet</p>
-    </div>
-    
-    <!-- Add New Block Button -->
-    <v-button 
-      v-if="!disabled && allowedCollections.length === 1 && canAddMoreBlocks"
-      class="add-block-button"
-      :disabled="disabled"
-      @click="addNewItem(allowedCollections[0].collection)"
-    >
-      <v-icon name="add" />
-      Add Block
-    </v-button>
-    
-    <v-menu 
-      v-else-if="!disabled && allowedCollections.length > 1 && canAddMoreBlocks"
-      placement="bottom-start" 
-      show-arrow
-    >
-      <template #activator="{ toggle }">
-        <v-button 
-          class="add-block-button"
-          :disabled="disabled"
-          @click="toggle"
-        >
-          <v-icon name="add" />
-          Add Block
-        </v-button>
-      </template>
-      
-      <v-list>
-        <v-list-item
-          v-for="collection in allowedCollections"
-          :key="collection.collection"
-          clickable
-          @click="addNewItem(collection.collection)"
-        >
-          <v-list-item-icon>
-            <v-icon :name="collection.meta?.icon || 'box'" />
-          </v-list-item-icon>
-          <v-list-item-content>
-            {{ collection.name }}
-          </v-list-item-content>
-        </v-list-item>
-      </v-list>
-    </v-menu>
-    
-    <!-- Max blocks reached message -->
-    <div 
-      v-if="!disabled && allowedCollections.length > 0 && !canAddMoreBlocks" 
-      class="max-blocks-message"
-    >
-      <v-notice type="info">
-        Maximum number of blocks ({{ mergedOptions.maxBlocks }}) reached
-      </v-notice>
-    </div>
-    
-    <!-- Delete Confirmation Dialog -->
-    <v-dialog 
-      v-model="deleteDialog" 
-      @esc="deleteDialog = false"
-    >
+    <!-- Item Selector Drawer -->
+    <ItemSelectorDrawer
+        :open="itemSelector.isOpen.value"
+        :collection="itemSelector.selectedCollection.value"
+        :collection-name="itemSelector.selectedCollectionName.value"
+        :collection-icon="itemSelector.selectedCollectionIcon.value"
+        :items="itemSelector.availableItems.value"
+        :loading="itemSelector.loading.value"
+        :loading-details="itemSelector.loadingDetails.value"
+        :current-page="itemSelector.currentPage.value"
+        :items-per-page="itemSelector.itemsPerPage.value"
+        :total-items="itemSelector.totalItems.value"
+        :available-fields="itemSelector.availableFields.value"
+        :item-relations="itemSelector.itemRelations.value"
+        :translation-info="itemSelector.translationInfo.value"
+        :selected-language="itemSelector.selectedLanguage.value"
+        :available-languages="itemSelector.availableLanguages.value"
+        :get-translated-field-value="itemSelector.getTranslatedFieldValue"
+        :is-field-translatable="itemSelector.isFieldTranslatable"
+        :api-error="itemSelector.apiError.value"
+        :allow-link="mergedOptions?.allowLinkExisting !== false"
+        :allow-duplicate="mergedOptions?.allowDuplicateExisting !== false"
+        :sort-field="itemSelector.sortField.value"
+        :sort-direction="itemSelector.sortDirection.value"
+        @close="itemSelector.close"
+        @confirm="handleItemSelection"
+        @confirm-copy="handleItemSelectionAsCopy"
+        @search="itemSelector.handleSearch"
+        @update:current-page="itemSelector.handlePageChange"
+        @update:selected-language="(lang) => itemSelector.selectedLanguage.value = lang"
+        @update:sort="(field, direction) => itemSelector.updateSort(field, direction)"
+        @update:items-per-page="(value) => itemSelector.updateItemsPerPage(value)"
+    />
+
+    <!-- Delete Dialog -->
+    <v-dialog :model-value="deleteDialog" @update:model-value="deleteDialog = $event">
       <v-card>
         <v-card-title>Delete Block</v-card-title>
         <v-card-text>
           Are you sure you want to delete this block? This action cannot be undone.
         </v-card-text>
         <v-card-actions>
-          <v-button secondary @click="deleteDialog = false">
-            Cancel
-          </v-button>
-          <v-button kind="danger" @click="confirmDeleteItem">
-            Delete
-          </v-button>
+          <v-button secondary @click="deleteDialog = false">Cancel</v-button>
+          <v-button danger @click="confirmDeleteItem">Delete</v-button>
         </v-card-actions>
       </v-card>
     </v-dialog>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted, type Ref } from 'vue';
-import draggable from 'vuedraggable';
-import NestedBlocks from './components/NestedBlocks.vue';
-import { useExpandableBlocks, type UseExpandableBlocksProps } from './composables/useExpandableBlocks';
-import type { DirectusFormValues } from './types';
+import {toRefs, inject, ref, onMounted, onUnmounted, watch} from 'vue';
+import { debounce } from 'lodash-es';
+import {useExpandableBlocks} from './composables/useExpandableBlocks';
+import {useItemSelector} from './composables/useItemSelector';
+import {useUserPresets} from './composables/useUserPresets';
+import {useApi} from '@directus/extensions-sdk';
+import BlockList from './components/BlockList.vue';
+import AddBlockButton from './components/AddBlockButton.vue';
+import ItemSelectorDrawer from './components/ItemSelectorDrawer.vue';
+import type {UseExpandableBlocksProps} from './composables/useExpandableBlocks';
+import { logDebug } from './utils/logger-wrapper';
 
-interface Props extends UseExpandableBlocksProps {}
+interface Props extends UseExpandableBlocksProps {
+}
 
-const props = withDefaults(defineProps<Props>(), {
-  value: () => [],
-  disabled: false,
-  options: () => ({})
-});
+const props = defineProps<Props>();
+const emit = defineEmits(['input']);
 
-const emit = defineEmits<{
-  input: [value: any[]];
-}>();
+// Get injected values from Directus
+const values = inject('values', ref({}));
+const initialValues = inject('initialValues', ref({}));
 
-// Inject Directus form states
-const values = inject<Ref<DirectusFormValues>>('values', ref({}));
-const initialValues = inject<Ref<DirectusFormValues>>('initialValues', ref({}));
+// Get refs for reactive props
+const {value: _modelValue, collection: _collection, field: _field, primaryKey: _primaryKey, disabled, options: _options} = toRefs(props);
 
-// Use the composable
+// Component lifecycle state
+const isMounted = ref(false);
+
+// Initialize expandable blocks composable
+const expandableBlocks = useExpandableBlocks(
+    props,
+    (event, value) => emit(event, value),
+    values,
+    initialValues
+);
+
+// Destructure everything we need
 const {
   // State
   items,
   expandedItems,
   loading,
-  relationInfo,
-  m2aStructure,
-  allowedCollections,
   deleteDialog,
-  itemToDelete,
-  isInitialLoad,
   mergedOptions,
-  blockOriginalStates,
-  originalItemOrder,
   availableStatuses,
-  
+  allowedCollections,
+  allowedCollectionsForExisting: _allowedCollectionsForExisting,
+
   // Computed
   sortable,
-  saveButtonWouldBeActive,
   shouldShowItemId,
+  shouldShowCollectionName,
   canAddMoreBlocks,
-  
+  allowedCollectionsWithPermissions,
+  allowedCollectionsForExistingWithPermissions,
+
   // Methods
   initialize,
-  getItemId,
-  getActualItemId,
-  isNewItem,
-  getItemTitle,
-  getCollectionName,
-  getCollectionIcon,
-  getFieldsForItem,
+  getItemId: _getItemId,
+  getActualItemId: _getActualItemId,
+  isNewItem: _isNewItem,
+  isBlockDirty: _isBlockDirty,
+  getItemTitle: _getItemTitle,
+  getCollectionName: _getCollectionName,
+  getCollectionIcon: _getCollectionIcon,
+  getFieldsForItem: _getFieldsForItem,
   toggleExpand,
   updateItem,
   addNewItem,
+  addExistingItems,
+  addAsNewItems,
   showDeleteDialog,
+  unlinkItem,
   confirmDeleteItem,
   duplicateItem,
   discardChanges,
-  onSort,
-  hasStatusField,
-  getItemStatus,
-  getStatusLabel,
   updateItemStatus,
-  hasNestedM2A,
-  getM2AFields,
-  formatFieldName,
-  isBlockDirty
-} = useExpandableBlocks(props, emit, values, initialValues);
+  onSort,
+  hasStatusField: _hasStatusField,
+  getItemStatus: _getItemStatus,
+  getStatusLabel: _getStatusLabel,
+  hasNestedM2A: _hasNestedM2A,
+  getM2AFields: _getM2AFields,
+  formatFieldName: _formatFieldName,
+  loadBlockUsageData,
+  canReadItem: _canReadItem,
+  canUpdateItem: _canUpdateItem,
+  
+  // Permissions
+  canChangeStatus,
+  canSort,
+  canAddBlocks,
+  canDelete,
+  canDuplicate
+} = expandableBlocks;
+
+// Initialize API
+const api = useApi();
+
+// Initialize user presets
+const userPresets = useUserPresets();
+const userPresetsInitialized = ref(false);
+
+// Initialize item selector composable
+const itemSelector = useItemSelector(api, allowedCollections, mergedOptions.value);
+
+// Override the open function to include user preferences
+const originalOpen = itemSelector.open;
+itemSelector.open = async (collection: string) => {
+  // Get user preferences for the collection
+  const userPrefs = {
+    selectedLanguage: userPresets.getSelectedLanguage(collection),
+    itemsPerPage: userPresets.getItemsPerPage(collection),
+    sortField: userPresets.getSortField(collection),
+    sortDirection: userPresets.getSortDirection(collection)
+  };
+  
+  logDebug('Opening item selector with user preferences', { collection, userPrefs });
+  
+  // Call the original open function with preferences
+  await originalOpen(collection, userPrefs);
+};
+
+// Handle item selection from drawer
+function handleItemSelection(selectedItems: any[]) {
+  if (selectedItems.length > 0 && itemSelector.selectedCollection.value) {
+    // Use the addExistingItems function from the composable
+    addExistingItems(itemSelector.selectedCollection.value, selectedItems);
+  }
+  itemSelector.close();
+}
+
+// Handle item selection as copy from drawer
+function handleItemSelectionAsCopy(selectedItems: any[]) {
+  if (selectedItems.length > 0 && itemSelector.selectedCollection.value) {
+    // Use the addAsNewItems function from the composable
+    addAsNewItems(itemSelector.selectedCollection.value, selectedItems);
+  }
+  itemSelector.close();
+}
+
+// Store debounced function for cleanup
+const debouncedLoadUsageData = debounce(async (newItems, oldItems) => {
+  // Only reload if there are actual items and the count changed
+  if (newItems && oldItems && newItems.length !== oldItems.length && isMounted.value) {
+    await loadBlockUsageData();
+  }
+}, 1000);
+
+// Watch for changes in items to reload usage data
+const stopWatcher = watch(items, debouncedLoadUsageData);
 
 // Initialize on mount
-onMounted(() => {
-  initialize();
+onMounted(async () => {
+  isMounted.value = true;
+  
+  // Initialize user presets first
+  try {
+    await userPresets.initialize();
+    userPresetsInitialized.value = true;
+  } catch (err) {
+    logDebug('Failed to initialize user presets', { error: err });
+  }
+  
+  await initialize();
+  
+  // Load usage data for existing blocks
+  if (items.value.length > 0) {
+    await loadBlockUsageData();
+  }
+});
+
+// Cleanup on unmount
+onUnmounted(() => {
+  isMounted.value = false;
+  
+  // Cancel any pending debounced calls
+  debouncedLoadUsageData.cancel?.();
+  
+  // Stop the watcher
+  stopWatcher();
 });
 </script>
 
-<style scoped>
-@import './interface.css';
+<style lang="scss" scoped>
+@use './interface.scss';
 </style>

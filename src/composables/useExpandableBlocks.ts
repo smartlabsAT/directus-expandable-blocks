@@ -1,19 +1,18 @@
-import { ref, computed, watch, onMounted, nextTick, type Ref } from 'vue';
+import { ref, computed, nextTick, markRaw, type Ref } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
-import { logger } from '../utils/logger';
-import { 
-  buildM2AFieldsString, 
-  extractItemTitle, 
-  getActualItemId as getItemActualId,
-  isNewItem as checkIsNewItem,
-  parseAllowedCollections,
-  deepClone
-} from '../utils/helpers';
+import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
+import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
+import { isItemObject } from '../utils/validation';
+import { useBlockState } from './useBlockState';
+import { useBlockActions } from './useBlockActions';
+import { useM2AData } from './useM2AData';
+import { useBlockWatchers } from './useBlockWatchers';
+import { useUIHelpers } from './useUIHelpers';
+import { usePermissionChecks } from './usePermissionChecks';
 import type { 
   ExpandableBlocksOptions, 
   JunctionRecord, 
-  ItemRecord, 
   CollectionInfo, 
   RelationInfo,
   DirectusFormValues,
@@ -22,13 +21,14 @@ import type {
   DirectusCollectionsStore,
   DirectusNotificationsStore
 } from '../types';
+import type { ExpandableBlocksContext } from '../types/composable-context';
 
-export interface UseExpandableBlocksProps {
+// Use the UseExpandableBlocksProps from types/index.ts instead
+import type { UseExpandableBlocksProps as BaseProps } from '../types';
+
+// Extend to allow null values
+export interface UseExpandableBlocksProps extends Omit<BaseProps, 'value'> {
   value: JunctionRecord[] | null;
-  collection: string;
-  field: string;
-  primaryKey?: string | number;
-  disabled?: boolean;
   options?: ExpandableBlocksOptions;
 }
 
@@ -41,39 +41,24 @@ export function useExpandableBlocks(
   // API and stores
   const api = useApi();
   const stores = useStores();
-  const { useFieldsStore, useRelationsStore, useCollectionsStore, useNotificationsStore } = stores;
+  const { useFieldsStore, useRelationsStore, useCollectionsStore, useNotificationsStore, usePermissionsStore } = stores;
   const fieldsStore = useFieldsStore() as DirectusFieldsStore;
   const relationsStore = useRelationsStore() as DirectusRelationsStore;
   const collectionsStore = useCollectionsStore() as DirectusCollectionsStore;
   const notificationsStore = useNotificationsStore() as DirectusNotificationsStore;
+  const permissionsStore = usePermissionsStore ? usePermissionsStore() : null;
 
   // Initialize M2A Helper
   const m2aHelper = new M2AHelper(api, stores);
 
-  // State
-  const items = ref<JunctionRecord[]>([]);
-  const expandedItems = ref<string[]>([]);
-  const loading = ref<Record<string | number, boolean>>({});
+  // Local state
   const relationInfo = ref<RelationInfo | null>(null);
   const m2aStructure = ref<M2AFieldInfo | null>(null);
   const allowedCollections = ref<CollectionInfo[]>([]);
+  const allowedCollectionsForExisting = ref<CollectionInfo[]>([]);
   const deleteDialog = ref(false);
   const itemToDelete = ref<{ item: JunctionRecord; index: number } | null>(null);
-  const isInitialLoad = ref(true);
-  const isInternalUpdate = ref(false);
-  const isFullyInitialized = ref(false);
-
-  // Store merged options
   const mergedOptions = ref<ExpandableBlocksOptions>({});
-
-  // Store original state for each block to track changes
-  const blockOriginalStates = ref<Map<string, any>>(new Map());
-  
-  // Store dirty state for each block
-  const blockDirtyStates = ref<Map<string, boolean>>(new Map());
-
-  // Store the original order of items as they came from props.value
-  const originalItemOrder = ref<(string | number)[]>([]);
 
   // Status configuration
   const availableStatuses = [
@@ -81,237 +66,285 @@ export function useExpandableBlocks(
     { value: 'draft', label: 'Draft' },
     { value: 'archived', label: 'Archived' }
   ];
+  
+  // Usage data state - use markRaw to prevent Vue reactivity
+  const blockUsageDataStore = ref<Record<string, any>>(markRaw({}));
+  const blockUsageData = computed(() => blockUsageDataStore.value);
 
-  // Computed
-  const sortable = computed(() => {
-    // Default to true if not explicitly set to false
-    return mergedOptions.value?.enableSorting !== false;
-  });
-
-  // Compute save button status (would be active if values differ from initialValues)
+  // Computed properties
+  const sortable = computed(() => mergedOptions.value?.enableSorting !== false);
+  
   const saveButtonWouldBeActive = computed(() => {
     if (!values.value || !initialValues.value || !props.field) return false;
-    
     const currentValue = values.value[props.field];
     const initialValue = initialValues.value[props.field];
-    
-    // Deep comparison
     return JSON.stringify(currentValue) !== JSON.stringify(initialValue);
   });
 
   const shouldShowItemId = computed(() => {
-    // Handle different possible values
     const value = mergedOptions.value?.showItemId;
-    
-    // If explicitly set to false, hide it
-    if (value === false) {
-      return false;
-    }
-    
-    // If not set at all (undefined), default to true
-    if (value === undefined) {
-      return true;
-    }
-    
-    // Otherwise use the value as-is
+    if (value === false) return false;
+    if (value === undefined) return true;
+    return value;
+  });
+
+  const shouldShowCollectionName = computed(() => {
+    const value = mergedOptions.value?.showCollectionName;
+    if (value === false) return false;
+    if (value === undefined) return true;
     return value;
   });
 
   const canAddMoreBlocks = computed(() => {
     const maxBlocks = mergedOptions.value?.maxBlocks;
-    if (!maxBlocks || maxBlocks <= 0) {
-      return true; // No limit
-    }
+    if (!maxBlocks || maxBlocks <= 0) return true;
     return items.value.length < maxBlocks;
   });
 
-  /**
-   * Check if a specific block is dirty (has unsaved changes)
-   * Compares current item data with the original state stored when block was loaded
-   * @param blockId - The unique identifier of the block
-   * @param currentItemData - The current state of the item data
-   * @returns true if the block has unsaved changes, false otherwise
-   */
-  function isBlockDirty(blockId: string, currentItemData: any): boolean {
-    const originalData = blockOriginalStates.value.get(blockId);
-    if (!originalData) return true; // New blocks are always dirty
-    
-    // Check if content has changed
-    const contentChanged = JSON.stringify(currentItemData) !== JSON.stringify(originalData);
-    
-    // Check if position has changed
-    const currentIndex = items.value.findIndex(item => getItemId(item) === blockId);
-    
-    // Convert both to strings for comparison since blockId is always a string
-    const originalIndex = originalItemOrder.value.findIndex(id => String(id) === blockId);
-    
-    const positionChanged = currentIndex !== -1 && originalIndex !== -1 && currentIndex !== originalIndex;
-    
-    return contentChanged || positionChanged;
-  }
+  // Initialize block state
+  const blockState = useBlockState();
+  const {
+    items,
+    expandedItems,
+    loading,
+    blockOriginalStates,
+    blockDirtyStates,
+    originalItemOrder,
+    isInitialLoad,
+    isInternalUpdate,
+    isFullyInitialized,
+    isBlockDirty,
+    prepareItemsForEmit,
+    resetBlockState,
+    markBlockDirty,
+    clearStateTracking,
+    updateOriginalState,
+    updateOriginalItemOrder,
+    removeBlockState,
+    getItemId,
+    isNewItem
+  } = blockState;
 
-  /**
-   * Prepare items for emit (mix of IDs for clean blocks and full objects for dirty blocks)
-   * This is the core solution for the dirty state tracking issue:
-   * - Clean blocks: emit only their ID (matches Directus's expected format)
-   * - Dirty blocks: emit full object (allows Directus to save the changes)
-   * @param itemsArray - Array of junction records to process
-   * @returns Array with IDs for clean blocks and full objects for dirty blocks
-   */
-  function prepareItemsForEmit(itemsArray: JunctionRecord[]): any[] {
-    logger.log('🔧 PREPARE EMIT - Starting preparation:', {
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      inputItemsCount: itemsArray.length,
-      originalOrderLength: originalItemOrder.value.length,
-      originalOrder: originalItemOrder.value,
-      inputItems: itemsArray.map(item => ({
-        id: item.id,
-        collection: item.collection,
-        itemType: typeof item.item,
-        hasItem: !!item.item
-      }))
-    });
+  // Create context object
+  const ctx: ExpandableBlocksContext = {
+    state: {
+      items,
+      expandedItems,
+      loading,
+      blockOriginalStates,
+      blockDirtyStates,
+      originalItemOrder,
+      isInternalUpdate,
+      isInitialLoad,
+      isFullyInitialized
+    },
+    stateFns: {
+      getItemId,
+      isNewItem,
+      prepareItemsForEmit,
+      updateOriginalState,
+      markBlockDirty,
+      removeBlockState,
+      isBlockDirty,
+      resetBlockState
+    },
+    deps: {
+      api,
+      emit,
+      props,
+      stores: {
+        notificationsStore,
+        fieldsStore,
+        relationsStore,
+        collectionsStore
+      },
+      helpers: {
+        m2aHelper,
+        deepEqual
+      }
+    },
+    ui: {
+      deleteDialog,
+      itemToDelete,
+      mergedOptions: computed(() => mergedOptions.value),
+      canAddMoreBlocks,
+      availableStatuses
+    },
+    data: {
+      relationInfo,
+      allowedCollections,
+      allowedCollectionsForExisting,
+      m2aStructure,
+      values,
+      initialValues
+    },
+    permissions: {
+      canUpdateItem,
+      canReadItem,
+      canDeleteItem
+    }
+  };
+
+  // Initialize composables with context
+  const blockActions = useBlockActions(ctx);
+  const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
+  const watchers = useBlockWatchers(ctx, updateOriginalItemOrder, clearStateTracking, m2aData.loadFullItemData, m2aData.processPasteData);
+  const uiHelpers = useUIHelpers(ctx);
+  const permissions = usePermissionChecks(computed(() => mergedOptions.value));
+  
+  // Computed collections filtered by permissions
+  const allowedCollectionsWithPermissions = computed(() => {
+    if (!permissionsStore) return allowedCollections.value;
     
-    const result = itemsArray.map((item, index) => {
-      const blockId = item.id?.toString();
-      if (!blockId) {
-        logger.warn('🔧 PREPARE EMIT - Item without ID:', item);
-        return item; // Safety fallback
+    // Filter collections where user has create permission
+    return allowedCollections.value.filter(collection => {
+      const hasCreatePermission = permissionsStore.hasPermission(collection.collection, 'create');
+      if (!hasCreatePermission) {
+        logDebug('User has no create permission for collection', { collection: collection.collection });
+      }
+      return hasCreatePermission;
+    });
+  });
+  
+  const allowedCollectionsForExistingWithPermissions = computed(() => {
+    if (!permissionsStore) return allowedCollectionsForExisting.value;
+    
+    // Filter collections where user has read permission AND either create or update permission
+    // This ensures users can actually do something with the items they select
+    return allowedCollectionsForExisting.value.filter(collection => {
+      const hasReadPermission = permissionsStore.hasPermission(collection.collection, 'read');
+      if (!hasReadPermission) {
+        logDebug('User has no read permission for collection', { collection: collection.collection });
+        return false;
       }
       
-      const isDirty = isBlockDirty(blockId, item.item);
+      // Check if user can either create (for duplicate) or update (for link) items
+      const hasCreatePermission = permissionsStore.hasPermission(collection.collection, 'create');
+      const hasUpdatePermission = permissionsStore.hasPermission(collection.collection, 'update');
       
-      if (isDirty) {
-        // Wenn dirty, müssen wir das sort Feld aktualisieren
-        const itemToEmit = { ...item };
-        
-        // Wenn es ein sort_field gibt, aktualisiere es mit dem aktuellen Index
-        if (relationInfo.value?.meta?.sort_field) {
-          itemToEmit[relationInfo.value.meta.sort_field] = index;
-        }
-        
-        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
-          blockId,
-          isDirty: true,
-          returnType: 'full_object_with_sort',
-          sortField: relationInfo.value?.meta?.sort_field,
-          sortValue: index,
-          itemStructure: {
-            id: item.id,
-            collection: item.collection,
-            itemType: typeof item.item,
-            hasItem: !!item.item,
-            foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown'],
-            allKeys: Object.keys(itemToEmit)
-          }
+      if (!hasCreatePermission && !hasUpdatePermission) {
+        logDebug('User has read but no create/update permission for collection', { 
+          collection: collection.collection,
+          permissions: { read: true, create: hasCreatePermission, update: hasUpdatePermission }
         });
-        
-        return itemToEmit;
-      } else {
-        // Clean blocks: nur ID
-        logger.log(`🔧 PREPARE EMIT - Item ${index}:`, {
-          blockId,
-          isDirty: false,
-          returnType: 'id_only',
-          returnValue: item.id
-        });
-        
-        return item.id;
+        return false;
       }
+      
+      return true;
     });
+  });
+  
+  // Check if user can read a specific collection
+  function canReadCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canRead = permissionsStore.hasPermission(collection, 'read');
+    if (!canRead) {
+      logDebug('User has no read permission for collection', { collection });
+    }
+    return canRead;
+  }
+  
+  // Check if user can update a specific collection
+  function canUpdateCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canUpdate = permissionsStore.hasPermission(collection, 'update');
+    if (!canUpdate) {
+      logDebug('User has no update permission for collection', { collection });
+    }
+    return canUpdate;
+  }
+  
+  // Check if user can read a specific item
+  function canReadItem(item: JunctionRecord): boolean {
+    const collection = item.collection;
     
-    const dirtyCount = result.filter(item => typeof item === 'object').length;
-    
-    logger.log('🔧 PREPARE EMIT - Analysis:', {
-      totalItems: result.length,
-      dirtyCount,
-      cleanCount: result.length - dirtyCount,
-      allClean: dirtyCount === 0,
-      hasOriginalOrder: originalItemOrder.value.length > 0
-    });
-    
-    // If all blocks are clean, return them in the original order
-    if (dirtyCount === 0 && originalItemOrder.value.length > 0) {
-      // Create a map of current items by ID
-      const itemMap = new Map();
-      itemsArray.forEach(item => {
-        itemMap.set(item.id, item);
-      });
-      
-      // Return IDs in the original order
-      const orderedResult = originalItemOrder.value.filter(id => itemMap.has(id));
-      
-      logger.log('🔧 PREPARE EMIT - Using original order:', {
-        originalOrder: originalItemOrder.value,
-        availableIds: Array.from(itemMap.keys()),
-        finalResult: orderedResult
-      });
-      
-      return orderedResult;
+    if (!collection) {
+      logWarn('No collection found for item, assuming can read', { item });
+      return true;
     }
     
-    logger.log('🔧 PREPARE EMIT - Final result:', {
-      resultType: 'standard_processing',
-      sortField: relationInfo.value?.meta?.sort_field,
-      result: result.map((item, i) => ({
-        index: i,
-        type: typeof item,
-        value: typeof item === 'object' ? {
-          id: item.id,
-          collection: item.collection,
-          sortValue: item[relationInfo.value?.meta?.sort_field || 'sort']
-        } : item
-      }))
-    });
+    return canReadCollection(collection);
+  }
+  
+  // Check if user can update a specific item
+  function canUpdateItem(item: JunctionRecord): boolean {
+    // M2A structure: item.collection contains the target collection name
+    const collection = item.collection;
     
-    return result;
+    // logDebug('Checking update permission for item', {
+    //   collection,
+    //   itemStructure: {
+    //     hasCollection: !!item.collection,
+    //     hasItem: !!item.item,
+    //     collectionValue: item.collection
+    //   }
+    // });
+    //
+    if (!collection) {
+      logWarn('No collection found for item, assuming can update', { item });
+      return true;
+    }
+    
+    return canUpdateCollection(collection);
+  }
+  
+  // Check if user can delete a specific collection
+  function canDeleteCollection(collection: string): boolean {
+    if (!permissionsStore) return true; // If no permissions store, assume full access
+    const canDelete = permissionsStore.hasPermission(collection, 'delete');
+    if (!canDelete) {
+      logDebug('User has no delete permission for collection', { collection });
+    }
+    return canDelete;
+  }
+  
+  // Check if user can delete a specific item
+  function canDeleteItem(item: JunctionRecord): boolean {
+    const collection = item.collection;
+    
+    if (!collection) {
+      logWarn('No collection found for item, assuming can delete', { item });
+      return true;
+    }
+    
+    return canDeleteCollection(collection);
   }
 
   /**
    * Load all options from field configuration
    */
   async function loadFieldOptions() {
-    // Start with props options as base
     let fieldOptions = { ...props.options };
     
-    // Try to get from field store
     try {
       const fields = fieldsStore.getFieldsForCollection(props.collection);
       const fieldConfig = fields.find((f: any) => f.field === props.field);
       if (fieldConfig?.meta?.options) {
         fieldOptions = { ...fieldOptions, ...fieldConfig.meta.options };
-        logger.debug('Loaded field options from store:', fieldConfig.meta.options);
+        logDebug('Loaded field options from store', { options: fieldConfig.meta.options });
       }
     } catch (error) {
-      logger.debug('Failed to get field options from store:', error);
+      logDebug('Failed to get field options from store', { error });
     }
     
-    // Store merged options
     mergedOptions.value = fieldOptions;
-    logger.debug('Final merged options:', mergedOptions.value);
+    logDebug('Final merged options', { options: mergedOptions.value });
   }
 
   /**
    * Initialize the component
-   * Sets up the expandable blocks interface with proper data loading and configuration
-   * Handles:
-   * - M2A structure analysis
-   * - Allowed collections loading
-   * - Initial data fetching
-   * - Start expanded option implementation
    */
   async function initialize() {
-    logger.debug('Component mounted', {
+    logDebug('Component mounted', {
       field: props.field,
-      primaryKey: props.primaryKey
-    }, props);
+      primaryKey: props.primaryKey,
+      props
+    });
     
     // Store the original order from props.value
     if (Array.isArray(props.value)) {
       originalItemOrder.value = props.value.map(item => {
-        return typeof item === 'object' && item !== null ? item.id : item;
+        return isItemObject(item) ? item.id : item;
       });
     }
     
@@ -326,1260 +359,269 @@ export function useExpandableBlocks(
         }
       }
       
-      // Analyze M2A structure
-      try {
-        m2aStructure.value = await m2aHelper.analyzeM2AStructure(
-          props.collection,
-          props.field
-        );
-      } catch (error) {
-        logger.warn('Failed to analyze M2A structure:', error);
-      }
-      
-      // Load allowed collections
-      await loadAllowedCollections();
-      
-      // Load relation info
-      await loadRelationInfo();
-      
-      // Load data
-      await loadFullItemData();
+      // Initialize M2A data
+      await m2aData.initialize();
       
       // Implement startExpanded option
       if (mergedOptions.value?.startExpanded && items.value.length > 0) {
         expandedItems.value = items.value.map(item => getItemId(item));
       }
       
-      // Mark as fully initialized after a small delay
+      // Setup watchers
+      watchers.setupWatchers();
+      
+      // Mark as fully initialized
       await nextTick();
       setTimeout(() => {
         isFullyInitialized.value = true;
       }, 100);
       
     } catch (error) {
-      logger.error('Error initializing expandable blocks:', error);
+      logError('Error initializing expandable blocks', error);
       notificationsStore.add({
         title: 'Initialization Error',
         text: 'Failed to initialize expandable blocks. Please refresh the page.',
         type: 'error'
       });
     }
-    
   }
 
   /**
-   * Load allowed collections from various sources
+   * Load usage data for existing blocks
    */
-  async function loadAllowedCollections() {
-    // Use merged options which already contains field store options
-    const fieldOptions = mergedOptions.value || {};
-    
-    // First, always try to get the M2A configured collections
-    const relations = relationsStore.getRelationsForField(props.collection, props.field);
-    let m2aConfiguredCollections: string[] = [];
-    if (relations && relations.length > 0) {
-      // For M2A, we need to look at all relations to find the configured collections
-      for (const relation of relations) {
-        // Store the first relation as relationInfo
-        if (!relationInfo.value) {
-          relationInfo.value = relation;
-        }
-        
-        // Try to get collections from different places
-        if (relation.meta?.one_allowed_collections) {
-          const collections = parseAllowedCollections(relation.meta.one_allowed_collections);
-          if (collections.length > 0) {
-            m2aConfiguredCollections = collections;
-            break;
-          }
-        }
-      }
+  async function loadBlockUsageData() {
+    try {
+      // Get all existing item IDs grouped by collection
+      const itemsByCollection = new Map<string, (string | number)[]>();
       
-      // If still no collections found, try to get them from the field configuration
-      if (m2aConfiguredCollections.length === 0) {
-        const field = fieldsStore.getField(props.collection, props.field) as any;
-        
-        // Check if field has special configuration for M2A
-        if (field?.special && (field.special as string[]).includes('m2a')) {
-          // Get the junction collection
-          const junctionRelation = relations.find(r => r.meta?.junction_field);
-          if (junctionRelation) {
-            const junctionCollection = junctionRelation.collection;
-            
-            // Get all fields from junction to find related collections
-            const junctionFields = fieldsStore.getFieldsForCollection(junctionCollection);
-            
-            // Find the one_collection field
-            const oneCollectionField = junctionFields.find(f => 
-              f.field === 'collection' || 
-              f.field === 'item' || 
-              (f.type === 'string' && f.meta?.interface === 'select-dropdown')
-            );
-            
-            // Extract collections from field configuration
-            if (oneCollectionField?.meta?.options?.choices) {
-              m2aConfiguredCollections = oneCollectionField.meta.options.choices
-                .map((choice: any) => typeof choice === 'string' ? choice : choice.value)
-                .filter(Boolean);
-            }
-          }
-        }
-      }
-    }
-    
-    // Now check the interface options
-    if (fieldOptions?.allowedCollections !== undefined && Array.isArray(fieldOptions.allowedCollections)) {
-      if (fieldOptions.allowedCollections.length > 0) {
-        // Specific collections selected - use only these
-        setAllowedCollections(fieldOptions.allowedCollections);
-      } else {
-        // Empty array means "no restrictions" - use all M2A collections
-        if (m2aConfiguredCollections.length > 0) {
-          setAllowedCollections(m2aConfiguredCollections);
-        }
-      }
-    } else {
-      // allowedCollections not set at all - use M2A collections
-      if (m2aConfiguredCollections.length > 0) {
-        setAllowedCollections(m2aConfiguredCollections);
-      }
-    }
-  }
-
-  /**
-   * Set allowed collections with proper formatting
-   */
-  function setAllowedCollections(collections: string[]) {
-    allowedCollections.value = collections.map((col: string) => {
-      const collection = collectionsStore.getCollection(col);
-      return {
-        collection: col,
-        name: collection?.name || col,
-        meta: collection?.meta
-      };
-    });
-  }
-
-  /**
-   * Load relation info for junction handling
-   */
-  async function loadRelationInfo() {
-    if (!relationInfo.value) {
-      const relations = relationsStore.getRelationsForField(props.collection, props.field);
-      if (relations && relations.length > 0) {
-        relationInfo.value = relations[0];
-      }
-    }
-    
-    if (relationInfo.value) {
-      // Determine junction collection
-      let junctionCollection = 
-        relationInfo.value.meta?.junction_field ? relationInfo.value.collection :
-        relationInfo.value.related_collection && relationInfo.value.related_collection !== props.collection ? 
-          relationInfo.value.related_collection : 
-          `${props.collection}_${props.field}`;
-      
-      const foreignKeyField = `${props.collection}_id`;
-      
-      relationInfo.value.junctionCollection = junctionCollection;
-      relationInfo.value.foreignKeyField = foreignKeyField;
-      
-      logger.debug('Junction info:', {
-        junctionCollection,
-        foreignKeyField
-      });
-    }
-  }
-
-  /**
-   * Check for delayed options loading
-   */
-  function checkDelayedOptions() {
-    if (fieldsStore && props.collection && props.field) {
-      try {
-        const fields = fieldsStore.getFieldsForCollection(props.collection);
-        const fieldConfig = fields.find((f: any) => f.field === props.field);
-        
-        if (fieldConfig?.meta?.options?.allowedCollections && 
-            fieldConfig.meta.options.allowedCollections.length > 0 &&
-            allowedCollections.value.length === 0) {
-          logger.debug('Found allowed collections in delayed check');
-          setAllowedCollections(fieldConfig.meta.options.allowedCollections);
-        }
-      } catch (error) {
-        logger.debug('Delayed options check failed:', error);
-      }
-    }
-  }
-
-  /**
-   * Watch for external value changes
-   */
-  watch(() => props.value, async (newVal, oldVal) => {
-    // Set originalItemOrder when it's empty and data arrives (initial load)
-    if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
-      logger.debug('Setting originalItemOrder from value watcher:', newVal);
-      originalItemOrder.value = newVal.map(item => 
-        typeof item === 'object' && item !== null ? item.id : item
-      );
-      checkDelayedOptions();
-      if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
-        await loadFullItemData();
-      }
-      isFullyInitialized.value = true;
-      return;
-    }
-    
-    // NEU: Nach einem Save kommt die neue Reihenfolge von Directus
-    // WICHTIG: Wir aktualisieren originalItemOrder nur, wenn ALLE Blöcke als IDs kommen (= clean state nach Save)
-    if (Array.isArray(newVal) && newVal.length > 0 && originalItemOrder.value.length > 0) {
-      // Prüfe ob alle Einträge nur IDs sind (keine Objekte)
-      const allAreIds = newVal.every(item => typeof item !== 'object' || item === null);
-      
-      if (allAreIds) {
-        const newOrder = newVal.map(item => 
-          typeof item === 'object' && item !== null ? (item as any).id : item
-        );
-        
-        // Wenn alle Blöcke nur als IDs kommen UND die Reihenfolge anders ist,
-        // dann war das ein erfolgreicher Save
-        if (JSON.stringify(newOrder) !== JSON.stringify(originalItemOrder.value)) {
-          logger.debug('Save detected - all blocks are clean IDs, updating originalItemOrder:', {
-            previousOriginal: originalItemOrder.value,
-            newOrder: newOrder
-          });
-          originalItemOrder.value = newOrder;
+      items.value.forEach(item => {
+        if (!isNewItem(item)) {
+          const collection = item.collection;
+          const itemId = getActualItemId(item);
           
-          // Wichtig: Lade die Daten neu, damit sie in der neuen Reihenfolge sind
-          if (props.primaryKey && props.primaryKey !== '+' && props.primaryKey !== 'new') {
-            await loadFullItemData();
-          }
-          return;
-        }
-      }
-    }
-    
-    if (isInitialLoad.value || isInternalUpdate.value) {
-      isInternalUpdate.value = false;
-      return;
-    }
-    
-    // Check if actual items changed (add/remove)
-    const oldIds = items.value.map(item => item.id).sort();
-    const newIds = (newVal || []).map((item: any) => {
-      return typeof item === 'object' ? item.id : item;
-    }).filter(id => id != null).sort();
-    
-    if (JSON.stringify(oldIds) !== JSON.stringify(newIds)) {
-      loadFullItemData();
-    }
-  }, { deep: true });
-
-  /**
-   * Watch for global form resets (when user clicks "Discard Changes")
-   * This happens when Directus resets values to initialValues
-   */
-  watch(() => values.value?.[props.field], (newVal, oldVal) => {
-    // Skip if not initialized or if it's our own update
-    if (!isFullyInitialized.value || isInternalUpdate.value) {
-      return;
-    }
-    
-    // Skip if no change
-    if (JSON.stringify(newVal) === JSON.stringify(oldVal)) {
-      return;
-    }
-    
-    // Check if this is a reset to initialValues
-    const initialVal = initialValues.value?.[props.field];
-    if (!initialVal) {
-      return;
-    }
-    
-    // For comparison, we need to check if it matches initialValues (the saved state)
-    const isResetToInitial = JSON.stringify(newVal) === JSON.stringify(initialVal);
-    
-    if (isResetToInitial) {
-      logger.debug('Global discard detected - resetting blocks');
-      
-      // WICHTIG: Reset originalItemOrder to the initial/saved order
-      if (Array.isArray(initialVal)) {
-        originalItemOrder.value = initialVal.map(item => 
-          typeof item === 'object' && item !== null ? item.id : item
-        );
-        
-        logger.debug('Reset originalItemOrder to:', originalItemOrder.value);
-      }
-      
-      // Reset all blocks to their original state
-      items.value = items.value.map(item => {
-        const blockId = item.id?.toString();
-        if (!blockId) return item;
-        
-        const originalData = blockOriginalStates.value.get(blockId);
-        if (!originalData) {
-          logger.warn('No original data for block:', blockId);
-          return item;
-        }
-        
-        return {
-          ...item,
-          item: deepClone(originalData)
-        };
-      });
-      
-      // Reorder items according to the reset order
-      if (originalItemOrder.value.length > 0) {
-        const itemMap = new Map(items.value.map(item => [item.id, item]));
-        const reorderedItems = originalItemOrder.value
-          .map(id => itemMap.get(id))
-          .filter(item => item !== undefined) as JunctionRecord[];
-        
-        if (reorderedItems.length > 0) {
-          items.value = reorderedItems;
-        }
-      }
-      
-      // Clear all dirty states on global discard
-      blockDirtyStates.value.clear();
-      logger.debug('Cleared all dirty states on global discard');
-      
-      // Keep expanded items open for better UX
-      // expandedItems stays the same
-      
-      // Emit the reset state
-      isInternalUpdate.value = true;
-      emit('input', newVal);
-      nextTick(() => {
-        isInternalUpdate.value = false;
-      });
-    }
-    // If it's not a reset, it could be individual field updates which we ignore here
-  }, { deep: true });
-
-  /**
-   * Watch for save events by monitoring initialValues changes
-   * When Directus saves, it updates initialValues to match the saved state
-   */
-  watch(() => initialValues.value?.[props.field], async (newVal, oldVal) => {
-    
-    // Skip if not fully initialized to prevent initial trigger
-    if (!isFullyInitialized.value) {
-      return;
-    }
-    
-    // Skip initial value setting
-    if (!oldVal && newVal) {
-      return;
-    }
-    
-    if (!newVal || !items.value.length) return;
-    
-    // This is likely a save event
-    logger.debug('Save detected - reloading data to reset dirty state');
-    
-    // Set internal update flag to prevent double emit
-    isInternalUpdate.value = true;
-    
-    // Update originalItemOrder with current order after save
-    originalItemOrder.value = items.value.map(item => item.id);
-    
-    logger.debug('Updated originalItemOrder after save:', originalItemOrder.value);
-    // WICHTIG: Warte bis loadFullItemData fertig ist!
-    await loadFullItemData();
-    
-    // Nach dem Laden sind alle blockOriginalStates aktualisiert
-    // und processLoadedRecords hat bereits korrekt emittiert
-    logger.debug('✅ Data reload complete after save');
-    
-    // Reset internal update flag after a tick
-    await nextTick();
-    isInternalUpdate.value = false;
-    
-  }, { deep: true });
-
-  /**
-   * Watch for primaryKey changes - Extension loads before primaryKey is available
-   */
-  watch(() => props.primaryKey, async (newKey, oldKey) => {
-    logger.debug('Primary key changed:', { oldKey, newKey });
-
-    if (newKey && newKey !== '+' && newKey !== 'new' && newKey !== oldKey) {
-      logger.debug('Valid primary key received, loading data...');
-      await loadFullItemData();
-    }
-  }, { immediate: false });
-
-  /**
-   * Load full item data from the API
-   */
-  async function loadFullItemData() {
-    try {
-      if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
-        items.value = [];
-        return;
-      }
-      
-      // Use M2A helper if available
-      if (m2aStructure.value) {
-        if (m2aStructure.value.allowedCollections.length === 0 && allowedCollections.value.length > 0) {
-          m2aStructure.value.allowedCollections = allowedCollections.value.map(c => c.collection);
-        }
-        
-        const fullRecords = await m2aHelper.loadM2AData(
-          props.primaryKey,
-          m2aStructure.value,
-          0,
-          3 // Max depth for nested M2A
-        );
-        
-        processLoadedRecords(fullRecords);
-        return;
-      }
-      
-      // Fallback loading logic
-      const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-      const foreignKeyField = relationInfo.value?.foreignKeyField || `${props.collection}_id`;
-      
-      const response = await api.get(`/items/${junctionCollection}`, {
-        params: {
-          filter: {
-            [foreignKeyField]: {
-              _eq: props.primaryKey
+          if (collection && itemId) {
+            if (!itemsByCollection.has(collection)) {
+              itemsByCollection.set(collection, []);
             }
-          },
-          fields: buildM2AFieldsString(allowedCollections.value),
-          limit: -1,
-          sort: relationInfo.value?.meta?.sort_field || 'id'
-        }
-      });
-      
-      processLoadedRecords(response.data.data || []);
-    } catch (error) {
-      logger.error('Error loading item data:', error);
-      notificationsStore.add({
-        title: 'Loading Error',
-        text: 'Failed to load blocks. Please refresh the page.',
-        type: 'error'
-      });
-    }
-  }
-
-  /**
-   * Process loaded records and update state
-   * Handles both initial load and subsequent updates
-   * On initial load:
-   * - Stores original state for dirty tracking
-   * - Sets initialValues to array of IDs only (Directus format)
-   * - Avoids emitting to prevent dirty state
-   * @param fullRecords - Array of junction records with full item data
-   */
-  function processLoadedRecords(fullRecords: JunctionRecord[]) {
-    
-    try {
-      // Sort records according to originalItemOrder if available
-      if (originalItemOrder.value.length > 0) {
-        const recordMap = new Map(fullRecords.map(r => [r.id, r]));
-        const sortedRecords = originalItemOrder.value
-          .map(id => recordMap.get(id))
-          .filter(record => record !== undefined) as JunctionRecord[];
-        
-        if (sortedRecords.length > 0) {
-          logger.debug('Sorted records according to originalItemOrder:', {
-            originalOrder: originalItemOrder.value,
-            beforeSort: fullRecords.map(r => r.id),
-            afterSort: sortedRecords.map(r => r.id)
-          });
-          fullRecords = sortedRecords;
-        }
-      }
-      
-      // Initial load - don't emit
-      if (isInitialLoad.value) {
-        items.value = fullRecords;
-        
-        // Store original state for dirty tracking
-        blockOriginalStates.value.clear();
-        blockDirtyStates.value.clear();
-        fullRecords.forEach(record => {
-          if (record.id && record.item && typeof record.item === 'object') {
-            blockOriginalStates.value.set(
-              record.id.toString(),
-              deepClone(record.item)
-            );
+            itemsByCollection.get(collection)!.push(itemId);
           }
-        });
-        
-        // Store only IDs in initialValues
-        if (initialValues.value && props.field) {
-          const idsOnly = fullRecords.map(record => record.id);
-          initialValues.value[props.field] = idsOnly;
         }
-        
-        isInitialLoad.value = false;
-        return;
-      }
+      });
       
-      // Update items for post-save reloads
-      items.value = fullRecords;
-
-      // Update original states with fresh server data
-      blockOriginalStates.value.clear();
-      blockDirtyStates.value.clear();
-      fullRecords.forEach(record => {
-        if (record.id && record.item && typeof record.item === 'object') {
-          blockOriginalStates.value.set(
-            record.id.toString(),
-            deepClone(record.item)
+      // Collect all usage data updates
+      const newUsageData: Record<string, any> = {};
+      
+      // Load usage data for each collection
+      const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
+        try {
+          const response = await api.post(
+            `/expandable-blocks-api/${collection}/detail`,
+            { ids, fields: '*' }
           );
-        }
-      });
-
-      // After save-reload all blocks should be clean
-      // Emit only IDs in the original order
-      if (!isInternalUpdate.value) {
-        let cleanIds;
-        
-        // Use original order if available
-        if (originalItemOrder.value.length > 0) {
-          const recordMap = new Map(fullRecords.map(r => [r.id, r]));
-          cleanIds = originalItemOrder.value.filter(id => recordMap.has(id));
-        } else {
-          cleanIds = fullRecords.map(record => record.id);
-        }
-        
-        emit('input', cleanIds);
-      }
-    } catch (error) {
-      logger.error('Error processing loaded records:', error);
-    }
-  }
-
-  // UI Helper functions
-  function getItemId(item: JunctionRecord): string {
-    return item.id?.toString() || `temp_${items.value.indexOf(item)}`;
-  }
-
-  function getActualItemId(item: JunctionRecord): string | number {
-    return getItemActualId(item);
-  }
-
-  function isNewItem(item: JunctionRecord): boolean {
-    return checkIsNewItem(item);
-  }
-
-  function getItemTitle(item: JunctionRecord): string {
-    return extractItemTitle(item);
-  }
-
-  function getCollectionName(item: JunctionRecord): string {
-    const actualItem = item.item || item;
-    const collection = (actualItem as any).collection || item.collection;
-    const collectionInfo = collectionsStore.getCollection(collection);
-    return collectionInfo?.name || collection || 'Unknown';
-  }
-
-  function getCollectionIcon(item: JunctionRecord): string | null {
-    const actualItem = item.item || item;
-    const collection = (actualItem as any).collection || item.collection;
-    const collectionInfo = collectionsStore.getCollection(collection);
-    return collectionInfo?.meta?.icon || null;
-  }
-
-  function getFieldsForItem(item: JunctionRecord): any[] {
-    const actualItem = item.item || item;
-    const collection = (actualItem as any).collection || item.collection;
-    
-    if (!collection) {
-      logger.warn('No collection found for item:', item);
-      return [];
-    }
-    
-    return fieldsStore.getFieldsForCollection(collection)
-      .filter((field: any) => {
-        if (field.meta?.hidden || field.meta?.readonly) return false;
-        if (['id', 'user_created', 'date_created', 'user_updated', 'date_updated'].includes(field.field)) return false;
-        if (!field.meta?.interface) return false;
-        
-        if (mergedOptions.value?.showFieldsFilter && mergedOptions.value?.showFieldsFilter.length > 0) {
-          return mergedOptions.value?.showFieldsFilter.includes(field.field);
-        }
-        
-        return true;
-      });
-  }
-
-  function toggleExpand(itemId: string) {
-    if (props.disabled) return;
-    
-    const index = expandedItems.value.indexOf(itemId);
-    
-    if (mergedOptions.value?.accordionMode) {
-      if (index > -1) {
-        expandedItems.value = [];
-      } else {
-        expandedItems.value = [itemId];
-      }
-    } else {
-      if (index > -1) {
-        expandedItems.value.splice(index, 1);
-      } else {
-        expandedItems.value.push(itemId);
-      }
-    }
-  }
-
-  function updateItem(index: number, newData: any) {
-    if (props.disabled) return;
-    
-    const currentItem = items.value[index];
-    
-    // Update local state
-    const updatedItems = [...items.value];
-    updatedItems[index] = {
-      ...currentItem,
-      item: { ...(currentItem.item as ItemRecord), ...newData }
-    };
-    items.value = updatedItems;
-    
-    // Emit with dirty tracking
-    const emitValue = prepareItemsForEmit(items.value);
-    emit('input', emitValue);
-  }
-
-  async function addNewItem(collection: string) {
-    if (props.disabled) return;
-    
-    if (!props.primaryKey || props.primaryKey === '+' || props.primaryKey === 'new') {
-      notificationsStore.add({
-        title: 'Save Required',
-        text: 'Please save the item first before adding blocks.',
-        type: 'warning'
-      });
-      return;
-    }
-    
-    const loadingKey = `new_${Date.now()}`;
-    try {
-      loading.value[loadingKey] = true;
-      
-      // Create item in target collection
-      const defaultData = m2aHelper.getDefaultDataForCollection(collection);
-      const newItemResponse = await api.post(`/items/${collection}`, defaultData);
-      const createdItem = newItemResponse.data.data;
-      
-      // Create junction record
-      const junctionData: any = {
-        collection: collection,
-        item: createdItem.id
-      };
-      
-      const foreignKey = m2aStructure.value?.foreignKeyField || 
-                        relationInfo.value?.foreignKeyField || 
-                        `${props.collection}_id`;
-      
-      if (foreignKey && props.primaryKey) {
-        // Convert primaryKey to number if it's a string number
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        junctionData[foreignKey] = primaryKeyValue;
-        
-        logger.debug('Foreign key assignment:', {
-          foreignKey,
-          originalPrimaryKey: props.primaryKey,
-          originalType: typeof props.primaryKey,
-          convertedValue: primaryKeyValue,
-          convertedType: typeof primaryKeyValue
-        });
-      }
-      
-      if (relationInfo.value?.meta?.sort_field) {
-        junctionData[relationInfo.value.meta.sort_field] = items.value.length;
-      }
-      
-      const junctionCollection = m2aStructure.value?.junctionCollection ||
-                                relationInfo.value?.junctionCollection || 
-                                `${props.collection}_${props.field}`;
-      
-      const junctionResponse = await api.post(`/items/${junctionCollection}`, junctionData);
-      const junctionRecord = junctionResponse.data.data;
-      
-      // Create complete item structure
-      const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-        ? Number(props.primaryKey) 
-        : props.primaryKey;
-        
-      const newItem: JunctionRecord = {
-        id: junctionRecord.id,
-        collection: collection,
-        item: createdItem,
-        [foreignKey]: primaryKeyValue
-      };
-      
-      if (relationInfo.value?.meta?.sort_field) {
-        newItem[relationInfo.value.meta.sort_field] = junctionRecord[relationInfo.value.meta.sort_field];
-      }
-      
-      // Add to items
-      items.value = [...items.value, newItem];
-      
-      // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(items.value);
-      
-      logger.log('🔄 SAVE STATE - addNewItem:', {
-        function: 'addNewItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        newCollection: collection,
-        createdItem: {
-          id: createdItem.id,
-          data: createdItem
-        },
-        junctionRecord: {
-          id: junctionRecord.id,
-          data: junctionRecord
-        },
-        junctionData: junctionData,
-        newItemStructure: {
-          id: newItem.id,
-          collection: newItem.collection,
-          itemType: typeof newItem.item,
-          foreignKey: newItem[foreignKey],
-          allKeys: Object.keys(newItem)
-        },
-        apiCalls: {
-          itemCreation: `POST /items/${collection}`,
-          junctionCreation: `POST /items/${junctionCollection}`,
-          defaultData: defaultData
-        },
-        totalItemsCount: items.value.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-        relationInfo: {
-          junctionCollection,
-          foreignKey,
-          m2aStructure: m2aStructure.value,
-          relationInfoValue: relationInfo.value
-        }
-      });
-      
-      emit('input', emitValue);
-      
-      notificationsStore.add({
-        title: 'Block Added',
-        text: 'New block created successfully',
-        type: 'success'
-      });
-      
-    } catch (error) {
-      logger.error('Error creating new block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to create new block',
-        type: 'error'
-      });
-    } finally {
-      delete loading.value[loadingKey];
-    }
-  }
-
-  function showDeleteDialog(item: JunctionRecord, index: number) {
-    itemToDelete.value = { item, index };
-    deleteDialog.value = true;
-  }
-
-  async function confirmDeleteItem() {
-    if (!itemToDelete.value) return;
-    
-    const { item, index } = itemToDelete.value;
-    deleteDialog.value = false;
-    
-    try {
-      const itemId = getItemId(item);
-      loading.value[itemId] = true;
-      
-      // Delete junction record
-      if (item.id && !isNewItem(item)) {
-        const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-        await api.delete(`/items/${junctionCollection}/${item.id}`);
-        
-        // Optionally delete the actual item
-        if (item.item && typeof item.item === 'object' && item.collection) {
-          try {
-            await api.delete(`/items/${item.collection}/${(item.item as ItemRecord).id}`);
-          } catch (error) {
-            logger.warn('Failed to delete content item:', error);
+          
+          // Store usage data by item ID
+          const currentParentId = props.primaryKey;
+          
+          // Ensure response data exists and is an array
+          const responseData = response?.data?.data;
+          if (!Array.isArray(responseData)) {
+            logWarn('Invalid response data from detail API', { collection, responseData });
+            return;
           }
+          
+          responseData.forEach((item: any) => {
+            // Skip items with no permission or invalid data
+            if (!item || typeof item !== 'object' || item._no_permission) {
+              return;
+            }
+            
+            // Ensure item has an id
+            if (!item.id) {
+              logWarn('Item missing id', { item });
+              return;
+            }
+            
+            if (item.usage_summary?.total_count > 0) {
+              // Group locations by parent entity
+              const locationsByParent = new Map<string, any>();
+              
+              // Ensure usage_locations is an array
+              const usageLocations = Array.isArray(item.usage_locations) ? item.usage_locations : [];
+              usageLocations.forEach((location: any) => {
+                const parentKey = `${location.collection}:${location.id}`;
+                if (!locationsByParent.has(parentKey)) {
+                  locationsByParent.set(parentKey, {
+                    collection: location.collection,
+                    id: location.id,
+                    count: 0,
+                    locations: []
+                  });
+                }
+                const parent = locationsByParent.get(parentKey);
+                parent.count++;
+                parent.locations.push(location);
+              });
+              
+              // Calculate usage counts
+              let externalCount = 0;
+              let internalCount = 0;
+              const externalLocations: any[] = [];
+              
+              locationsByParent.forEach((parent) => {
+                if (parent.id === currentParentId) {
+                  // Internal usages: count - 1 (for current instance)
+                  internalCount = Math.max(0, parent.count - 1);
+                } else {
+                  // External usages: full count
+                  externalCount += parent.count;
+                  externalLocations.push(...parent.locations);
+                }
+              });
+              
+              const totalCount = externalCount + internalCount;
+              
+              // Only store if there are other usages
+              if (totalCount > 0) {
+                const key = `${collection}:${item.id}`;
+                // Create plain object without Vue reactivity proxies
+                const usageInfo = {
+                  usageCount: totalCount,
+                  externalCount,
+                  internalCount,
+                  externalLocations: externalLocations || [],
+                  usageSummary: {
+                    total_count: totalCount,
+                    by_collection: item.usage_summary?.by_collection || {},
+                    by_status: item.usage_summary?.by_status || {}
+                  }
+                };
+                
+                // Ensure we're not storing Vue reactive objects
+                newUsageData[key] = JSON.parse(JSON.stringify(usageInfo));
+              }
+            }
+          });
+        } catch (error) {
+          logError(`Error loading usage data for ${collection}`, error);
         }
-      }
-      
-      // Remove from state
-      expandedItems.value = expandedItems.value.filter(id => id !== itemId);
-      blockOriginalStates.value.delete(itemId);
-      
-      const updatedItems = [...items.value];
-      updatedItems.splice(index, 1);
-      
-      // Update sort values
-      if (relationInfo.value?.meta?.sort_field) {
-        updatedItems.forEach((item, idx) => {
-          if (item[relationInfo.value!.meta!.sort_field!] !== idx) {
-            item[relationInfo.value!.meta!.sort_field!] = idx;
-          }
-        });
-      }
-      
-      items.value = updatedItems;
-      
-      // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems);
-      
-      logger.log('🔄 SAVE STATE - confirmDeleteItem:', {
-        function: 'confirmDeleteItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        deletedItem: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item,
-          foreignKey: item[relationInfo.value?.foreignKeyField || 'unknown']
-        },
-        remainingItemsCount: updatedItems.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array',
-        junctionInfo: {
-          junctionCollection: relationInfo.value?.junctionCollection,
-          foreignKeyField: relationInfo.value?.foreignKeyField
-        }
       });
       
-      emit('input', emitValue);
+      await Promise.all(usagePromises);
       
-      itemToDelete.value = null;
-      
-      notificationsStore.add({
-        title: 'Deleted',
-        text: 'Block deleted successfully',
-        type: 'success'
-      });
+      // Update blockUsageData once with all collected data
+      // Create new marked raw object to prevent reactivity
+      blockUsageDataStore.value = markRaw({ ...blockUsageDataStore.value, ...newUsageData });
       
     } catch (error) {
-      logger.error('Error deleting block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to delete block',
-        type: 'error'
-      });
-    } finally {
-      delete loading.value[getItemId(item)];
+      logError('Error loading block usage data', error);
     }
   }
-
-  async function duplicateItem(item: JunctionRecord, index: number) {
-    if (props.disabled) return;
-    
-    // Check if we can add more blocks
-    if (!canAddMoreBlocks.value) {
-      notificationsStore.add({
-        title: 'Maximum Reached',
-        text: `Maximum number of blocks (${mergedOptions.value?.maxBlocks}) reached`,
-        type: 'warning'
-      });
-      return;
-    }
-    
-    const dupKey = `dup_${Date.now()}`;
+  
+  /**
+   * Get usage data for a specific block
+   */
+  function getBlockUsageData(item: JunctionRecord) {
     try {
-      const actualItem = item.item || item;
-      const collection = item.collection || (actualItem as any).collection;
-      
-      if (!collection) {
-        logger.error('Cannot duplicate: no collection found');
-        return;
+      if (!item || typeof item !== 'object') {
+        return null;
       }
       
-      loading.value[dupKey] = true;
+      const collection = item.collection;
+      const itemId = getActualItemId(item);
       
-      // Create copy
-      const itemCopy: any = { ...(actualItem as ItemRecord) };
-      delete itemCopy.id;
-      delete itemCopy.user_created;
-      delete itemCopy.user_updated;
-      delete itemCopy.date_created;
-      delete itemCopy.date_updated;
-      
-      // Update title
-      if (itemCopy.title) {
-        itemCopy.title += ' (Copy)';
-      } else if (itemCopy.name) {
-        itemCopy.name += ' (Copy)';
-      } else if (itemCopy.headline) {
-        itemCopy.headline += ' (Copy)';
+      if (!collection || !itemId || isNewItem(item)) {
+        return null;
       }
       
-      // Create duplicate
-      const newItemResponse = await api.post(`/items/${collection}`, itemCopy);
-      const createdItem = newItemResponse.data.data;
+      const key = `${collection}:${itemId}`;
+      if (!blockUsageDataStore.value || typeof blockUsageDataStore.value !== 'object') {
+        return null;
+      }
       
-      // Create junction
-      const junctionData: any = {
-        collection: collection,
-        item: createdItem.id
+      // Return a plain object to avoid Vue reactivity issues
+      const data = blockUsageDataStore.value[key];
+      if (!data) return null;
+      
+      // Create a shallow copy to avoid reactivity chains
+      return {
+        usageCount: data.usageCount || 0,
+        externalCount: data.externalCount || 0,
+        internalCount: data.internalCount || 0,
+        externalLocations: data.externalLocations || [],
+        usageSummary: data.usageSummary || null
       };
-      
-      if (relationInfo.value?.foreignKeyField && props.primaryKey) {
-        // Convert primaryKey to number if it's a string number
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        junctionData[relationInfo.value.foreignKeyField] = primaryKeyValue;
-        
-        logger.debug('Foreign key assignment (duplicate):', {
-          foreignKey: relationInfo.value.foreignKeyField,
-          originalPrimaryKey: props.primaryKey,
-          originalType: typeof props.primaryKey,
-          convertedValue: primaryKeyValue,
-          convertedType: typeof primaryKeyValue
-        });
-      }
-      
-      if (relationInfo.value?.meta?.sort_field) {
-        junctionData[relationInfo.value.meta.sort_field] = index + 1;
-      }
-      
-      const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-      const junctionResponse = await api.post(`/items/${junctionCollection}`, junctionData);
-      const junctionRecord = junctionResponse.data.data;
-      
-      // Create complete item
-      const newItem: JunctionRecord = {
-        id: junctionRecord.id,
-        collection: collection,
-        item: createdItem
-      };
-      
-      if (relationInfo.value?.foreignKeyField) {
-        const primaryKeyValue = typeof props.primaryKey === 'string' && !isNaN(Number(props.primaryKey)) 
-          ? Number(props.primaryKey) 
-          : props.primaryKey;
-        newItem[relationInfo.value.foreignKeyField] = primaryKeyValue;
-      }
-      
-      // Insert at position
-      const updatedItems = [...items.value];
-      updatedItems.splice(index + 1, 0, newItem);
-      items.value = updatedItems;
-      
-      // Auto-expand
-      expandedItems.value.push(String(junctionRecord.id));
-      
-      // Emit changes
-      isInternalUpdate.value = true;
-      const emitValue = prepareItemsForEmit(updatedItems);
-      
-      logger.log('🔄 SAVE STATE - duplicateItem:', {
-        function: 'duplicateItem',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        originalItem: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item
-        },
-        duplicatedItem: {
-          id: createdItem.id,
-          data: createdItem
-        },
-        duplicatedJunction: {
-          id: junctionRecord.id,
-          data: junctionRecord
-        },
-        itemsCount: updatedItems.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-      });
-      
-      emit('input', emitValue);
-      
-      notificationsStore.add({
-        title: 'Duplicated',
-        text: 'Block duplicated successfully',
-        type: 'success'
-      });
-      
     } catch (error) {
-      logger.error('Error duplicating block:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to duplicate block',
-        type: 'error'
-      });
-    } finally {
-      delete loading.value[dupKey];
+      logError('getBlockUsageData - Error:', error, { item });
+      return null;
     }
   }
 
-  function discardChanges(item: JunctionRecord, index: number) {
-    if (props.disabled) return;
-    
-    const blockId = item.id?.toString();
-    if (!blockId) return;
-    
-    const originalData = blockOriginalStates.value.get(blockId);
-    if (!originalData) {
-      logger.warn('No original data found for block:', blockId);
-      return;
-    }
-    
-    
-    // Update local state with original data
-    const updatedItems = [...items.value];
-    updatedItems[index] = {
-      ...item,
-      item: deepClone(originalData)
-    };
-    items.value = updatedItems;
-    
-    // Emit the change
-    const emitValue = prepareItemsForEmit(items.value);
-    
-    logger.log('🔄 SAVE STATE - discardBlockChanges:', {
-      function: 'discardBlockChanges',
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      blockId,
-      index,
-      itemsCount: items.value.length,
-      emitValue,
-      emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-    });
-    
-    emit('input', emitValue);
-    
-    // Clear dirty state for this block
-    blockDirtyStates.value.delete(blockId);
-    logger.debug('Cleared dirty state for block after discard:', blockId);
-    
-    // Show notification
-    notificationsStore.add({
-      title: 'Changes Discarded',
-      text: 'Block reverted to last saved state',
-      type: 'success'
-    });
-  }
-
-  function onSort() {
-    if (props.disabled) return;
-    
-    // Update sort values
-    if (relationInfo.value?.meta?.sort_field) {
-      items.value = items.value.map((item, index) => ({
-        ...item,
-        [relationInfo.value!.meta!.sort_field!]: index
-      }));
-    }
-    
-    isInternalUpdate.value = true;
-    const emitValue = prepareItemsForEmit(items.value);
-    
-    logger.log('🔄 SAVE STATE - onSort:', {
-      function: 'onSort',
-      collection: props.collection,
-      field: props.field,
-      primaryKey: props.primaryKey,
-      sortField: relationInfo.value?.meta?.sort_field,
-      itemsCount: items.value.length,
-      emitValue,
-      emitValueType: typeof emitValue,
-      emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-    });
-    
-    emit('input', emitValue);
-  }
-
-  // Status functions
-  function hasStatusField(item: JunctionRecord): boolean {
-    const actualItem = item.item || item;
-    const collection = item.collection || (actualItem as any).collection;
-    
-    if (!collection) return false;
-    
-    const fields = fieldsStore.getFieldsForCollection(collection);
-    return fields.some((field: any) => field.field === 'status');
-  }
-
-  function getItemStatus(item: JunctionRecord): string {
-    const actualItem = item.item || item;
-    return (actualItem as ItemRecord).status || 'draft';
-  }
-
-  function getStatusLabel(status: string): string {
-    const statusConfig = availableStatuses.find(s => s.value === status);
-    return statusConfig?.label || status;
-  }
-
-  async function updateItemStatus(item: JunctionRecord, index: number, newStatus: string) {
-    if (props.disabled) return;
-    
-    try {
-      const actualItem = item.item || item;
-      const itemId = (actualItem as ItemRecord).id;
-      const collection = item.collection || (actualItem as any).collection;
-      
-      if (!itemId || !collection) {
-        logger.error('Cannot update status: missing item ID or collection');
-        return;
-      }
-      
-      // No API call - just update local state
-      
-      // Update local state only
-      const updatedItems = [...items.value];
-      if (item.item) {
-        updatedItems[index] = {
-          ...item,
-          item: {
-            ...(item.item as ItemRecord),
-            status: newStatus as 'published' | 'draft' | 'archived'
-          }
-        };
-      } else {
-        updatedItems[index] = {
-          ...item,
-          status: newStatus as 'published' | 'draft' | 'archived'
-        };
-      }
-      items.value = updatedItems;
-      
-      // Mark block as dirty
-      const blockId = getItemId(item);
-      if (blockId) {
-        blockDirtyStates.value.set(blockId, true);
-        logger.debug('Block marked as dirty after status update:', blockId);
-      }
-      
-      const emitValue = prepareItemsForEmit(items.value);
-      
-      logger.log('🔄 SAVE STATE - updateItemStatus:', {
-        function: 'updateItemStatus',
-        collection: props.collection,
-        field: props.field,
-        primaryKey: props.primaryKey,
-        itemId,
-        targetCollection: collection,
-        newStatus,
-        item: {
-          id: item.id,
-          collection: item.collection,
-          itemType: typeof item.item
-        },
-        itemsCount: items.value.length,
-        emitValue,
-        emitValueType: typeof emitValue,
-        emitValueLength: Array.isArray(emitValue) ? emitValue.length : 'not array'
-      });
-      
-      emit('input', emitValue);
-      
-      // Don't show notification - status not saved yet
-      
-    } catch (error) {
-      logger.error('Error updating status:', error);
-      notificationsStore.add({
-        title: 'Error',
-        text: 'Failed to update status',
-        type: 'error'
-      });
-    }
-  }
-
-  // Nested M2A functions
-  function hasNestedM2A(item: JunctionRecord): boolean {
-    if (!item.item || typeof item.item !== 'object') return false;
-    if (!m2aStructure.value?.nestedM2AFields) return false;
-    
-    const collection = item.collection;
-    return !!m2aStructure.value.nestedM2AFields[collection];
-  }
-
-  function getM2AFields(item: JunctionRecord): Record<string, any> {
-    if (!item.item || typeof item.item !== 'object') return {};
-    
-    const m2aFields: Record<string, any> = {};
-    
-    for (const [key, value] of Object.entries(item.item)) {
-      if (Array.isArray(value) && value.length > 0 && value[0]?.collection && value[0]?.item) {
-        m2aFields[key] = value;
-      }
-    }
-    
-    return m2aFields;
-  }
-
-  function formatFieldName(name: string): string {
-    return name
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-  }
-
-  // Return everything the component needs
+  // Return all public methods and state
   return {
-    // State
-    items,
-    expandedItems,
-    loading,
-    relationInfo,
-    m2aStructure,
-    allowedCollections,
-    deleteDialog,
-    itemToDelete,
-    isInitialLoad,
-    mergedOptions,
-    blockOriginalStates,
-    originalItemOrder,
-    availableStatuses,
+      // State
+      items,
+      expandedItems,
+      loading,
+      relationInfo,
+      m2aStructure,
+      allowedCollections,
+      allowedCollectionsForExisting,
+      deleteDialog,
+      itemToDelete,
+      isInitialLoad,
+      mergedOptions,
+      blockOriginalStates,
+      originalItemOrder,
+      availableStatuses,
+      blockUsageData,
     
     // Computed
     sortable,
     saveButtonWouldBeActive,
     shouldShowItemId,
+    shouldShowCollectionName,
     canAddMoreBlocks,
+    allowedCollectionsMap: m2aData.allowedCollectionsMap,
+    allowedCollectionsWithPermissions,
+    allowedCollectionsForExistingWithPermissions,
     
-    // Methods
+    // Core methods
     initialize,
     getItemId,
-    getActualItemId,
     isNewItem,
-    getItemTitle,
-    getCollectionName,
-    getCollectionIcon,
-    getFieldsForItem,
-    toggleExpand,
-    updateItem,
-    addNewItem,
-    showDeleteDialog,
-    confirmDeleteItem,
-    duplicateItem,
-    discardChanges,
-    onSort,
-    hasStatusField,
-    getItemStatus,
-    getStatusLabel,
-    updateItemStatus,
-    hasNestedM2A,
-    getM2AFields,
-    formatFieldName,
-    isBlockDirty
+    isBlockDirty,
+    loadBlockUsageData,
+    getBlockUsageData,
+    canReadCollection,
+    canUpdateCollection,
+    canDeleteCollection,
+    canReadItem,
+    canUpdateItem,
+    canDeleteItem,
+    
+    // Actions from blockActions
+    toggleExpand: blockActions.toggleExpand,
+    showDeleteDialog: blockActions.showDeleteDialog,
+    addNewItem: blockActions.addNewItem,
+    addExistingItems: blockActions.addExistingItems,
+    addAsNewItems: blockActions.addAsNewItems,
+    updateItem: blockActions.updateItem,
+    unlinkItem: blockActions.unlinkItem,
+    confirmDeleteItem: blockActions.confirmDeleteItem,
+    duplicateItem: blockActions.duplicateItem,
+    discardChanges: blockActions.discardChanges,
+    updateItemStatus: blockActions.updateItemStatus,
+    onSort: blockActions.onSort,
+    
+    // UI helpers
+    ...uiHelpers,
+    
+    // From useM2AData (for interface.vue if needed)
+    loadFullItemData: m2aData.loadFullItemData,
+    processLoadedRecords: m2aData.processLoadedRecords,
+    processPasteData: m2aData.processPasteData,
+    
+    // Permissions
+    ...permissions
   };
 }
