@@ -3,7 +3,7 @@
  * Provides Admin and Editor API contexts with proper authentication
  */
 
-import { APIRequestContext, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import dotenv from 'dotenv';
 
 // Load environment variables

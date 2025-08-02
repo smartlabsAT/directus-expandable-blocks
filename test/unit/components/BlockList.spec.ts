@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { ref } from 'vue';
+// import { ref } from 'vue';
 import BlockList from '@/components/BlockList.vue';
 
 // Mock vuedraggable
@@ -68,7 +68,7 @@ const mockExpandableBlocks = {
     const icons = { content_text: 'text_format', content_image: 'image' };
     return icons[item.collection] || 'box';
   }),
-  getFieldsForItem: vi.fn((item) => []),
+  getFieldsForItem: vi.fn((_item) => []),
   hasStatusField: vi.fn(() => false),
   getItemStatus: vi.fn(() => 'published'),
   getStatusLabel: vi.fn((status) => status),

@@ -276,7 +276,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, nextTick} from 'vue';
+import {ref, computed, watch, onMounted, nextTick, defineProps, defineEmits, withDefaults} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import ItemSearchPanel from './ItemSearchPanel.vue';
 import FieldDisplay from './FieldDisplay.vue';
@@ -458,26 +458,14 @@ const currentPageLocal = computed({
   set: (value) => emit('update:current-page', value)
 });
 
-// Filter display fields based on hideEmptyFields setting
-const filteredDisplayFields = computed(() => {
-  if (!hideEmptyFields.value) {
-    return displayFields.value;
-  }
-  
-  // When hideEmptyFields is true, filter the fields for each item individually
-  // This will be used in the template
-  return displayFields.value;
-});
+// Removed - filteredDisplayFields not used
 
 // Methods
 function handleClose() {
   emit('close');
 }
 
-function clearSearch() {
-  searchQuery.value = '';
-  emit('search', '');
-}
+// Removed clearSearch - not used
 
 function deselectAll() {
   selectedItems.value = [];
@@ -531,7 +519,7 @@ async function toggleFieldDisplay(field: string) {
   if (props.collection) {
     try {
       await userPresets.setDisplayFields(props.collection, displayFields.value);
-    } catch (err) {
+    } catch {
       // Error is already logged in the composable
       // Continue with local state even if save fails
     }
@@ -553,10 +541,7 @@ function getFieldValue(value: any): string {
   return String(value);
 }
 
-function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
-}
+// Removed truncateText - not used
 
 function capitalizeField(fieldName: string): string {
   return fieldName
@@ -568,12 +553,7 @@ function capitalizeField(fieldName: string): string {
       .join(' ');
 }
 
-function getTotalUsageCount(itemId: string | number): number {
-  const relations = props.itemRelations?.[itemId];
-  if (!relations) return 0;
-
-  return relations.reduce((total, usage) => total + usage.count, 0);
-}
+// Removed getTotalUsageCount - commented out in template
 
 function getTranslatedValue(item: any, field: string): string {
   // Use provided translation function if available
@@ -652,8 +632,8 @@ async function handleLanguageChange(language: string) {
     try {
       await userPresets.saveSelectedLanguage(props.collection, language);
       logger.debug('Saved language preference', { collection: props.collection, language });
-    } catch (err) {
-      logger.error('Failed to save language preference', err);
+    } catch {
+      logger.error('Failed to save language preference');
     }
   }
 }
@@ -666,8 +646,8 @@ async function toggleShowIds() {
     try {
       await userPresets.saveShowIds(props.collection, showIds.value);
       logger.debug('Saved show IDs preference', { collection: props.collection, showIds: showIds.value });
-    } catch (err) {
-      logger.error('Failed to save show IDs preference', err);
+    } catch {
+      logger.error('Failed to save show IDs preference');
     }
   }
 }
@@ -680,8 +660,8 @@ async function toggleHideEmptyFields() {
     try {
       await userPresets.saveHideEmptyFields(props.collection, hideEmptyFields.value);
       logger.debug('Saved hide empty fields preference', { collection: props.collection, hideEmptyFields: hideEmptyFields.value });
-    } catch (err) {
-      logger.error('Failed to save hide empty fields preference', err);
+    } catch {
+      logger.error('Failed to save hide empty fields preference');
     }
   }
 }
@@ -694,8 +674,8 @@ async function toggleShowLastUpdate() {
     try {
       await userPresets.saveShowLastUpdate(props.collection, showLastUpdate.value);
       logger.debug('Saved show last update preference', { collection: props.collection, showLastUpdate: showLastUpdate.value });
-    } catch (err) {
-      logger.error('Failed to save show last update preference', err);
+    } catch {
+      logger.error('Failed to save show last update preference');
     }
   }
 }
@@ -714,8 +694,8 @@ async function updateSortField(field: string | null) {
       
       // Trigger new search with sort
       emit('search', searchQuery.value);
-    } catch (err) {
-      logger.error('Failed to save sort field preference', err);
+    } catch {
+      logger.error('Failed to save sort field preference');
     }
   }
 }
@@ -734,8 +714,8 @@ async function toggleSortDirection() {
       
       // Trigger new search with sort
       emit('search', searchQuery.value);
-    } catch (err) {
-      logger.error('Failed to save sort direction preference', err);
+    } catch {
+      logger.error('Failed to save sort direction preference');
     }
   }
 }
@@ -755,8 +735,8 @@ async function updateItemsPerPage(value: number) {
       // Reset to first page and trigger search
       emit('update:current-page', 1);
       emit('search', searchQuery.value);
-    } catch (err) {
-      logger.error('Failed to save items per page preference', err);
+    } catch {
+      logger.error('Failed to save items per page preference');
     }
   }
 }
@@ -791,8 +771,8 @@ async function handleViewModeChange(mode: 'list' | 'table') {
     try {
       await userPresets.saveViewMode(props.collection, mode);
       logger.debug('Saved view mode preference', { collection: props.collection, viewMode: mode });
-    } catch (err) {
-      logger.error('Failed to save view mode preference', err);
+    } catch {
+      logger.error('Failed to save view mode preference');
     }
   }
 }
@@ -810,8 +790,8 @@ async function toggleRememberSearch() {
       if (!rememberSearch.value) {
         await userPresets.saveLastSearch(props.collection, '');
       }
-    } catch (err) {
-      logger.error('Failed to save remember search preference', err);
+    } catch {
+      logger.error('Failed to save remember search preference');
     }
   }
 }
@@ -824,8 +804,8 @@ async function updateDrawerWidth(width: number) {
     try {
       await userPresets.saveDrawerWidth(props.collection, width);
       logger.debug('Saved drawer width preference', { collection: props.collection, drawerWidth: width });
-    } catch (err) {
-      logger.error('Failed to save drawer width preference', err);
+    } catch {
+      logger.error('Failed to save drawer width preference');
     }
   }
 }
@@ -852,8 +832,8 @@ async function handleSortUpdate(field: string | null, direction: 'asc' | 'desc')
         await userPresets.saveSortSettings(props.collection, field, direction);
         logger.debug('Saved sort settings from table header', { collection: props.collection, field, direction });
         emit('update:sort', field, direction);
-      } catch (err) {
-        logger.error('Failed to save sort settings', err);
+      } catch {
+        logger.error('Failed to save sort settings');
       }
     }
   }
@@ -915,8 +895,8 @@ watch(() => props.open, async (isOpen) => {
         logger.debug('Initializing presets on drawer open');
         await userPresets.initialize();
         preferencesInitialized.value = true;
-      } catch (err) {
-        logger.error('Failed to initialize presets on drawer open', err);
+      } catch {
+        logger.error('Failed to initialize presets on drawer open');
       }
     }
     
@@ -1055,8 +1035,8 @@ watch(searchQuery, async (newQuery) => {
     try {
       await userPresets.saveLastSearch(props.collection, newQuery);
       logger.debug('Saved last search', { collection: props.collection, search: newQuery });
-    } catch (err) {
-      logger.error('Failed to save last search', err);
+    } catch {
+      logger.error('Failed to save last search');
     }
   }
 });
@@ -1111,8 +1091,8 @@ onMounted(async () => {
         }
       }
     }
-  } catch (err) {
-    logger.error('Failed to initialize user presets', err);
+  } catch {
+    logger.error('Failed to initialize user presets');
     // Continue with empty display fields
   }
 });

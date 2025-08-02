@@ -9,7 +9,7 @@ import {
   getAdminUser, 
   getAPIHeaders
 } from '../helpers/directus-api';
-import { testCollections, getTestDataForCollection } from '../fixtures/test-data';
+import { testCollections } from '../fixtures/test-data';
 
 test.describe('ExpandableBlocks Extension - Basic Functionality', () => {
   

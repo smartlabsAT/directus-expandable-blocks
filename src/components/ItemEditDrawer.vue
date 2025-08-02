@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, toRefs } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { notifyError, notifySuccess } from '../utils/notifications';
@@ -104,9 +104,8 @@ const emit = defineEmits<{
 
 // Stores
 const api = useApi();
-const { useFieldsStore, useRelationsStore, useCollectionsStore } = useStores();
+const { useFieldsStore, useCollectionsStore } = useStores();
 const fieldsStore = useFieldsStore();
-const relationsStore = useRelationsStore();
 const collectionsStore = useCollectionsStore();
 
 // State
@@ -133,7 +132,7 @@ const drawerTitle = computed(() => {
   const displayTemplate = collectionInfo.value.meta?.display_template;
   if (displayTemplate) {
     // Simple template replacement (you might want to use Directus' template renderer)
-    return displayTemplate.replace(/\{\{(\w+)\}\}/g, (match: string, field: string) => {
+    return displayTemplate.replace(/{{(\w+)}}/g, (match: string, field: string) => {
       return item.value?.[field] || '';
     });
   }

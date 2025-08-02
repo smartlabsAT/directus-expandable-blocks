@@ -17,14 +17,14 @@ import type { JunctionRecord } from '../types';
  */
 export function useBlockWatchers(
   ctx: ExpandableBlocksContext,
-  updateOriginalItemOrder: (order: (string | number)[]) => void,
-  clearStateTracking: () => void,
+  _updateOriginalItemOrder: (order: (string | number)[]) => void,
+  _clearStateTracking: () => void,
   loadFullItemData: (isAfterSave?: boolean) => Promise<void>,
   processPasteData: (pastedData: any[]) => Promise<void>
 ) {
   // Destructure what we need from context
-  const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInitialLoad, isInternalUpdate, isFullyInitialized } = ctx.state;
-  const { emit, props, helpers: { deepEqual } } = ctx.deps;
+  const { items, blockOriginalStates, blockDirtyStates, originalItemOrder, isInitialLoad, isInternalUpdate, isFullyInitialized } = ctx.state;
+  const { emit, props } = ctx.deps;
   const { values, initialValues } = ctx.data;
   
   /**
@@ -36,7 +36,7 @@ export function useBlockWatchers(
    * - Item additions/removals
    */
   function watchValueChanges() {
-    return watch(() => props.value, async (newVal, oldVal) => {
+    return watch(() => props.value, async (newVal, _oldVal) => {
       // Skip if this is an internal update
       if (isInternalUpdate.value) {
         return;
@@ -46,7 +46,7 @@ export function useBlockWatchers(
       if (originalItemOrder.value.length === 0 && Array.isArray(newVal) && newVal.length > 0) {
         logger.debug('Setting originalItemOrder from value watcher:', newVal);
         originalItemOrder.value = newVal.map(item => 
-          isItemObject(item) ? item.id : item
+          isItemObject(item) ? item['id'] : item
         );
         if (isValidPrimaryKey(props.primaryKey)) {
           await loadFullItemData();
@@ -134,7 +134,7 @@ export function useBlockWatchers(
             hasJustIds = true;
           } else if (isItemObject(item)) {
             if ('collection' in item && 'item' in item) {
-              if (item.id) {
+              if (item['id']) {
                 hasObjectsWithId = true;
               } else {
                 hasObjectsWithoutId = true;
@@ -214,7 +214,7 @@ export function useBlockWatchers(
         // WICHTIG: Reset originalItemOrder to the initial/saved order
         if (Array.isArray(initialVal)) {
           originalItemOrder.value = initialVal.map(item => 
-            isItemObject(item) ? item.id : item
+            isItemObject(item) ? item['id'] : item
           );
           
           logger.debug('Reset originalItemOrder to:', originalItemOrder.value);

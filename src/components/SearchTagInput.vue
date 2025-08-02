@@ -120,25 +120,23 @@ const selectedSuggestionIndex = ref(-1);
 // Edit state
 const editingValueIndex = ref<number | null>(null);
 const editValue = ref('');
-const editValueInputs = ref<HTMLInputElement[]>([]);
+// Removed editValueInputs - not used
 
 // Focus state
 const focusedTagIndex = ref<number | null>(null);
 
 // Visual cursor state
 const cursorPosition = ref<number | null>(null);
-const hoveredPosition = ref<number | null>(null);
+const _hoveredPosition = ref<number | null>(null);
 
-// Position inputs refs
-const positionInputs = ref<{ [key: number]: HTMLInputElement }>({});
-const positionInput0 = ref<HTMLInputElement>();
+// Removed position input refs - not used
 
 // Contenteditable refs
 const editableContainer = ref<HTMLDivElement>();
 const isComposing = ref(false);
 const savedSelection = ref<{ node: Node | null; offset: number } | null>(null);
 const insertPosition = ref<number | null>(null); // Position between tags where to insert
-const textInputs = ref<{ [position: number]: string }>({}); // Text at each position
+// Removed textInputs - not used
 
 // Operator mappings
 const operators = {
@@ -215,17 +213,7 @@ function getPlaceholder(): string {
   return '';
 }
 
-// Calculate dynamic input width
-function getInputWidth(): string {
-  if (!currentInput.value) {
-    return '2px'; // Minimal width when empty
-  }
-  
-  // Calculate width based on content (approximately 8px per character)
-  const charWidth = 8;
-  const width = Math.max(20, Math.min(300, currentInput.value.length * charWidth + 20));
-  return `${width}px`;
-}
+// Removed getInputWidth - not used
 
 // Watch for external changes
 watch(() => props.modelValue, (newValue) => {
@@ -243,7 +231,7 @@ function focusInput() {
   });
 }
 
-function calculateClosestPosition(event: MouseEvent): number {
+function _calculateClosestPosition(event: MouseEvent): number {
   const container = event.currentTarget as HTMLElement;
   const rect = container.getBoundingClientRect();
   const mouseX = event.clientX - rect.left;
@@ -277,44 +265,47 @@ function calculateClosestPosition(event: MouseEvent): number {
   return closestIndex;
 }
 
-function handleContainerClick(event: MouseEvent) {
-  // Don't focus input if editing value inline
-  if (editingValueIndex.value !== null) {
-    return;
-  }
-  
-  // Calculate and set cursor position
-  const closestIndex = calculateClosestPosition(event);
-  cursorPosition.value = closestIndex;
-  logger.debug('Cursor position set', { closestIndex, totalTags: searchTags.value.length });
-  
-  focusInput();
-}
+// Removed handleContainerClick - not used
+// // function handleContainerClick(event: MouseEvent) {
+//   // Don't focus input if editing value inline
+//   if (editingValueIndex.value !== null) {
+//     return;
+//   }
+//   
+//   // Calculate and set cursor position
+//   const closestIndex = calculateClosestPosition(event);
+//   cursorPosition.value = closestIndex;
+//   logger.debug('Cursor position set', { closestIndex, totalTags: searchTags.value.length });
+//   
+//   focusInput();
+// }
 
-function handleMouseMove(event: MouseEvent) {
-  // Don't update hover while editing
-  if (editingValueIndex.value !== null) {
-    return;
-  }
-  
-  // Calculate hover position
-  const closestIndex = calculateClosestPosition(event);
-  hoveredPosition.value = closestIndex;
-}
+// Removed handleMouseMove - not used
+// function handleMouseMove(event: MouseEvent) {
+//   // Don't update hover while editing
+//   if (editingValueIndex.value !== null) {
+//     return;
+//   }
+//   
+//   // Calculate hover position
+//   const closestIndex = calculateClosestPosition(event);
+//   hoveredPosition.value = closestIndex;
+// }
 
-function handlePositionInputBlur(position: number) {
-  // Only emit blur if we're not switching to another position input
-  setTimeout(() => {
-    const activeElement = document.activeElement;
-    const isPositionInput = activeElement?.classList.contains('position-input') || 
-                           activeElement?.classList.contains('tag-input');
-    if (!isPositionInput) {
-      emit('blur');
-    }
-  }, 100);
-}
+// Removed handlePositionInputBlur - not used
+// function handlePositionInputBlur(position: number) {
+//   // Only emit blur if we're not switching to another position input
+//   setTimeout(() => {
+//     const activeElement = document.activeElement;
+//     const isPositionInput = activeElement?.classList.contains('position-input') || 
+//                            activeElement?.classList.contains('tag-input');
+//     if (!isPositionInput) {
+//       emit('blur');
+//     }
+//   }, 100);
+// }
 
-function handleKeydown(event: KeyboardEvent) {
+function _handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault();
     if (focusedTagIndex.value !== null) {
@@ -402,7 +393,7 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-function handleInput() {
+function _handleInput() {
   showAutocomplete.value = true;
   selectedSuggestionIndex.value = -1;
   updateModelValue();
@@ -566,7 +557,7 @@ function cancelEditValue() {
   editValue.value = '';
 }
 
-function handleDragChange() {
+function _handleDragChange() {
   // Update model value after drag reorder
   updateModelValue();
   // Reset focused tag index as positions have changed
@@ -618,7 +609,7 @@ function parseExistingQuery(query: string) {
 }
 
 // Helper functions for intelligent replacement
-function getFieldAtCursor(): { field: string; start: number; end: number; hasOperator?: boolean } | null {
+function _getFieldAtCursor(): { field: string; start: number; end: number; hasOperator?: boolean } | null {
   if (!inputRef.value) return null;
 
   const cursorPos = inputRef.value.selectionStart || 0;
@@ -657,7 +648,7 @@ function getFieldAtCursor(): { field: string; start: number; end: number; hasOpe
   return null;
 }
 
-function getOperatorAfterPosition(position: number): { operator: string; start: number; end: number } | null {
+function _getOperatorAfterPosition(position: number): { operator: string; start: number; end: number } | null {
   const text = currentInput.value;
 
   // Check all operators to see if any starts at this position (longest first)
@@ -672,7 +663,7 @@ function getOperatorAfterPosition(position: number): { operator: string; start: 
   return null;
 }
 
-function getOperatorBeforeCursor(): { operator: string; start: number; end: number } | null {
+function _getOperatorBeforeCursor(): { operator: string; start: number; end: number } | null {
   if (!inputRef.value) return null;
 
   const cursorPos = inputRef.value.selectionStart || 0;
@@ -694,7 +685,7 @@ function getOperatorBeforeCursor(): { operator: string; start: number; end: numb
   return null;
 }
 
-function getFieldBeforeOperator(operatorStart: number): { field: string; start: number; end: number } | null {
+function _getFieldBeforeOperator(operatorStart: number): { field: string; start: number; end: number } | null {
   const text = currentInput.value;
   let end = operatorStart;
   let start = end;
@@ -768,7 +759,7 @@ function replaceOperatorInFocusedTag(newOperator: string) {
   }
 }
 
-function getOperatorAtCursor(): { operator: string; start: number; end: number } | null {
+function _getOperatorAtCursor(): { operator: string; start: number; end: number } | null {
   if (!inputRef.value) return null;
 
   const cursorPos = inputRef.value.selectionStart || 0;
@@ -1112,7 +1103,7 @@ function determineInsertPosition() {
   let position = 0;
   let foundPosition = false;
   
-  editableContainer.value.childNodes.forEach((node, index) => {
+  editableContainer.value.childNodes.forEach((node, _index) => {
     if (foundPosition) return;
     
     // Check if node is an element node (nodeType === 1)
@@ -1153,13 +1144,13 @@ function restoreSelection() {
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
-  } catch (e) {
+  } catch {
     // If restore fails, set cursor to end
     setCursorToEnd();
   }
 }
 
-function insertTextAtCursor(text: string) {
+function _insertTextAtCursor(text: string) {
   editableContainer.value?.focus();
   
   const selection = window.getSelection();
@@ -1194,10 +1185,9 @@ function insertTextAtCursor(text: string) {
   currentInput.value = textContent.trim();
 }
 
-function handleContentEditableInput(event: Event) {
+function handleContentEditableInput(_event: Event) {
   if (isComposing.value) return;
   
-  const container = event.target as HTMLDivElement;
   
   // Always update position while typing
   saveSelection();

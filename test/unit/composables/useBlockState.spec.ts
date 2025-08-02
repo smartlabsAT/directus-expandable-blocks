@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useBlockState } from '@/composables/useBlockState';
 
@@ -159,11 +159,11 @@ describe('useBlockState', () => {
 
     it('preserves reactivity when updating items', () => {
       const state = useBlockState(relationInfo);
-      let updateCount = 0;
+      let _updateCount = 0;
       
       // Watch for changes
-      const unwatch = vi.fn(() => {
-        updateCount++;
+      const _unwatch = vi.fn(() => {
+        _updateCount++;
       });
       
       // Simulate a watcher

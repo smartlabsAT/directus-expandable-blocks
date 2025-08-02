@@ -1,6 +1,7 @@
 import type { Response, NextFunction } from 'express';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
-import { CacheServiceConfig, CacheTTL } from '../types/CacheTypes';
+import type { CacheServiceConfig } from '../types/CacheTypes';
+import { CacheTTL } from '../types/CacheTypes';
 
 // Singleton cache instance
 let cacheInstance: DirectusCacheWrapper | null = null;
@@ -9,21 +10,21 @@ let cacheInstance: DirectusCacheWrapper | null = null;
  * Get global cache configuration from environment variables
  */
 function getGlobalCacheConfig(): Partial<CacheServiceConfig> {
-  const hasEnvConfig = process.env.EXPANDABLE_BLOCKS_CACHE_TTL_METADATA ||
-                      process.env.EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH ||
-                      process.env.EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL ||
-                      process.env.EXPANDABLE_BLOCKS_CACHE_TTL_PATHS;
+  const hasEnvConfig = process.env['EXPANDABLE_BLOCKS_CACHE_TTL_METADATA'] ||
+                      process.env['EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH'] ||
+                      process.env['EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL'] ||
+                      process.env['EXPANDABLE_BLOCKS_CACHE_TTL_PATHS'];
   
   if (hasEnvConfig) {
     return {
-      defaultTTL: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL || '600000'), // 10 min default
+      defaultTTL: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL'] || '600000'), // 10 min default
       ttlOverrides: {
-        metadata: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_METADATA || '30') * 60 * 1000,
-        search: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH || '5') * 60 * 1000,
-        detail: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL || '10') * 60 * 1000,
-        paths: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_TTL_PATHS || '10') * 60 * 1000
+        metadata: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_METADATA'] || '30') * 60 * 1000,
+        search: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH'] || '5') * 60 * 1000,
+        detail: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL'] || '10') * 60 * 1000,
+        paths: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_PATHS'] || '10') * 60 * 1000
       },
-      maxKeys: parseInt(process.env.EXPANDABLE_BLOCKS_CACHE_MAX_SIZE || '50000'),
+      maxKeys: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_MAX_SIZE'] || '50000'),
       prefix: 'expandable_blocks'
     };
   }
@@ -66,7 +67,7 @@ function initializeCache(context: any): DirectusCacheWrapper {
  * Cache middleware - adds cache instance to request if enabled
  */
 export function cacheMiddleware(context: any) {
-  return (req: any, res: Response, next: NextFunction) => {
+  return (req: any, _res: Response, next: NextFunction) => {
     // Check if cache is disabled via header
     const cacheEnabled = req.headers['x-cache-enabled'] !== 'false';
     

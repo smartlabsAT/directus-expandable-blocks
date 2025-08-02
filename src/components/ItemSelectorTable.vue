@@ -216,11 +216,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, defineProps, defineEmits, withDefaults } from 'vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import ColumnWidthPopover from './ColumnWidthPopover.vue';
-import { extractItemTitle, detectTitleField, TITLE_FIELDS } from '../utils/helpers';
+import { extractItemTitle, detectTitleField } from '../utils/helpers';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { calculateColumnWidth, getFieldTypeFromInfo } from '../utils/column-width-helpers';
 
@@ -637,7 +637,7 @@ function handleTitleClick() {
 }
 
 // Expose reset function for parent component
-defineExpose({
+({
   resetAllColumnWidths
 });
 </script>

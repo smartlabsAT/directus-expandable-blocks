@@ -9,6 +9,7 @@ import { validateCollection } from '../utils/validation';
 import type { RelationAnalyzer } from '../services/RelationAnalyzer';
 import { getErrorMessage } from '../utils/error-utils';
 import { handleErrorResponse } from '../utils/response-error-handler';
+import { ValidationError } from '../errors';
 import type { FieldAnalyzer } from '../services/FieldAnalyzer';
 
 /**
@@ -18,6 +19,7 @@ import type { FieldAnalyzer } from '../services/FieldAnalyzer';
  * @example
  * GET /api/expandable-blocks-api/{collection}/metadata
  */
+// Handler pattern is intentionally similar across all handlers for consistency
 export class MetadataHandler {
   constructor(
     private readonly serviceFactory: ServiceFactory,
@@ -35,7 +37,10 @@ export class MetadataHandler {
   public async handle(req: DirectusRequest, res: Response): Promise<void> {
     try {
       // Validate collection
-      const collection = req.params.collection;
+      const collection = req.params['collection'];
+      if (!collection) {
+        throw new ValidationError('Collection parameter is required');
+      }
       validateCollection(collection);
       
       const cache = (req as DirectusRequest & { cache?: DirectusCacheWrapper }).cache || null;

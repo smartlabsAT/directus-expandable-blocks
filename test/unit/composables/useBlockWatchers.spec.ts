@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref, nextTick } from 'vue';
 import { useBlockWatchers } from '@/composables/useBlockWatchers';
 import type { ExpandableBlocksContext } from '@/types/composable-context';

@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger-wrapper';
 import { extractItemTitle, getActualItemId, getActualItem, getItemCollection, METADATA_FIELDS } from '../utils/helpers';
 import { isValidCollection } from '../utils/validation';
-import type { JunctionRecord, ItemRecord, CollectionInfo } from '../types';
+import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**

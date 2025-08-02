@@ -1,0 +1,52 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // Strict Type-Checking Options
+    "strict": true,                           // Enable all strict type-checking options
+    "noImplicitAny": true,                   // Error on expressions and declarations with an implied 'any' type
+    "strictNullChecks": true,                // Enable strict null checks
+    "strictFunctionTypes": true,             // Enable strict checking of function types
+    "strictBindCallApply": true,             // Enable strict 'bind', 'call', and 'apply' methods on functions
+    "strictPropertyInitialization": true,    // Enable strict checking of property initialization in classes
+    "noImplicitThis": true,                  // Enable error reporting when 'this' is given the type 'any'
+    "alwaysStrict": true,                    // Ensure 'use strict' is always emitted
+    
+    // Code Quality Checks
+    "noUnusedLocals": true,                  // Report errors on unused locals
+    "noUnusedParameters": true,              // Report errors on unused parameters
+    "exactOptionalPropertyTypes": true,      // Interpret optional property types as written, rather than adding 'undefined'
+    "noImplicitReturns": true,               // Report error when not all code paths in function return a value
+    "noFallthroughCasesInSwitch": true,     // Report errors for fallthrough cases in switch statements
+    "noUncheckedIndexedAccess": true,        // Include 'undefined' in index signature results
+    "noImplicitOverride": true,              // Ensure overriding members in derived classes are marked with an override modifier
+    "noPropertyAccessFromIndexSignature": true, // Enforces using indexed accessors for keys declared using an indexed type
+    
+    // Additional Quality Checks
+    "forceConsistentCasingInFileNames": true, // Ensure consistent casing in file names
+    "allowUnreachableCode": false,           // Do not allow unreachable code
+    "allowUnusedLabels": false,              // Do not allow unused labels
+    "noImplicitUseStrict": false,            // Do not disable implicit 'use strict'
+    
+    // Module and Interop
+    "esModuleInterop": true,                 // Enables emit interoperability between CommonJS and ES Modules
+    "skipLibCheck": false,                   // Type check all .d.ts files
+    "allowSyntheticDefaultImports": true,    // Allow default imports from modules with no default export
+    
+    // Additional Checks
+    "resolveJsonModule": true,               // Include modules imported with '.json' extension
+    "isolatedModules": true,                 // Ensure each file can be safely transpiled without relying on other imports
+    "verbatimModuleSyntax": true,           // Do not transform or elide any imports or exports not marked as type-only
+    "noEmitOnError": true                    // Do not emit outputs if any errors were reported
+  },
+  "include": [
+    "../src/**/*",
+    "../vite.config.ts",
+    "*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test-output",
+    "coverage"
+  ]
+}

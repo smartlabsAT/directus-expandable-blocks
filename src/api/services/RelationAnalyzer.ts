@@ -1,19 +1,9 @@
-import { 
-  RelationAnalyzerConfig, 
-  PossibleUsageLocation,
-  GetUsageLocationsOptions,
-  DirectusRelationRow,
-  CollectionMetadata,
-  RelationDetail,
-  SYSTEM_COLLECTIONS,
-  DEFAULT_COLLECTION_ICON,
-  isM2ARelation,
-  isM2ORelation
-} from '../types/RelationTypes';
+import type { RelationAnalyzerConfig, PossibleUsageLocation, GetUsageLocationsOptions, DirectusRelationRow, CollectionMetadata, RelationDetail } from '../types/RelationTypes';
+import { SYSTEM_COLLECTIONS, DEFAULT_COLLECTION_ICON, isM2ARelation, isM2ORelation } from '../types/RelationTypes';
 import { InvalidCollectionError, DatabaseQueryError } from '../types/errors';
 import { parseMetadata } from '../utils/relation-utils';
 import { formatName } from '../utils/string-utils';
-import type { Knex } from 'knex';
+import { Knex } from 'knex';
 import { createServiceLogger } from '../utils/logger-utils';
 import { getErrorMessage } from '../utils/error-utils';
 import { parseAllowedCollections } from '../utils/constants';
@@ -234,7 +224,7 @@ export class RelationAnalyzer {
         const meta = parseMetadata(info.meta);
         
         // Skip hidden collections if not requested
-        if (!options.includeHidden && meta.hidden) {
+        if (!options.includeHidden && meta['hidden']) {
           return;
         }
 
@@ -248,8 +238,8 @@ export class RelationAnalyzer {
           name: meta.display || info.collection,
           icon: meta.icon || info.icon || DEFAULT_COLLECTION_ICON,
           display_template: meta.display_template,
-          hidden: meta.hidden,
-          singleton: meta.singleton
+          hidden: meta['hidden'],
+          singleton: meta['singleton']
         });
       });
 

@@ -6,7 +6,8 @@ import { ItemLoader } from '../services/ItemLoader';
 import { UsageFinderService } from '../services/UsageFinderService';
 import { PathBuilderService } from '../services/PathBuilderService';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
-import { CacheServiceConfig } from '../types/CacheTypes';
+import { createServiceLogger } from '../utils/logger-utils';
+import type { CacheServiceConfig } from '../types/CacheTypes';
 
 /**
  * Directus context interface
@@ -24,9 +25,9 @@ export interface DirectusContext {
  * Implements lazy loading and singleton pattern for services
  */
 export class ServiceFactory {
-  private relationAnalyzer?: RelationAnalyzer;
-  private fieldAnalyzer?: FieldAnalyzer;
-  private itemLoader?: ItemLoader;
+  private relationAnalyzer: RelationAnalyzer | undefined;
+  private fieldAnalyzer: FieldAnalyzer | undefined;
+  private itemLoader: ItemLoader | undefined;
   private usageFinderServices: Map<string, UsageFinderService> = new Map();
   private pathBuilderService?: PathBuilderService;
   private schema?: DirectusSchema;
@@ -48,12 +49,11 @@ export class ServiceFactory {
    */
   async getRelationAnalyzer(): Promise<RelationAnalyzer> {
     if (!this.relationAnalyzer) {
-      const schema = await this.getSchema();
       this.relationAnalyzer = new RelationAnalyzer({
         database: this.context.database,
         services: this.context.services,
-        schema,
-        accountability: this.context.accountability
+        schema: await this.getSchema(),
+        ...(this.context.accountability && { accountability: this.context.accountability })
       });
     }
     return this.relationAnalyzer;
@@ -64,12 +64,11 @@ export class ServiceFactory {
    */
   async getFieldAnalyzer(): Promise<FieldAnalyzer> {
     if (!this.fieldAnalyzer) {
-      const schema = await this.getSchema();
       this.fieldAnalyzer = new FieldAnalyzer({
         database: this.context.database,
         services: this.context.services,
-        schema,
-        accountability: this.context.accountability
+        schema: await this.getSchema(),
+        ...(this.context.accountability && { accountability: this.context.accountability })
       });
     }
     return this.fieldAnalyzer;
@@ -80,13 +79,12 @@ export class ServiceFactory {
    */
   async getItemLoader(): Promise<ItemLoader> {
     if (!this.itemLoader) {
-      const schema = await this.getSchema();
       this.itemLoader = new ItemLoader({
         database: this.context.database,
         services: this.context.services,
-        schema,
-        accountability: this.context.accountability,
-        logger: this.context.logger
+        schema: await this.getSchema(),
+        ...(this.context.accountability && { accountability: this.context.accountability }),
+        logger: createServiceLogger('ItemLoader', this.context.services)
       });
     }
     return this.itemLoader;
@@ -103,12 +101,11 @@ export class ServiceFactory {
       // If no relations provided, load them
       const relations = incomingRelations || await this.loadIncomingRelations(collection);
       
-      const schema = await this.getSchema();
       const usageFinder = new UsageFinderService({
         database: this.context.database,
         services: this.context.services,
-        schema,
-        accountability: this.context.accountability,
+        schema: await this.getSchema(),
+        ...(this.context.accountability && { accountability: this.context.accountability }),
         incomingRelations: relations
       });
       
@@ -123,17 +120,14 @@ export class ServiceFactory {
    */
   async getPathBuilder(collection: string, cache?: DirectusCacheWrapper): Promise<PathBuilderService> {
     if (!this.pathBuilderService) {
-      const usageFinder = await this.getUsageFinder(collection);
-      
-      const schema = await this.getSchema();
       this.pathBuilderService = new PathBuilderService({
         database: this.context.database,
         services: this.context.services,
-        schema,
-        accountability: this.context.accountability,
-        defaultLocale: 'de-DE',
-        usageFinder: usageFinder,
-        cache: cache || this.createDefaultCache()
+        schema: await this.getSchema(),
+        ...(this.context.accountability && { accountability: this.context.accountability }),
+        defaultLocale: 'en-US',
+        usageFinder: await this.getUsageFinder(collection),
+        cache: cache!
       });
     }
     return this.pathBuilderService;
@@ -187,10 +181,4 @@ export class ServiceFactory {
   /**
    * Create a default cache instance
    */
-  private createDefaultCache(): DirectusCacheWrapper {
-    return new DirectusCacheWrapper({
-      database: this.context.database,
-      services: this.context.services
-    });
-  }
 }

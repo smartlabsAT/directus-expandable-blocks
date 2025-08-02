@@ -69,7 +69,22 @@ export default [
         MutationObserver: 'readonly',
         ResizeObserver: 'readonly',
         requestAnimationFrame: 'readonly',
-        cancelAnimationFrame: 'readonly'
+        cancelAnimationFrame: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        ClipboardEvent: 'readonly',
+        
+        // Test globals
+        global: 'readonly',
+        vi: 'readonly',
+        expect: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        test: 'readonly'
       }
     },
     plugins: {

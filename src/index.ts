@@ -1,26 +1,5 @@
 import { defineInterface } from '@directus/extensions-sdk';
 import InterfaceComponent from './interface.vue';
-import type { DirectusRelation, DirectusField, DirectusCollection, DirectusStores } from './types/directus';
-
-// ExtensionOptionsContext is not available in @directus/types, define it locally
-interface ExtensionOptionsContext {
-  relations?: {
-    m2o?: {
-      collection?: string;
-      field?: string;
-      related_collection?: string | null;
-      schema?: any;
-      meta?: {
-        one_allowed_collections?: string[];
-        [key: string]: any;
-      } | null;
-    };
-    [key: string]: any;
-  };
-  field?: DirectusField | any;
-  collections?: DirectusCollection[];
-  stores?: DirectusStores | any;
-}
 
 export default defineInterface({
   id: 'expandable-blocks',
@@ -32,12 +11,11 @@ export default defineInterface({
   localTypes: ['m2a'],
   group: 'relational',
   relational: true,
-  options: ({ relations, field, collections, stores }: any) => {
+  options: ({ relations, field, stores }: any) => {
     
     // Handle both ref and non-ref cases
     const rels = relations || {};
-    const fieldMeta = field || {};
-    const fieldName = fieldMeta.field;
+    const _fieldMeta = field || {};
     
     // Get collections from store
     const { useCollections } = stores || {};

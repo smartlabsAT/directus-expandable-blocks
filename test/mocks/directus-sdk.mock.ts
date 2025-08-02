@@ -11,7 +11,7 @@ export const useApi = vi.fn(() => ({
 // Mock useStores
 export const useStores = vi.fn(() => ({
   useFieldsStore: () => ({
-    getFieldsForCollection: vi.fn((collection: string) => {
+    getFieldsForCollection: vi.fn((_collection: string) => {
       // Return mock fields based on collection
       return [
         {

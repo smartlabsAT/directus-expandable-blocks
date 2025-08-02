@@ -19,10 +19,10 @@ import type { ExpandableBlocksContext } from '../types/composable-context';
 export function useBlockActions(ctx: ExpandableBlocksContext) {
   // Destructure what we need from context
   const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInternalUpdate } = ctx.state;
-  const { getItemId, isNewItem, prepareItemsForEmit, updateOriginalState, markBlockDirty, removeBlockState } = ctx.stateFns;
+  const { getItemId, isNewItem, prepareItemsForEmit, removeBlockState } = ctx.stateFns;
   const { emit, api, props, stores: { notificationsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
   const { deleteDialog, itemToDelete, mergedOptions, canAddMoreBlocks } = ctx.ui;
-  const { relationInfo, allowedCollections, m2aStructure } = ctx.data;
+  const { relationInfo, m2aStructure } = ctx.data;
 
   /**
    * Get sort field from relation info
@@ -76,7 +76,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   }
 
   // Create notification helpers bound to the notifications store
-  const { notify, notifySuccess, notifyError, notifyWarning, notifyInfo } = createNotificationHelpers(notificationsStore);
+  const { notifySuccess, notifyError, notifyWarning, notifyInfo } = createNotificationHelpers(notificationsStore);
 
   /**
    * Build common debug data for emit operations

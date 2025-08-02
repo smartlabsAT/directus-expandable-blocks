@@ -4,37 +4,19 @@
 #-------------------------------------------------------------------------------#
 version: "1.0"
 
-# Specify inspection profile for code analysis
+#Specify inspection profile for code analysis
 profile:
-  name: qodana.recommended
+  name: qodana.starter
 
-# Fail threshold
-failThreshold: 50  # Allow up to 50 issues for now
+#Enable inspections
+#include:
+#  - name: <SomeEnabledInspectionId>
 
-# Disable specific inspections that might be too strict
-exclude:
-  - name: SpellCheckingInspection
-  - name: GrazieInspection
-  - name: JSHint
-  - name: StandardJS
-  - name: JSUnusedGlobalSymbols
-    paths:
-      - test
-  - name: TypeScriptUnresolvedVariable
-    paths:
-      - test
-  - name: All
-    paths:
-      - node_modules
-      - dist
-      - coverage
-      - .git
-      - test/mocks
-      - "*.min.js"
-      - .qodana
-      - wiki
-      - pnpm-lock.yaml
-      - package-lock.json
+#Disable inspections
+#exclude:
+#  - name: <SomeDisabledInspectionId>
+#    paths:
+#      - <path/where/not/run/inspection>
 
 #Execute shell command before Qodana execution (Applied in CI/CD pipeline)
 #bootstrap: sh ./prepare-qodana.sh
@@ -44,4 +26,4 @@ exclude:
 #  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
 
 #Specify Qodana linter for analysis (Applied in CI/CD pipeline)
-linter: jetbrains/qodana-js:2023.3
+linter: jetbrains/qodana-php:2025.1

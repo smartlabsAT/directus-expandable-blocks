@@ -12,6 +12,7 @@ import type { PathBuilderService } from '../services/PathBuilderService';
 import type { UsageLocation } from '../types/UsageFinderTypes';
 import { getErrorMessage } from '../utils/error-utils';
 import { handleErrorResponse } from '../utils/response-error-handler';
+import { ValidationError } from '../errors';
 
 /**
  * Handler for detail endpoint
@@ -23,6 +24,7 @@ import { handleErrorResponse } from '../utils/response-error-handler';
  * POST /api/expandable-blocks-api/{collection}/detail
  * Body: { ids: [1, 2, 3], fields: ['*'] }
  */
+// Handler pattern is intentionally similar across all handlers for consistency
 export class DetailHandler {
   constructor(
     private readonly serviceFactory: ServiceFactory,
@@ -42,7 +44,10 @@ export class DetailHandler {
       const cache = (req as DirectusRequest & { cache?: DirectusCacheWrapper }).cache || null;
 
       // Validate collection against whitelist
-      const collection = req.params.collection;
+      const collection = req.params['collection'];
+      if (!collection) {
+        throw new ValidationError('Collection parameter is required');
+      }
       validateCollection(collection);
       
       // Get request data (body for POST, query for GET)
@@ -328,14 +333,14 @@ export class DetailHandler {
       if (!summary.by_collection[location.collection]) {
         summary.by_collection[location.collection] = 0;
       }
-      summary.by_collection[location.collection]++;
+      summary.by_collection[location.collection]!++;
       
       // Count by status
       if (location.status) {
         if (!summary.by_status[location.status]) {
           summary.by_status[location.status] = 0;
         }
-        summary.by_status[location.status]++;
+        summary.by_status[location.status]!++;
       }
     }
     

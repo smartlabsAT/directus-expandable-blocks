@@ -46,7 +46,7 @@ import { ref, watch } from 'vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 
 // Create scoped logger for this component
-const logger = createScopedLogger('SimpleSearchInput');
+const _logger = createScopedLogger('SimpleSearchInput');
 
 interface Props {
   modelValue: string;

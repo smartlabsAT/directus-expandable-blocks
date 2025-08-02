@@ -54,6 +54,10 @@ export function parseSearchQuery(query: SearchRequest['query']): {
 } {
   const { limit = 10, offset = 0, search, filter, fields = '*', sort } = query;
   
+  // Convert to numbers
+  const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : limit;
+  const parsedOffset = typeof offset === 'string' ? parseInt(offset, 10) : offset;
+  
   // Parse fields - handle both array and string formats
   let parsedFields: string[];
   if (Array.isArray(fields)) {
@@ -77,12 +81,12 @@ export function parseSearchQuery(query: SearchRequest['query']): {
   }
   
   return {
-    limit: Math.max(0, Number(limit)),
-    offset: Math.max(0, Number(offset)),
-    search: search as string | undefined,
-    filter: parsedFilter,
+    limit: parsedLimit,
+    offset: parsedOffset,
+    ...(search !== undefined && { search }),
+    ...(parsedFilter !== undefined && { filter: parsedFilter }),
     fields: parsedFields,
-    sort: parsedSort
+    ...(parsedSort !== undefined && { sort: parsedSort })
   };
 }
 

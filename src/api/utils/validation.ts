@@ -227,5 +227,5 @@ export function validatePagination(limit: any, offset: any): { limit: number; of
  * Check if running in production environment
  */
 export function isProduction(): boolean {
-  return process.env.NODE_ENV === 'production';
+  return process.env['NODE_ENV'] === 'production';
 }

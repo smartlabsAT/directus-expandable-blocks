@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { logger } from '../utils/logger-wrapper';
 import { isValidPrimaryKey, isItemObject } from '../utils/validation';
-import type { JunctionRecord, ItemRecord, M2AStructure } from '../types';
+import type { JunctionRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
 /**
@@ -19,9 +19,9 @@ export function useM2AData(
   clearStateTracking: () => void
 ) {
   // Destructure what we need from context
-  const { items, expandedItems, loading, blockOriginalStates, blockDirtyStates, originalItemOrder, isInternalUpdate, isInitialLoad, isFullyInitialized } = ctx.state;
-  const { getItemId, isNewItem, updateOriginalState, markBlockDirty } = ctx.stateFns;
-  const { api, props, stores: { relationsStore, fieldsStore, collectionsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
+  const { items, blockOriginalStates, blockDirtyStates, originalItemOrder, isInternalUpdate, isInitialLoad, isFullyInitialized } = ctx.state;
+  const { getItemId, updateOriginalState, markBlockDirty } = ctx.stateFns;
+  const { api, props, stores: { relationsStore, fieldsStore, collectionsStore }, helpers: { m2aHelper } } = ctx.deps;
   const { mergedOptions } = ctx.ui;
   const { relationInfo, allowedCollections, allowedCollectionsForExisting, m2aStructure } = ctx.data;
 
@@ -344,26 +344,26 @@ export function useM2AData(
       
       // Handle different paste formats
       if (isItemObject(pastedItem)) {
-        if (pastedItem.id && pastedItem.collection) {
+        if (pastedItem['id'] && pastedItem['collection']) {
           // Full junction record format
-          pastedIds.add(pastedItem.id);
+          pastedIds.add(pastedItem['id']);
           
           // Load full item data if only ID is provided
-          if (typeof pastedItem.item === 'number' || typeof pastedItem.item === 'string') {
+          if (typeof pastedItem['item'] === 'number' || typeof pastedItem['item'] === 'string') {
             try {
-              const itemResponse = await api.get(`/items/${pastedItem.collection}/${pastedItem.item}`);
-              pastedItem.item = itemResponse.data.data;
+              const itemResponse = await api.get(`/items/${pastedItem['collection']}/${pastedItem['item']}`);
+              pastedItem['item'] = itemResponse.data.data;
             } catch (error) {
-              logger.warn(`Failed to load item data for ${pastedItem.collection}/${pastedItem.item}:`, error);
+              logger.warn(`Failed to load item data for ${pastedItem['collection']}/${pastedItem['item']}:`, error);
             }
           }
           
           newItems.push(pastedItem as JunctionRecord);
-        } else if (pastedItem.collection && pastedItem.item) {
+        } else if (pastedItem['collection'] && pastedItem['item']) {
           // Item without junction ID - create new junction
           const junctionData: any = {
-            collection: pastedItem.collection,
-            item: typeof pastedItem.item === 'object' ? pastedItem.item.id : pastedItem.item
+            collection: pastedItem['collection'],
+            item: typeof pastedItem['item'] === 'object' ? pastedItem['item'].id : pastedItem['item']
           };
           
           // IMPORTANT: Copy over any existing fields from pastedItem (like extra_id)
@@ -391,7 +391,7 @@ export function useM2AData(
             const response = await api.post(`/items/${junctionCollection}`, junctionData);
             const createdJunction = response.data.data;
             
-            createdJunction.item = pastedItem.item;
+            createdJunction['item'] = pastedItem['item'];
             pastedIds.add(createdJunction.id);
             newItems.push(createdJunction);
             

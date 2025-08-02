@@ -1,16 +1,9 @@
-import type { Knex } from 'knex';
-import {
-  PathBuilderConfig,
-  PathStep,
-  UsagePath,
-  PathBuildOptions,
-  PathFormatOptions,
-  PathCollection,
-  PathTemplateContext
-} from '../types/PathBuilderTypes';
-import { UsageLocation } from '../types/UsageFinderTypes';
+import { Knex } from 'knex';
+import type { PathBuilderConfig, PathStep, UsagePath, PathBuildOptions, PathFormatOptions, PathCollection, PathTemplateContext } from '../types/PathBuilderTypes';
+import type { UsageLocation } from '../types/UsageFinderTypes';
 import { UsageFinderService } from './UsageFinderService';
-import { CacheService, CacheKeys, CacheTTL } from '../types/CacheTypes';
+import type { CacheService } from '../types/CacheTypes';
+import { CacheKeys, CacheTTL } from '../types/CacheTypes';
 import { buildCacheKey, collectionCacheKey, fieldCacheKey } from '../utils/cache-utils';
 import { TITLE_FIELDS } from '../utils/constants';
 import { createServiceLogger } from '../utils/logger-utils';

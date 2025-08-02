@@ -4,10 +4,11 @@ import type { Logger } from '../types/common';
 import { ServiceFactory } from '../factories/ServiceFactory';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import { CacheTTL } from '../types/CacheTypes';
-import { ItemQuery } from '../types/ItemLoaderTypes';
+import type { ItemQuery } from '../types/ItemLoaderTypes';
 import type { SearchResponse } from '../schemas/response-schemas';
 import { validateCollection, validateFields, validateFilter, validateSort, validatePagination } from '../utils/validation';
 import { handleErrorResponse } from '../utils/response-error-handler';
+import { ValidationError } from '../errors';
 
 /**
  * Handler for the search endpoint that returns items with optional filtering and pagination
@@ -15,6 +16,7 @@ import { handleErrorResponse } from '../utils/response-error-handler';
  * @example
  * GET /api/expandable-blocks-api/{collection}/search?search=term&limit=10&offset=0
  */
+// Handler pattern is intentionally similar across all handlers for consistency
 export class SearchHandler {
   constructor(
     private readonly serviceFactory: ServiceFactory,
@@ -32,17 +34,20 @@ export class SearchHandler {
   public async handle(req: DirectusRequest, res: Response): Promise<void> {
     try {
       // Validate collection
-      const collection = req.params.collection;
+      const collection = req.params['collection'];
+      if (!collection) {
+        throw new ValidationError('Collection parameter is required');
+      }
       validateCollection(collection);
       
       const cache = (req as DirectusRequest & { cache?: DirectusCacheWrapper }).cache || null;
 
       // Validate and parse query parameters
-      const { limit, offset } = validatePagination(req.query.limit, req.query.offset);
-      const fields = validateFields(req.query.fields);
-      const filter = validateFilter(req.query.filter);
-      const sort = validateSort(req.query.sort);
-      const search = req.query.search as string | undefined;
+      const { limit, offset } = validatePagination(req.query['limit'], req.query['offset']);
+      const fields = validateFields(req.query['fields']);
+      const filter = validateFilter(req.query['filter']);
+      const sort = validateSort(req.query['sort']);
+      const search = req.query['search'] as string | undefined;
 
       // Get item loader service
       const itemLoader = await this.serviceFactory.getItemLoader();
@@ -52,9 +57,9 @@ export class SearchHandler {
         limit,
         offset,
         fields,
-        search,
-        filter,
-        sort,
+        ...(search !== undefined && { search }),
+        ...(filter !== undefined && { filter }),
+        ...(sort !== undefined && { sort }),
         expandTranslations: true  // Always expand translations for search
       };
 

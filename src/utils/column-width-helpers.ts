@@ -81,7 +81,7 @@ export const DEFAULT_FIELD_WIDTHS: Record<string, number> = {
  * Get default width for a field type
  */
 export function getDefaultFieldWidth(fieldType: string): number {
-  return DEFAULT_FIELD_WIDTHS[fieldType] || DEFAULT_FIELD_WIDTHS.unknown;
+  return DEFAULT_FIELD_WIDTHS[fieldType] || DEFAULT_FIELD_WIDTHS['unknown'];
 }
 
 /**

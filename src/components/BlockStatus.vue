@@ -63,7 +63,7 @@ interface Props {
   allowChange?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   allowChange: true
 });
 

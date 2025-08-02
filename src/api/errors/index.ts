@@ -104,7 +104,7 @@ export class DatabaseError extends APIError {
       false // Not operational - indicates system issue
     );
     
-    if (originalError) {
+    if (originalError && originalError.stack) {
       this.stack = originalError.stack;
     }
   }
@@ -123,7 +123,7 @@ export class ServiceError extends APIError {
       false // Not operational - indicates system issue
     );
     
-    if (originalError) {
+    if (originalError && originalError.stack) {
       this.stack = originalError.stack;
     }
   }

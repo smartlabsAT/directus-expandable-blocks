@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { M2AHelper } from '@/utils/m2a-helper';
 
 // Mock logger
@@ -130,18 +130,26 @@ describe('M2AHelper', () => {
     });
 
     it('handles collections without M2A fields', async () => {
-      // This should throw because there's no relation for content_text.title
-      await expect(
-        m2aHelper.analyzeM2AStructure('content_text', 'title')
-      ).rejects.toThrow('No relation found for content_text.title');
+      // Returns a default structure when no relation is found
+      const result = await m2aHelper.analyzeM2AStructure('content_text', 'title');
+      expect(result).toMatchObject({
+        field: 'title',
+        collection: 'content_text',
+        junctionCollection: 'content_text_title',
+        allowedCollections: []
+      });
     });
 
-    it('throws error when no relation found', async () => {
+    it('returns default structure when no relation found', async () => {
       mockStores.useRelationsStore().getRelationsForField.mockReturnValueOnce([]);
       
-      await expect(
-        m2aHelper.analyzeM2AStructure('unknown', 'field')
-      ).rejects.toThrow('No relation found for unknown.field');
+      const result = await m2aHelper.analyzeM2AStructure('unknown', 'field');
+      expect(result).toMatchObject({
+        field: 'field',
+        collection: 'unknown',
+        junctionCollection: 'unknown_field',
+        allowedCollections: []
+      });
     });
 
     it('handles custom junction collection names', async () => {

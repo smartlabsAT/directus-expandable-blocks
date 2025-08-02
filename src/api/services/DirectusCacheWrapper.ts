@@ -1,6 +1,4 @@
-import {
-  CacheService, CacheServiceConfig, CacheOptions, CacheStats
-} from '../types/CacheTypes';
+import type { CacheService, CacheServiceConfig, CacheOptions, CacheStats } from '../types/CacheTypes';
 import { createServiceLogger } from '../utils/logger-utils';
 
 

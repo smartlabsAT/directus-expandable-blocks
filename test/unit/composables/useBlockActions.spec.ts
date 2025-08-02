@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { useBlockActions } from '@/composables/useBlockActions';
 import { emitChanges } from '@/utils/emit-helpers';
@@ -11,7 +11,7 @@ vi.mock('@/utils/helpers', () => ({
   getItemCollection: vi.fn((item) => item.collection),
   TITLE_FIELDS: ['title', 'name', 'headline'],
   METADATA_FIELDS: ['id', 'status', 'sort'],
-  addJunctionMetadata: vi.fn((item, collection, foreignKey, primaryKey, sortField) => item)
+  addJunctionMetadata: vi.fn((item, _collection, _foreignKey, _primaryKey, _sortField) => item)
 }));
 
 vi.mock('@/utils/emit-helpers', () => ({

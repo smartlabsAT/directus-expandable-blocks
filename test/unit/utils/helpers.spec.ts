@@ -68,9 +68,9 @@ describe('helpers', () => {
       expect(extractItemTitle(item)).toBe('Test Heading');
     });
 
-    it('returns "Untitled Block" when no title fields exist', () => {
+    it('returns "#1" when no title fields exist', () => {
       const item = { id: 1, content: 'Some content' };
-      expect(extractItemTitle(item)).toBe('Untitled Block');
+      expect(extractItemTitle(item)).toBe('#1');
     });
 
     it('extracts title from junction record with nested item', () => {
@@ -88,7 +88,7 @@ describe('helpers', () => {
         collection: 'content_text',
         item: 123
       };
-      expect(extractItemTitle(junction)).toBe('Untitled Block');
+      expect(extractItemTitle(junction)).toBe('#1');
     });
 
     it('handles null item', () => {

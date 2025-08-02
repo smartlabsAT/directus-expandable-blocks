@@ -3,7 +3,7 @@
  * Creates a high-quality video demonstration of key features
  */
 
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { getEditorUser } from '../helpers/directus-api';
 import { loginToDirectus } from './login-helper';
 
@@ -12,7 +12,7 @@ test.describe('ExpandableBlocks - Product Demo 🎬', () => {
   test('Complete Product Demonstration', async ({ page }) => {
     console.log('🎬 Starting ExpandableBlocks Product Demo...');
     
-    const editorUser = getEditorUser();
+    const _editorUser = getEditorUser();
     
     // === SCENE 1: Landing and Login ===
     console.log('📍 Scene 1: Accessing Directus Admin');
@@ -213,7 +213,7 @@ test.describe('ExpandableBlocks - Product Demo 🎬', () => {
   test('Feature Highlights Demo', async ({ page }) => {
     console.log('🎬 Starting Feature Highlights Demo...');
     
-    const editorUser = getEditorUser();
+    const _editorUser = getEditorUser();
     
     // Quick feature overview - login first
     await loginToDirectus(page, {

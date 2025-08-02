@@ -193,7 +193,7 @@ function formatPathAsBreadcrumbs(pathArray: any[]) {
   if (parentPath.length === 0) return [];
   
   // Convert path array to breadcrumb format
-  return parentPath.map((pathItem, index) => ({
+  return parentPath.map((pathItem, _index) => ({
     name: pathItem.title || pathItem.collection_display || pathItem.collection,
     icon: pathItem.icon || getCollectionIcon(pathItem.collection),
     disabled: true, // All breadcrumb items are disabled (not clickable in popover)

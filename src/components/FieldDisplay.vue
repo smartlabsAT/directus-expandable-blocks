@@ -244,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, defineProps, withDefaults } from 'vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 
 const logger = createScopedLogger('FieldDisplay');
@@ -428,10 +428,7 @@ const displayValue = computed(() => {
   return String(props.value);
 });
 
-const truncatedValue = computed(() => {
-  if (displayValue.value.length <= props.maxLength) return displayValue.value;
-  return displayValue.value.substring(0, props.maxLength) + '...';
-});
+// Removed truncatedValue - not used
 
 // Tags array processing
 const tagsArray = computed(() => {
@@ -442,7 +439,9 @@ const tagsArray = computed(() => {
     try {
       const parsed = JSON.parse(props.value);
       if (Array.isArray(parsed)) return parsed;
-    } catch {}
+    } catch {
+      // Ignore parsing errors
+    }
     // Otherwise split by comma
     return props.value.split(',').map(tag => tag.trim()).filter(Boolean);
   }

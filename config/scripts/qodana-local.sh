@@ -38,19 +38,19 @@ if [ -n "$QODANA_TOKEN" ]; then
     docker run --rm \
         -v "$PROJECT_ROOT:/data/project/" \
         -v "$PROJECT_ROOT/test-output/qodana:/data/results/" \
-        -v "$PROJECT_ROOT/config/qodana.yaml:/data/project/qodana.yaml" \
         -e QODANA_TOKEN="$QODANA_TOKEN" \
         -p 8080:8080 \
         jetbrains/qodana-js:2023.3 \
+        --config /data/project/config/qodana.yaml \
         --show-report
 else
     echo -e "${YELLOW}⚠️  Running without Qodana Cloud (Community mode)${NC}"
     docker run --rm \
         -v "$PROJECT_ROOT:/data/project/" \
         -v "$PROJECT_ROOT/test-output/qodana:/data/results/" \
-        -v "$PROJECT_ROOT/config/qodana.yaml:/data/project/qodana.yaml" \
         -p 8080:8080 \
         jetbrains/qodana-js:community \
+        --config /data/project/config/qodana.yaml \
         --show-report
 fi
 

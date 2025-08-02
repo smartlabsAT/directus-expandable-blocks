@@ -2,7 +2,7 @@
  * Test different authentication methods to find what works
  */
 
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { getEditorUser } from '../helpers/directus-api';
 
 test.describe('Authentication Tests', () => {

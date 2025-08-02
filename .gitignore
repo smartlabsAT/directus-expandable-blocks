@@ -72,3 +72,8 @@ wiki-repo/
 .qodana/
 qodana.sarif.json
 
+# Socket files and IPC
+auto
+*.sock
+*.socket
+

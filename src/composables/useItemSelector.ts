@@ -1,10 +1,10 @@
-import { ref, type Ref } from 'vue';
+import { ref } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
 import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption, ExpandableBlocksOptions } from '../types';
 
-export function useItemSelector(api: any, allowedCollections?: string[], options?: ExpandableBlocksOptions) {
+export function useItemSelector(api: any, _allowedCollections?: string[], options?: ExpandableBlocksOptions) {
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
   const itemRelations = ref<Record<string, any[]>>({});
@@ -22,7 +22,7 @@ export function useItemSelector(api: any, allowedCollections?: string[], options
   const apiError = ref<string | null>(null);
   
   // Request management
-  const detailsAbortController = ref<AbortController | null>(null);
+  const detailsAbortController = ref<globalThis.AbortController | null>(null);
   const currentRequestId = ref<number>(0);
   const loadingDetails = ref(false);
   
@@ -123,61 +123,6 @@ export function useItemSelector(api: any, allowedCollections?: string[], options
     }
   }
 
-  /**
-   * Parse search query for field-specific searches
-   * Supports multiple space-separated queries
-   * Examples: "title=test", "status=published", "name=%test%", "title=product status=active"
-   */
-  function parseSearchQuery(query: string) {
-    // Unterstützte Operatoren
-    const operators: Record<string, string> = {
-      '=%': '_contains',
-      '!~': '_ncontains',
-      '=': '_eq',
-      '~': '_contains',
-      '!=': '_neq',
-      '>': '_gt',
-      '<': '_lt',
-      '>=': '_gte',
-      '<=': '_lte',
-      '^': '_starts_with',
-      '$': '_ends_with',
-      'empty': '_empty',
-      '!empty': '_nempty',
-      'null': '_null',
-      '!null': '_nnull'
-    };
-
-    // Regex mit allen Operatoren
-    const operatorPattern = Object.keys(operators)
-        .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .join('|');
-
-    const fieldSearchRegex = new RegExp(`^(\\w+)(${operatorPattern})(.+)$`);
-    const match = query.match(fieldSearchRegex);
-
-    if (match) {
-      let [, field, operator, value] = match;
-
-      // Spezialbehandlung für %
-      if (value.startsWith('%') && value.endsWith('%')) {
-        operator = '=%';
-        value = value.slice(1, -1);
-      }
-
-      return {
-        isFieldSearch: true,
-        field,
-        operator: operators[operator] || '_eq',
-        value
-      };
-    }
-
-    return {
-      isFieldSearch: false,
-      query
-    };
-  }
 
   /**
    * Parse multiple search queries from a single string with logical operators
@@ -506,26 +451,6 @@ export function useItemSelector(api: any, allowedCollections?: string[], options
   }
 
 
-  /**
-   * Load relation information for all loaded items
-   * Currently not implemented - placeholder for future usage tracking
-   */
-  async function loadItemRelations() {
-    if (!selectedCollection.value || availableItems.value.length === 0) return;
-
-    loadingRelations.value = true;
-    itemRelations.value = {};
-
-    try {
-      // TODO: Implement relation loading when needed
-      // This would load usage information for each item
-      
-    } catch (error) {
-      logError('Error loading relations', error);
-    } finally {
-      loadingRelations.value = false;
-    }
-  }
 
   /**
    * Load detailed item information including usage data
@@ -542,7 +467,7 @@ export function useItemSelector(api: any, allowedCollections?: string[], options
     const requestId = ++currentRequestId.value;
 
     // Create new abort controller
-    detailsAbortController.value = new AbortController();
+    detailsAbortController.value = new globalThis.AbortController();
     loadingDetails.value = true;
 
     try {

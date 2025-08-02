@@ -1,4 +1,4 @@
-import { ref, computed, nextTick, markRaw, type Ref, type ComputedRef } from 'vue';
+import { ref, computed, nextTick, markRaw, type Ref } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
 import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
@@ -19,8 +19,7 @@ import type {
   DirectusFieldsStore,
   DirectusRelationsStore,
   DirectusCollectionsStore,
-  DirectusNotificationsStore,
-  DirectusPermissionsStore
+  DirectusNotificationsStore
 } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 

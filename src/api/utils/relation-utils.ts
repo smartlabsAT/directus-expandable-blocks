@@ -1,4 +1,4 @@
-import { ParsedMetadata } from '../types/RelationTypes';
+import type { ParsedMetadata } from '../types/RelationTypes';
 import { formatName } from './string-utils';
 
 /**
@@ -63,8 +63,8 @@ export function getDisplayName(fieldInfo: any, defaultName: string): string {
     // Check for display name in various places
     return options.display || 
            displayOptions.display || 
-           interfaceOptions.placeholder || 
-           options.note || 
+           interfaceOptions['placeholder'] || 
+           options['note'] || 
            formatName(defaultName);
   } catch {
     return formatName(defaultName);

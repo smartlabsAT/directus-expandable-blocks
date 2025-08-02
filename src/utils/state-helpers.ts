@@ -5,7 +5,7 @@
  * It centralizes state tracking, cloning, comparison, and dirty state management patterns.
  */
 
-import { Ref } from 'vue';
+import type { Ref } from 'vue';
 import { logger } from './logger-wrapper';
 
 /**
@@ -60,7 +60,7 @@ export function deepClone<T>(obj: T): T {
   // Handle Object
   const clonedObj = {} as any;
   for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       clonedObj[key] = deepClone(obj[key]);
     }
   }
@@ -355,7 +355,7 @@ export function createStateDiff<T>(
  */
 export function safeStringify(obj: any, space?: number): string {
   const seen = new WeakSet();
-  return JSON.stringify(obj, (key, value) => {
+  return JSON.stringify(obj, (_key, value) => {
     if (typeof value === 'object' && value !== null) {
       if (seen.has(value)) {
         return '[Circular]';

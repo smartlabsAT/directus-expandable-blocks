@@ -13,7 +13,7 @@ import type { JunctionRecord } from '../types';
  * - Original state preservation
  * - State preparation for emit
  */
-export function useBlockState(relationInfo?: Ref<any>) {
+export function useBlockState(_relationInfo?: Ref<any>) {
   // Core state
   const items = ref<JunctionRecord[]>([]);
   const expandedItems = ref<string[]>([]);
@@ -135,7 +135,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
               originalIndex,
               sortField
             });
-            debugInfo.items.push({
+            debugInfo['items'].push({
               index,
               blockId,
               isDirty: false,
@@ -148,7 +148,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
             const minimalObject: any = {
               id: item.id
             };
-            if (sortField && item.hasOwnProperty(sortField)) {
+            if (sortField && Object.prototype.hasOwnProperty.call(item, sortField)) {
               minimalObject[sortField] = item[sortField]; // Use the actual sort value from the item
             }
             return minimalObject;
@@ -156,7 +156,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
           
           // No position change, just send ID
           // logger.debug(`Emitting ID only for no-permission block ${blockId}`);
-          debugInfo.items.push({
+          debugInfo['items'].push({
             index,
             blockId,
             isDirty: false,
@@ -181,7 +181,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
           isDirty = isBlockDirty(blockId, item.item);
         }
         
-        debugInfo.items.push({
+        debugInfo['items'].push({
           index,
           blockId,
           isDirty,
@@ -208,7 +208,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
       
       // New block - always emit full object
       logger.debug(`Emitting full object for new block at index ${index}`);
-      debugInfo.items.push({
+      debugInfo['items'].push({
         index,
         blockId: 'NEW',
         isDirty: true,
@@ -216,7 +216,7 @@ export function useBlockState(relationInfo?: Ref<any>) {
       });
       
       // Create a copy without the temporary ID
-      const { id, ...itemWithoutId } = item;
+      const { id: _id, ...itemWithoutId } = item;
       
       // If sort field exists, ensure it's set
       if (sortField) {

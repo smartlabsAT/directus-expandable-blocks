@@ -61,7 +61,7 @@ export const testCategories = [
 /**
  * Get test data for a specific collection
  */
-export function getTestDataForCollection(collectionName: string): any[] {
+export function _getTestDataForCollection(collectionName: string): any[] {
   switch (collectionName) {
     case testCollections.content_blocks:
       return testContentBlocks;

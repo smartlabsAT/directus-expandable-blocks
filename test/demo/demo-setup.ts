@@ -6,7 +6,7 @@
 import { chromium, FullConfig } from '@playwright/test';
 import { getAdminUser, getAPIHeaders } from '../helpers/directus-api';
 
-async function globalSetup(config: FullConfig) {
+async function globalSetup(_config: FullConfig) {
   console.log('🎬 Setting up demo environment...');
   
   const adminUser = getAdminUser();

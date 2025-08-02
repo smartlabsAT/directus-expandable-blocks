@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useM2AData } from '../../../src/composables/useM2AData';
 import type { ExpandableBlocksContext } from '../../../src/types/composable-context';

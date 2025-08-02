@@ -141,7 +141,7 @@ const mockExpandableBlocks = {
 };
 
 vi.mock('@/composables/useExpandableBlocks', () => ({
-  useExpandableBlocks: vi.fn((props, emit, values, initialValues) => mockExpandableBlocks)
+  useExpandableBlocks: vi.fn((_props, _emit, _values, _initialValues) => mockExpandableBlocks)
 }));
 
 describe('interface.vue', () => {

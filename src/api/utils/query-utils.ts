@@ -1,4 +1,5 @@
-import { ItemQuery, DEFAULT_QUERY, MAX_LIMIT } from '../types/ItemLoaderTypes';
+import type { ItemQuery } from '../types/ItemLoaderTypes';
+import { DEFAULT_QUERY, MAX_LIMIT } from '../types/ItemLoaderTypes';
 
 /**
  * Normalize limit value with bounds checking

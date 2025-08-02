@@ -30,11 +30,11 @@ export default defineEndpoint({
         /**
          * OpenAPI Documentation
          */
-        router.get('/docs', (req, res) => {
+        router.get('/docs', (_req, res) => {
             res.json(openAPISpec);
         });
 
-        router.get('/docs.yaml', (req, res) => {
+        router.get('/docs.yaml', (_req, res) => {
             res.setHeader('Content-Type', 'application/x-yaml');
             res.send(JSON.stringify(openAPISpec, null, 2));
         });

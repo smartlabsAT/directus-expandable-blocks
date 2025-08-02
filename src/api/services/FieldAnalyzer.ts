@@ -1,20 +1,24 @@
-import {
+import type {
   FieldAnalyzerConfig,
   FieldAnalyzerOptions,
   SearchableField,
+  RawField,
+} from '../types/FieldAnalyzerTypes';
+import {
   DEFAULT_FIELD_OPTIONS,
   isSystemField,
   isNonDataType,
   calculateFieldPriority,
-  RawField,
 } from '../types/FieldAnalyzerTypes';
 import { InvalidCollectionError } from '../types/errors';
-import {
+import type {
   TranslationInfo,
   TranslationField,
   Language,
   TranslationAnalysisOptions,
   TranslationPattern,
+} from '../types/TranslationFieldAnalyzerTypes';
+import {
   TRANSLATION_TABLE_PATTERNS,
   LANGUAGE_FIELD_NAMES,
   EXCLUDED_TRANSLATION_FIELDS,
@@ -119,7 +123,7 @@ export class FieldAnalyzer {
     this.services = config.services;
     this.schema = config.schema;
     this.database = config.database;
-    this.accountability = config.accountability;
+    this.accountability = config.accountability || undefined;
     this.logger = createServiceLogger('FieldAnalyzer', config.services);
   }
 
@@ -327,14 +331,14 @@ export class FieldAnalyzer {
           info.isCombinedTranslation = true;
           info.message = 'Diese Collection verwendet kombinierte Übersetzungen, bei denen mehrere Felder gemeinsam in der Übersetzungstabelle gespeichert werden.';
           if (info.translationFields) {
-            info.translationFields = info.translationFields.map(tf => ({
+            info.translationFields = info.translationFields.map((tf: any) => ({
               ...tf, translationMethod: TranslationType.COMBINED, isContentField: true,
             }));
           }
         } else {
           info.translationType = TranslationType.TABLE;
           if (info.translationFields) {
-            info.translationFields = info.translationFields.map(tf => ({
+            info.translationFields = info.translationFields.map((tf: any) => ({
               ...tf, translationMethod: TranslationType.TABLE,
             }));
           }
@@ -344,7 +348,7 @@ export class FieldAnalyzer {
 
     // JSON-basierte Übersetzungen oder Hybrid
     if (jsonFields.length > 0) {
-      const jsonTranslationFields = jsonFields.map(f => ({
+      const jsonTranslationFields = jsonFields.map((f: any) => ({
         ...mapFieldToTranslationField(f), translationMethod: TranslationType.JSON,
       }));
 
@@ -520,7 +524,7 @@ export class FieldAnalyzer {
       if (translationInfo.translationType === TranslationType.COMBINED) {
         // For combined translations, don't mark individual fields as translatable
       } else {
-        translationInfo.translationFields.forEach(tf => {
+        translationInfo.translationFields.forEach((tf: any) => {
           if (!tf.isContentField) {
             translationInfoMap.set(tf.field, {
               translatable: true,

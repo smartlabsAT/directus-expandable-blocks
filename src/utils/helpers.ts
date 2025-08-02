@@ -162,7 +162,7 @@ export function getItemCollection(item: JunctionRecord | ItemRecord): string | u
   
   // Then try the actual item's collection
   if (actualItem && typeof actualItem === 'object' && 'collection' in actualItem) {
-    return actualItem.collection;
+    return actualItem['collection'];
   }
   
   return undefined;

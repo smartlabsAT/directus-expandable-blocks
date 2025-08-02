@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import {toRefs, inject, ref, onMounted, onUnmounted, computed, watch} from 'vue';
+import {toRefs, inject, ref, onMounted, onUnmounted, watch} from 'vue';
 import { debounce } from 'lodash-es';
 import {useExpandableBlocks} from './composables/useExpandableBlocks';
 import {useItemSelector} from './composables/useItemSelector';
@@ -109,7 +109,7 @@ const values = inject('values', ref({}));
 const initialValues = inject('initialValues', ref({}));
 
 // Get refs for reactive props
-const {value: modelValue, collection, field, primaryKey, disabled, options} = toRefs(props);
+const {value: _modelValue, collection: _collection, field: _field, primaryKey: _primaryKey, disabled, options: _options} = toRefs(props);
 
 // Component lifecycle state
 const isMounted = ref(false);
@@ -132,7 +132,7 @@ const {
   mergedOptions,
   availableStatuses,
   allowedCollections,
-  allowedCollectionsForExisting,
+  allowedCollectionsForExisting: _allowedCollectionsForExisting,
 
   // Computed
   sortable,
@@ -144,14 +144,14 @@ const {
 
   // Methods
   initialize,
-  getItemId,
-  getActualItemId,
-  isNewItem,
-  isBlockDirty,
-  getItemTitle,
-  getCollectionName,
-  getCollectionIcon,
-  getFieldsForItem,
+  getItemId: _getItemId,
+  getActualItemId: _getActualItemId,
+  isNewItem: _isNewItem,
+  isBlockDirty: _isBlockDirty,
+  getItemTitle: _getItemTitle,
+  getCollectionName: _getCollectionName,
+  getCollectionIcon: _getCollectionIcon,
+  getFieldsForItem: _getFieldsForItem,
   toggleExpand,
   updateItem,
   addNewItem,
@@ -162,17 +162,17 @@ const {
   confirmDeleteItem,
   duplicateItem,
   discardChanges,
-  updateItemStatus,
+  updateItemStatus: _updateItemStatus,
   onSort,
-  hasStatusField,
-  getItemStatus,
-  getStatusLabel,
-  hasNestedM2A,
-  getM2AFields,
-  formatFieldName,
+  hasStatusField: _hasStatusField,
+  getItemStatus: _getItemStatus,
+  getStatusLabel: _getStatusLabel,
+  hasNestedM2A: _hasNestedM2A,
+  getM2AFields: _getM2AFields,
+  formatFieldName: _formatFieldName,
   loadBlockUsageData,
-  canReadItem,
-  canUpdateItem,
+  canReadItem: _canReadItem,
+  canUpdateItem: _canUpdateItem,
   
   // Permissions
   canChangeStatus,

@@ -5,7 +5,7 @@ import type {
   ExpandableBlocksOptions,
   DirectusFormValues,
   M2AFieldInfo
-} from './index';
+} from '.';
 import type { M2AHelper } from '../utils/m2a-helper';
 
 /**

@@ -149,7 +149,7 @@ test.describe('ExpandableBlocks Extension - Basic Browser Tests', () => {
       expect(jsonData.data).toBeDefined();
       expect(jsonData.data.email).toBeDefined();
       console.log('✅ API endpoint accessible via browser:', jsonData.data.email);
-    } catch (error) {
+    } catch {
       console.log('⚠️ Response is not JSON, might be HTML error page');
       console.log('Response content:', content?.substring(0, 200));
       throw new Error('Expected JSON response from API');
