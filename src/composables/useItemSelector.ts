@@ -126,9 +126,10 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
 
   /**
    * Parse multiple search queries from a single string with logical operators
-   * Example: "title=product OR status=active" -> {_or: [{field: 'title'...}, {field: 'status'...}]}
+   * Returns both structured queries and unparsed text for fulltext search
+   * Example: "id<10 hello" -> {queries: [{field: 'id'...}], unparsedText: 'hello'}
    */
-  function parseMultipleQueries(query: string): any {
+  function parseMultipleQueries(query: string): { queries: any[], unparsedText: string } {
     const operators: Record<string, string> = {
       '=%': '_contains',
       '!~': '_ncontains',
@@ -147,6 +148,9 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       '!null': '_nnull'
     };
 
+    // Track what parts of the query were parsed
+    const parsedParts: string[] = [];
+    
     // Split by AND/OR while preserving the operators
     const parts = query.split(/\s+(AND|OR)\s+/i);
     
@@ -162,8 +166,9 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       const regex = new RegExp(`([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
       
       let match;
+      let lastIndex = 0;
       while ((match = regex.exec(query)) !== null) {
-        const [, field, operator, quotedValue, unquotedValue] = match;
+        const [fullMatch, field, operator, quotedValue, unquotedValue] = match;
         const value = quotedValue || unquotedValue;
         
         results.push({
@@ -171,13 +176,25 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           operator: operators[operator] || '_eq',
           value
         });
+        
+        // Track what was parsed
+        parsedParts.push(fullMatch);
+        lastIndex = regex.lastIndex;
       }
       
-      return results;
+      // Get unparsed text (everything that wasn't matched)
+      let unparsedText = query;
+      parsedParts.forEach(part => {
+        unparsedText = unparsedText.replace(part, '');
+      });
+      unparsedText = unparsedText.trim();
+      
+      return { queries: results, unparsedText };
     }
     
     // Parse with logical operators
     const filters = [];
+    const unparsedParts: string[] = [];
     let currentLogicalOp = 'AND'; // Default
     
     for (let i = 0; i < parts.length; i++) {
@@ -206,10 +223,16 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           value,
           logicalOp: i > 0 ? currentLogicalOp : null
         });
+      } else {
+        // This part couldn't be parsed as a structured query
+        unparsedParts.push(part);
       }
     }
     
-    return filters;
+    return { 
+      queries: filters, 
+      unparsedText: unparsedParts.join(' ').trim() 
+    };
   }
 
   /**
@@ -321,15 +344,17 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
 
       // Apply search or filter
       if (searchQuery.value) {
-        // Check if query contains multiple search terms
-        const queries = parseMultipleQueries(searchQuery.value);
-        if (queries.length > 0) {
+        // Parse query to get both structured queries and unparsed text
+        const parseResult = parseMultipleQueries(searchQuery.value);
+        
+        // Handle structured queries if present
+        if (parseResult.queries.length > 0) {
           // Build complex filter from multiple queries
           let currentGroup: any[] = [];
           const orGroups: any[] = [];
           let hasOr = false;
           
-          queries.forEach((q: any, index: number) => {
+          parseResult.queries.forEach((q: any, index: number) => {
             const transformed = transformFieldForTranslation(
               q.field,
               q.operator,
@@ -338,7 +363,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
             
             const filterToAdd = transformed.needsAnd ? { _and: [transformed.filter] } : transformed.filter;
             
-            if (q.logicalOp === 'OR' || (index > 0 && queries[index - 1].logicalOp === 'OR')) {
+            if (q.logicalOp === 'OR' || (index > 0 && parseResult.queries[index - 1].logicalOp === 'OR')) {
               hasOr = true;
               if (currentGroup.length > 0) {
                 orGroups.push(currentGroup.length === 1 ? currentGroup[0] : { _and: currentGroup });
@@ -357,64 +382,23 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
             params.filter = { _or: orGroups };
           } else {
             // Build filters with translation support
-            const filters = queries.map((q: any) => {
+            const filters = parseResult.queries.map((q: any) => {
               const transformed = transformFieldForTranslation(q.field, q.operator, q.value);
               return transformed.filter;
             });
             
             params.filter = filters.length === 1 ? filters[0] : { _and: filters };
           }
-        } else {
-          // Fulltext search with translation support
-          if (translationInfo.value?.hasTranslations && translationInfo.value.translationFields?.length > 0) {
-            // Create OR conditions for all searchable fields including translations
-            const searchConditions: any[] = [];
-            const languageCode = selectedLanguage.value || 'en-US';
-            
-            // Build conditions for translation fields
-            const translationConditions: any[] = [];
-            translationInfo.value.translationFields.forEach(field => {
-              if (['string', 'text'].includes(field.type)) {
-                translationConditions.push({
-                  [field.field]: { _contains: searchQuery.value }
-                });
-              }
-            });
-            
-            // Add translation condition if we have translatable fields
-            if (translationConditions.length > 0) {
-              // For each translation field, add a condition with language filter
-              translationConditions.forEach(condition => {
-                searchConditions.push({
-                  _and: [
-                    { translations: { languages_code: { _eq: languageCode } } },
-                    { translations: condition }
-                  ]
-                });
-              });
-            }
-            
-            // Also search in main fields
-            if (availableFields.value?.length > 0) {
-              availableFields.value.forEach(field => {
-                if (['string', 'text'].includes(field.type) && !isFieldTranslatable(field.field)) {
-                  searchConditions.push({
-                    [field.field]: { _contains: searchQuery.value }
-                  });
-                }
-              });
-            }
-            
-            if (searchConditions.length > 0) {
-              params.filter = { _or: searchConditions };
-            } else {
-              // Fallback to normal search if no conditions
-              params.search = searchQuery.value;
-            }
-          } else {
-            // Normal fulltext search
-            params.search = searchQuery.value;
-          }
+        }
+        
+        // Add fulltext search for unparsed text if present
+        if (parseResult.unparsedText) {
+          params.search = parseResult.unparsedText;
+        }
+        
+        // If no queries and no unparsed text was found, use the whole query as search
+        if (parseResult.queries.length === 0 && !parseResult.unparsedText) {
+          params.search = searchQuery.value;
         }
       }
 

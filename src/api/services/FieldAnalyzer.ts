@@ -226,6 +226,49 @@ export class FieldAnalyzer {
       return false;
     }
 
+    // Use metadata to determine if field is searchable
+    if (field.type === 'string' || field.type === 'text') {
+      // Check if field has select-type interface
+      const selectInterfaces = [
+        'select-dropdown',
+        'select-dropdown-m2o',
+        'select-radio',
+        'select-multiple-checkbox',
+        'select-multiple-dropdown',
+        'select-color'
+      ];
+      
+      if (field.meta?.interface && selectInterfaces.includes(field.meta.interface)) {
+        return false; // Select interface = not suitable for text search
+      }
+      
+      // Check if field has predefined choices
+      if (field.meta?.options?.choices && Array.isArray(field.meta.options.choices) && field.meta.options.choices.length > 0) {
+        return false; // Has predefined options = not suitable for full-text search
+      }
+      
+      // Check for other non-text interfaces
+      const nonTextInterfaces = [
+        'boolean',
+        'toggle',
+        'datetime',
+        'date',
+        'time',
+        'timestamp',
+        'file',
+        'files',
+        'image',
+        'color',
+        'icon',
+        'slider',
+        'rating'
+      ];
+      
+      if (field.meta?.interface && nonTextInterfaces.includes(field.meta.interface)) {
+        return false; // Non-text interface
+      }
+    }
+
     if (options.types.length > 0 && !options.types.includes(field.type)) {
       return false;
     }
