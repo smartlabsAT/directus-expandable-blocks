@@ -453,6 +453,7 @@ function isFieldSortable(field: string): boolean {
     return false;
   }
   
+  // Translation fields ARE sortable - we use nested path (translations.fieldname)
   return true;
 }
 
@@ -935,6 +936,10 @@ function handleTitleClick() {
 /* Non-sortable headers */
 .header-field-cell:not(.is-sortable) {
   cursor: default;
+  
+  .field-label-text {
+    opacity: 0.8;
+  }
 }
 
 /* Sort Icon */

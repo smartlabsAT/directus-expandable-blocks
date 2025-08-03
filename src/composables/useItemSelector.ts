@@ -283,7 +283,25 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       // Add sorting if specified
       if (sortField.value) {
-        params.sort = `${sortDirection.value === 'desc' ? '-' : ''}${sortField.value}`;
+        // Check if this field exists only in translations
+        const isTranslationOnlyField = translationInfo.value?.translationFields?.some(
+          (tf: any) => tf.field === sortField.value
+        ) && !availableFields.value.some(
+          f => f.field === sortField.value && !f.translatable
+        );
+        
+        if (isTranslationOnlyField) {
+          // For translation-only fields, use nested path: translations.fieldname
+          // This allows Directus to sort by the nested field
+          params.sort = `${sortDirection.value === 'desc' ? '-' : ''}translations.${sortField.value}`;
+          logDebug('Using nested sort path for translation-only field', { 
+            field: sortField.value,
+            sortPath: `translations.${sortField.value}`
+          });
+        } else {
+          // Regular field - use direct path
+          params.sort = `${sortDirection.value === 'desc' ? '-' : ''}${sortField.value}`;
+        }
       }
       
       // Include translations if collection has them
