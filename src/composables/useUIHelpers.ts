@@ -61,6 +61,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
       .filter((field: any) => {
         if (field.meta?.hidden || field.meta?.readonly) return false;
         if (METADATA_FIELDS.includes(field.field)) return false;
+        if (field.field === 'status') return false; // Status is shown in block header
         if (!field.meta?.interface) return false;
         
         if (mergedOptions.value?.showFieldsFilter && mergedOptions.value?.showFieldsFilter.length > 0) {
