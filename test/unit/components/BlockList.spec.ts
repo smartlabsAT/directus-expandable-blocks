@@ -55,6 +55,7 @@ const mockExpandableBlocks = {
   getActualItemId: vi.fn((item) => item.item?.id || 'new'),
   isNewItem: vi.fn((item) => !item.item?.id),
   isBlockDirty: vi.fn(() => false),
+  isDeletedItem: vi.fn((item) => item && item.item === null),
   getItemTitle: vi.fn((item) => item.item?.title || 'Untitled'),
   getCollectionName: vi.fn((item) => {
     const groups = [
