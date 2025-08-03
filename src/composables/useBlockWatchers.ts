@@ -76,14 +76,8 @@ export function useBlockWatchers(
             blockDirtyStates.value.clear();
             logger.debug('Cleared all dirty states after save');
             
-            // Update original states with current data immediately after save
-            items.value.forEach(item => {
-              const itemId = String(item.id);
-              if (item.item && itemId) {
-                blockOriginalStates.value.set(itemId, deepClone(item.item));
-                // logger.debug(`Updated original state for block ${itemId} after save`);
-              }
-            });
+            // DO NOT update original states here - they will be updated in processLoadedRecords
+            // The items.value at this point still contain the edited data, not the saved data
             
             // Reload data in new order after save
             if (isValidPrimaryKey(props.primaryKey)) {
@@ -98,14 +92,8 @@ export function useBlockWatchers(
             blockDirtyStates.value.clear();
             logger.debug('Cleared all dirty states after save');
             
-            // Update original states with current data immediately after save
-            items.value.forEach(item => {
-              const itemId = String(item.id);
-              if (item.item && itemId) {
-                blockOriginalStates.value.set(itemId, deepClone(item.item));
-                // logger.debug(`Updated original state for block ${itemId} after save`);
-              }
-            });
+            // DO NOT update original states here - they will be updated in processLoadedRecords
+            // The items.value at this point still contain the edited data, not the saved data
             
             // Reload data to get fresh state after save
             if (isValidPrimaryKey(props.primaryKey)) {
@@ -209,6 +197,14 @@ export function useBlockWatchers(
       const isResetToInitial = JSON.stringify(newVal) === JSON.stringify(initialVal);
       
       if (isResetToInitial) {
+        // Check if primary key is '+' which indicates this might be a save operation
+        const isSaveOperation = props.primaryKey === '+';
+        
+        if (isSaveOperation) {
+          // Don't reset states during save operation
+          return;
+        }
+        
         logger.debug('Global discard detected - resetting blocks');
         
         // WICHTIG: Reset originalItemOrder to the initial/saved order
@@ -318,9 +314,12 @@ export function useBlockWatchers(
     return watch(() => props.primaryKey, async (newKey, oldKey) => {
       logger.debug('Primary key changed:', { oldKey, newKey });
 
+      // Check if this is a save event (primary key changes from '+' back to a valid ID)
+      const isAfterSave = oldKey === '+' && newKey && newKey !== '+' && newKey !== 'new';
+
       if (newKey && newKey !== '+' && newKey !== 'new' && newKey !== oldKey) {
         logger.debug('Valid primary key received, loading data...');
-        await loadFullItemData();
+        await loadFullItemData(isAfterSave ? true : false);  // Pass isAfterSave flag as boolean
       }
     }, { immediate: false });
   }

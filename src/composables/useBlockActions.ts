@@ -1,6 +1,6 @@
 import { deepClone, getActualItem, getItemCollection, TITLE_FIELDS, METADATA_FIELDS, addJunctionMetadata } from '../utils/helpers';
 import { emitChanges as emitHelper } from '../utils/emit-helpers';
-import { logAction, logDebug, logWarn, logEvent } from '../utils/logger-wrapper';
+import { logAction, logDebug, logWarn, logEvent, logError } from '../utils/logger-wrapper';
 import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
 import { createNotificationHelpers } from '../utils/notifications';
 import { setLoadingState, clearLoadingState, updateBlockDirtyState } from '../utils/state-helpers';
@@ -320,6 +320,72 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   }
 
   /**
+   * Remove all deleted items (items with null data)
+   */
+  async function removeAllDeletedItems(): Promise<void> {
+    const deletedItems = items.value.filter(item => item && item.item === null);
+    
+    if (deletedItems.length === 0) return;
+    
+    logAction('Removing all deleted items', { count: deletedItems.length });
+    
+    try {
+      const junctionCollection = getJunctionCollection();
+      
+      // Delete all junction records for deleted items
+      const deletePromises = deletedItems.map(async (item) => {
+        if (item.id && !isNewItem(item)) {
+          try {
+            await api.delete(`/items/${junctionCollection}/${item.id}`);
+            logDebug(`Removed deleted item junction: ${item.id}`);
+          } catch (error) {
+            logWarn(`Failed to remove deleted item junction: ${item.id}`, { error });
+          }
+        }
+      });
+      
+      await Promise.all(deletePromises);
+      
+      // Remove from state
+      const deletedIds = deletedItems.map(item => getItemId(item));
+      expandedItems.value = expandedItems.value.filter(id => !deletedIds.includes(id));
+      
+      deletedIds.forEach(id => {
+        blockOriginalStates.value.delete(id);
+        blockDirtyStates.value.delete(id);
+      });
+      
+      // Update items array - WICHTIG: items.value direkt aktualisieren!
+      items.value = items.value.filter(item => !(item && item.item === null));
+      
+      // Update original order
+      const deletedItemIds = deletedItems.map(item => item.id).filter(Boolean);
+      originalItemOrder.value = originalItemOrder.value.filter(id => !deletedItemIds.includes(id));
+      
+      // Emit changes
+      emitHelper({
+        items: items.value,
+        emit,
+        prepareItemsForEmit,
+        isInternalUpdate,
+        source: 'SAVE STATE - removeAllDeletedItems',
+        sortField: getSortField(),
+        debugData: buildDebugData('removeAllDeletedItems', {
+          deletedCount: deletedItems.length
+        }),
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
+      });
+      
+      logAction('Successfully removed all deleted items');
+      
+      // Show success notification
+      notifySuccess('Deleted References Removed', `${deletedItems.length} deleted ${deletedItems.length === 1 ? 'reference' : 'references'} removed successfully.`);
+    } catch (error) {
+      logError('Failed to remove deleted items', error);
+    }
+  }
+
+  /**
    * Confirm and execute deletion
    */
   async function confirmDeleteItem(): Promise<void> {
@@ -338,7 +404,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
         await api.delete(`/items/${junctionCollection}/${item.id}`);
         
         // Optionally delete the actual item
-        if (item.item && typeof item.item === 'object' && item.collection) {
+        if (item.item && typeof item.item === 'object' && item.item !== null && item.collection) {
           try {
             await api.delete(`/items/${item.collection}/${(item.item as ItemRecord).id}`);
           } catch (error) {
@@ -814,6 +880,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     updateItem,
     unlinkItem,
     confirmDeleteItem,
+    removeAllDeletedItems,
     duplicateItem,
     discardChanges,
     

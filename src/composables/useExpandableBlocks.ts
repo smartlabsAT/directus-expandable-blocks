@@ -113,6 +113,7 @@ export function useExpandableBlocks(
     isInitialLoad,
     isInternalUpdate,
     isFullyInitialized,
+    deletedItemsCount,
     isBlockDirty,
     prepareItemsForEmit,
     resetBlockState,
@@ -136,7 +137,8 @@ export function useExpandableBlocks(
       originalItemOrder,
       isInternalUpdate,
       isInitialLoad,
-      isFullyInitialized
+      isFullyInitialized,
+      deletedItemsCount
     },
     stateFns: {
       getItemId,
@@ -574,6 +576,7 @@ export function useExpandableBlocks(
       originalItemOrder,
       availableStatuses,
       blockUsageData,
+      deletedItemsCount,
     
     // Computed
     sortable,
@@ -608,6 +611,7 @@ export function useExpandableBlocks(
     updateItem: blockActions.updateItem,
     unlinkItem: blockActions.unlinkItem,
     confirmDeleteItem: blockActions.confirmDeleteItem,
+    removeAllDeletedItems: blockActions.removeAllDeletedItems,
     duplicateItem: blockActions.duplicateItem,
     discardChanges: blockActions.discardChanges,
     updateItemStatus: blockActions.updateItemStatus,

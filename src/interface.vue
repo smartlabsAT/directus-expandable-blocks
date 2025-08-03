@@ -1,5 +1,27 @@
 <template>
   <div class="expandable-blocks">
+    <!-- Deleted Items Notice -->
+    <v-notice
+      v-if="deletedItemsCount > 0"
+      type="warning"
+      icon="delete_sweep"
+      class="deleted-items-notice"
+    >
+      <div class="deleted-items-content">
+        <span>
+          {{ deletedItemsCount }} {{ deletedItemsCount === 1 ? 'reference' : 'references' }} to deleted items found.
+          These items no longer exist but are still linked to this record.
+        </span>
+        <v-button
+          small
+          kind="danger"
+          @click="removeAllDeletedItems"
+        >
+          Remove All Deleted References
+        </v-button>
+      </div>
+    </v-notice>
+
     <block-list
         v-model="items"
         :expanded-items="expandedItems"
@@ -133,6 +155,7 @@ const {
   availableStatuses,
   allowedCollections,
   allowedCollectionsForExisting: _allowedCollectionsForExisting,
+  deletedItemsCount,
 
   // Computed
   sortable,
@@ -160,6 +183,7 @@ const {
   showDeleteDialog,
   unlinkItem,
   confirmDeleteItem,
+  removeAllDeletedItems,
   duplicateItem,
   discardChanges,
   updateItemStatus,
