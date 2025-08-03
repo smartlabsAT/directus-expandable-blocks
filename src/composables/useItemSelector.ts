@@ -163,12 +163,13 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       // Match pattern: field operator value (with support for quoted values)
       // Allow dots in field names for translations.field syntax
-      const regex = new RegExp(`([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|([^\\s]+))`, 'g');
+      // Support both double and single quotes
+      const regex = new RegExp(`([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|'([^']+)'|([^\\s]+))`, 'g');
       
       let match;
       while ((match = regex.exec(query)) !== null) {
-        const [fullMatch, field, operator, quotedValue, unquotedValue] = match;
-        const value = quotedValue || unquotedValue;
+        const [fullMatch, field, operator, quotedDouble, quotedSingle, unquotedValue] = match;
+        const value = quotedDouble || quotedSingle || unquotedValue;
         
         results.push({
           field,
@@ -215,12 +216,18 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
           .join('|');
       // Allow dots in field names for translations.field syntax
-      const regex = new RegExp(`^([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|(.+))$`);
+      // Support quoted strings (double or single) and capture remaining text
+      const regex = new RegExp(`^([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|'([^']+)'|([^\\s]+))(?:\\s+(.*))?$`);
       const match = part.match(regex);
       
       if (match) {
-        const [, field, operator, quotedValue, unquotedValue] = match;
-        const value = (quotedValue || unquotedValue || '').trim();
+        const [, field, operator, quotedDouble, quotedSingle, unquotedValue, restText] = match;
+        const value = (quotedDouble || quotedSingle || unquotedValue || '').trim();
+        
+        // If there's unparsed text after the value, add it to unparsedParts
+        if (restText) {
+          unparsedParts.push(restText);
+        }
         
         filters.push({
           field,
