@@ -6,7 +6,8 @@
       compact: compactMode,
       disabled: disabled,
       'read-only': canUpdate === false,
-      'no-permission': canRead === false
+      'no-permission': canRead === false,
+      'deleted-item': isDeleted
     }"
   >
     <!-- Block Header -->
@@ -37,9 +38,19 @@
           </v-notice>
 
           <template v-else>
+            <!-- Deleted Item Notice -->
+            <v-notice
+              v-if="isDeleted"
+              type="danger"
+              icon="delete"
+              class="deleted-notice"
+            >
+              This item has been deleted. You can only unlink it from this list.
+            </v-notice>
+
             <!-- Usage Warning -->
             <v-notice
-              v-if="usageData && usageData.usageCount > 0"
+              v-else-if="usageData && usageData.usageCount > 0"
               type="warning"
               icon="warning"
               class="usage-warning"
@@ -70,6 +81,7 @@
             </v-notice>
 
             <v-form
+              v-if="!isDeleted"
               :initial-values="itemData"
               :fields="fields"
               :model-value="itemData"
@@ -103,6 +115,7 @@ interface Props {
   compactMode?: boolean;
   canRead?: boolean;
   canUpdate?: boolean;
+  isDeleted?: boolean;
   usageData?: {
     usageCount: number;
     externalCount: number;
@@ -135,9 +148,21 @@ defineEmits<{
   margin-bottom: 20px;
 }
 
+.deleted-notice {
+  margin-bottom: 20px;
+}
+
 .block-header.no-permission {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.deleted-item {
+  opacity: 0.6;
+  
+  .block-header {
+    background: var(--background-normal-alt) !important;
+  }
 }
 </style>
 

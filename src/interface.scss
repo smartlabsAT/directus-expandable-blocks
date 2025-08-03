@@ -20,6 +20,26 @@ $expanded-border-width: 5px;
   gap: $spacing-sm;
 }
 
+// Deleted items notice
+.deleted-items-notice {
+  margin-bottom: $spacing-md;
+  
+  .deleted-items-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-md;
+    
+    span {
+      flex: 1;
+    }
+    
+    button {
+      flex-shrink: 0;
+    }
+  }
+}
+
 // Block item with nested styles
 .block-item {
   background: var(--background-normal);
@@ -160,6 +180,19 @@ $expanded-border-width: 5px;
   animation: pulse 2s ease-in-out infinite;
 }
 
+.deleted-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--danger);
+  border-radius: 50%;
+  border: 2px solid var(--background-page);
+  box-shadow: 0 0 0 1px var(--danger);
+  animation: pulse 2s ease-in-out infinite;
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -208,6 +241,12 @@ $expanded-border-width: 5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  &.deleted-title {
+    color: var(--foreground-subdued);
+    text-decoration: line-through;
+    opacity: 0.7;
+  }
 }
 
 .block-meta {

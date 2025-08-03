@@ -17,7 +17,7 @@
 
     <v-list>
       <v-list-item
-        v-if="allowDuplicate"
+        v-if="allowDuplicate && !isDeleted"
         clickable
         @click="$emit('duplicate')"
       >
@@ -28,6 +28,7 @@
       </v-list-item>
 
       <v-list-item
+        v-if="!isDeleted"
         clickable
         :disabled="!isDirty"
         @click="$emit('discard-changes')"
@@ -45,13 +46,13 @@
         <v-list-item-icon>
           <v-icon name="link_off" />
         </v-list-item-icon>
-        <v-list-item-content>Unlink</v-list-item-content>
+        <v-list-item-content>{{ isDeleted ? 'Remove Deleted Item' : 'Unlink' }}</v-list-item-content>
       </v-list-item>
 
-      <v-divider v-if="allowDelete" />
+      <v-divider v-if="allowDelete && !isDeleted" />
 
       <v-list-item
-        v-if="allowDelete"
+        v-if="allowDelete && !isDeleted"
         clickable
         class="danger"
         @click="$emit('delete')"
@@ -70,6 +71,7 @@ interface Props {
   allowDuplicate: boolean;
   allowDelete: boolean;
   isDirty: boolean;
+  isDeleted?: boolean;
 }
 
 defineProps<Props>();

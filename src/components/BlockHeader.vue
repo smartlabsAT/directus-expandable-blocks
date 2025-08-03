@@ -19,6 +19,11 @@
       v-tooltip="'New block'"
     />
     <div
+      v-else-if="isDeleted"
+      class="deleted-indicator"
+      v-tooltip="'Deleted item'"
+    />
+    <div
       v-else-if="isDirty"
       class="dirty-indicator"
       v-tooltip="'Unsaved changes'"
@@ -28,9 +33,12 @@
   <!-- Main Info Section -->
   <div class="block-info">
     <div class="block-main">
-      <span class="block-title">
+      <span class="block-title" :class="{ 'deleted-title': isDeleted }">
         <template v-if="canRead === false">
           <v-icon name="block" x-small /> No permission
+        </template>
+        <template v-else-if="isDeleted">
+          Deleted Item
         </template>
         <template v-else>{{ title }}</template>
       </span>
@@ -102,6 +110,7 @@ interface Props {
   collectionIcon: string | null;
   isNew: boolean;
   isDirty: boolean;
+  isDeleted?: boolean;
   title: string;
   collectionName: string;
   showItemId: boolean;
