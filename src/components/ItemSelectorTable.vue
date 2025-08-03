@@ -138,9 +138,6 @@
             <!-- Update Info -->
             <span v-if="showLastUpdate && item?.date_updated" class="update-info">
               {{ formatRelativeTime(item.date_updated) }}
-              <span v-if="item?.user_updated">
-                by {{ getUserDisplayName(item.user_updated) }}
-              </span>
             </span>
           </div>
         </div>
@@ -885,7 +882,7 @@ function handleTitleClick() {
   align-items: center;
   gap: 4px;
   flex: 1;
-  padding-right: 28px; /* Space for absolute positioned button */
+  padding-right: 3px; /* Space for absolute positioned button */
   padding-left: 18px; /* Space for sort icon - slightly more */
   min-width: 0;
   position: relative;

@@ -312,7 +312,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       const params: any = {
         limit: itemsPerPage.value,
         offset: offset,
-        fields: ['*', 'user_updated.first_name', 'user_updated.last_name', 'user_updated.email'],
+        fields: ['*'],
         meta: '*'
       };
       
