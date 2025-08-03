@@ -98,7 +98,7 @@ export function detectTitleField(item: ItemRecord): string | null {
  * Get actual item ID from junction record
  */
 export function getActualItemId(item: JunctionRecord): string | number {
-  if (item.item && typeof item.item === 'object') {
+  if (item.item && typeof item.item === 'object' && item.item !== null) {
     return item.item.id;
   }
   return item.id;
@@ -139,7 +139,7 @@ export function parseAllowedCollections(
  * @param item - The junction record or item
  * @returns The actual item data or item ID
  */
-export function getActualItem(item: JunctionRecord | ItemRecord): string | number | ItemRecord {
+export function getActualItem(item: JunctionRecord | ItemRecord): string | number | ItemRecord | null {
   if ('item' in item && item.item !== undefined) {
     return item.item;
   }
