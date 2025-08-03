@@ -524,18 +524,6 @@ function formatRelativeTime(dateString: string): string {
   }
 }
 
-function getUserDisplayName(user: any): string {
-  if (!user) return '';
-  
-  if (user.first_name || user.last_name) {
-    return [user.first_name, user.last_name].filter(Boolean).join(' ');
-  } else if (user.email) {
-    return user.email.split('@')[0];
-  }
-  
-  return 'Unknown';
-}
-
 // Column width adjustment methods
 function openColumnSettings(field: string, event: MouseEvent) {
   logger.log('openColumnSettings called', { 

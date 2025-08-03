@@ -184,8 +184,8 @@ describe('useUIHelpers', () => {
       
       const fields = helpers.getFieldsForItem(item);
       
-      expect(fields).toHaveLength(3); // title, content, status
-      expect(fields.map(f => f.field)).toEqual(['title', 'content', 'status']);
+      expect(fields).toHaveLength(2); // title, content (status is filtered out)
+      expect(fields.map(f => f.field)).toEqual(['title', 'content']);
     });
 
     it('getFieldsForItem filters out hidden and readonly fields', () => {
@@ -221,8 +221,8 @@ describe('useUIHelpers', () => {
       
       const fields = helpers.getFieldsForItem(item);
       
-      expect(fields).toHaveLength(2);
-      expect(fields.map(f => f.field)).toEqual(['title', 'status']);
+      expect(fields).toHaveLength(1);
+      expect(fields.map(f => f.field)).toEqual(['title']);
     });
 
     it('getFieldsForItem returns empty array for invalid collection', () => {

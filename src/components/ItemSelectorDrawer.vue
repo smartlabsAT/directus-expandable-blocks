@@ -354,8 +354,6 @@ const showLastUpdate = ref(false);
 const sortField = ref<string | null>(null);
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const itemsPerPageLocal = ref(100);
-// View mode is always table now - removed list view option
-const viewMode = ref<'list' | 'table'>('table'); // Always 'table', kept for compatibility
 const rememberSearch = ref(false);
 const drawerWidth = ref(856);
 const showSearchHelp = ref(false);

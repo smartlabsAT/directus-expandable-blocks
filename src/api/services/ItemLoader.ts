@@ -87,7 +87,7 @@ export class ItemLoader {
           }
           
           // Add translation fields
-          if (analysisResult.translationInfo.translationFields?.length > 0) {
+          if (analysisResult.translationInfo?.translationFields && analysisResult.translationInfo.translationFields.length > 0) {
             analysisResult.translationInfo.translationFields.forEach(field => {
               if (['string', 'text'].includes(field.type)) {
                 // Add each translation field as a separate condition
@@ -112,7 +112,7 @@ export class ItemLoader {
             }
             
             // Clear the search parameter since we're using filter instead
-            modifiedSearch = undefined;
+            modifiedSearch = '';
           }
         }
       }
