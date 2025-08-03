@@ -226,7 +226,15 @@ export class FieldAnalyzer {
       return false;
     }
 
-    // Use metadata to determine if field is searchable
+    // First, check if this is a searchable field type
+    const searchableTypes = ['string', 'text', 'csv', 'hash', 'uuid'];
+    
+    // Only these types are searchable with _contains operator
+    if (!searchableTypes.includes(field.type)) {
+      return false; // Not a searchable type
+    }
+    
+    // For searchable types, check metadata to determine if field should be excluded
     if (field.type === 'string' || field.type === 'text') {
       // Check if field has select-type interface
       const selectInterfaces = [

@@ -127,7 +127,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
   /**
    * Parse multiple search queries from a single string with logical operators
    * Returns both structured queries and unparsed text for fulltext search
-   * Example: "id<10 hello" -> {queries: [{field: 'id'...}], unparsedText: 'hello'}
+   * Example: "id>99 hello" -> {queries: [{field: 'id'...}], unparsedText: 'hello'}
    */
   function parseMultipleQueries(query: string): { queries: any[], unparsedText: string } {
     const operators: Record<string, string> = {
@@ -148,7 +148,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       '!null': '_nnull'
     };
 
-    // Track what parts of the query were parsed
+    // Track what parts were successfully parsed
     const parsedParts: string[] = [];
     
     // Split by AND/OR while preserving the operators
@@ -163,10 +163,9 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       // Match pattern: field operator value (with support for quoted values)
       // Allow dots in field names for translations.field syntax
-      const regex = new RegExp(`([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
+      const regex = new RegExp(`([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|([^\\s]+))`, 'g');
       
       let match;
-      let lastIndex = 0;
       while ((match = regex.exec(query)) !== null) {
         const [fullMatch, field, operator, quotedValue, unquotedValue] = match;
         const value = quotedValue || unquotedValue;
@@ -179,15 +178,21 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         
         // Track what was parsed
         parsedParts.push(fullMatch);
-        lastIndex = regex.lastIndex;
       }
       
       // Get unparsed text (everything that wasn't matched)
       let unparsedText = query;
+
       parsedParts.forEach(part => {
-        unparsedText = unparsedText.replace(part, '');
+        // Use global replace to handle multiple occurrences
+        unparsedText = unparsedText.split(part).join('');
       });
       unparsedText = unparsedText.trim();
+      
+      // If nothing was parsed, the whole query is unparsed text
+      if (results.length === 0 && parsedParts.length === 0) {
+        unparsedText = query;
+      }
       
       return { queries: results, unparsedText };
     }
@@ -210,7 +215,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
           .join('|');
       // Allow dots in field names for translations.field syntax
-      const regex = new RegExp(`^([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|(.+))$`);
+      const regex = new RegExp(`^([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|(.+))$`);
       const match = part.match(regex);
       
       if (match) {
@@ -347,6 +352,12 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         // Parse query to get both structured queries and unparsed text
         const parseResult = parseMultipleQueries(searchQuery.value);
         
+        logDebug('Query parse result', {
+          originalQuery: searchQuery.value,
+          queries: parseResult.queries,
+          unparsedText: parseResult.unparsedText
+        });
+        
         // Handle structured queries if present
         if (parseResult.queries.length > 0) {
           // Build complex filter from multiple queries
@@ -395,11 +406,6 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         if (parseResult.unparsedText) {
           params.search = parseResult.unparsedText;
         }
-        
-        // If no queries and no unparsed text was found, use the whole query as search
-        if (parseResult.queries.length === 0 && !parseResult.unparsedText) {
-          params.search = searchQuery.value;
-        }
       }
 
       // Convert filter and deep to JSON strings if they exist
@@ -409,6 +415,14 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       if (params.deep) {
         params.deep = JSON.stringify(params.deep);
       }
+      
+      logDebug('API request params', {
+        collection: selectedCollection.value,
+        filter: params.filter,
+        search: params.search,
+        hasFilter: !!params.filter,
+        hasSearch: !!params.search
+      });
       
       const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { 
         params,

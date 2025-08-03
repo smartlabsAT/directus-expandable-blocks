@@ -54,13 +54,76 @@ export class ItemLoader {
         ? await this.expandTranslationFields(collection, normalizedQuery.fields)
         : normalizedQuery.fields;
 
+      // Handle search with translation support
+      let modifiedFilter = normalizedQuery.filter;
+      let modifiedSearch = normalizedQuery.search;
+      
+      if (normalizedQuery.search) {
+        // Check if collection has translations
+        if (!this.fieldAnalyzer) {
+          this.fieldAnalyzer = new FieldAnalyzer({
+            services: this.services,
+            schema: this.schema,
+            database: this.database,
+            accountability: this.accountability
+          });
+        }
+        const analysisResult = await this.fieldAnalyzer.analyzeCollectionComplete(collection);
+        
+        if (analysisResult.translationInfo?.hasTranslations) {
+          // Build a filter that searches in both main fields and translations
+          const searchConditions: any[] = [];
+          
+          // Add searchable main fields
+          if (analysisResult.searchableFields?.length > 0) {
+            analysisResult.searchableFields.forEach(field => {
+              // Skip translatable fields to avoid duplicates
+              if (!field.translatable) {
+                searchConditions.push({
+                  [field.field]: { _contains: normalizedQuery.search }
+                });
+              }
+            });
+          }
+          
+          // Add translation fields
+          if (analysisResult.translationInfo.translationFields?.length > 0) {
+            analysisResult.translationInfo.translationFields.forEach(field => {
+              if (['string', 'text'].includes(field.type)) {
+                // Add each translation field as a separate condition
+                searchConditions.push({
+                  translations: {
+                    [field.field]: { _contains: normalizedQuery.search }
+                  }
+                });
+              }
+            });
+          }
+          
+          // Create the search filter
+          if (searchConditions.length > 0) {
+            const searchFilter = { _or: searchConditions };
+            
+            // Combine with existing filter if present
+            if (modifiedFilter) {
+              modifiedFilter = { _and: [modifiedFilter, searchFilter] };
+            } else {
+              modifiedFilter = searchFilter;
+            }
+            
+            // Clear the search parameter since we're using filter instead
+            modifiedSearch = undefined;
+          }
+        }
+      }
+
       const itemsService = this.createItemsService(collection);
       const queryOptions: any = {
         limit: normalizedQuery.limit,
         offset: normalizedQuery.offset,
         fields: expandedFields,
-        filter: normalizedQuery.filter,
-        search: normalizedQuery.search,
+        filter: modifiedFilter,
+        search: modifiedSearch,
         sort: normalizedQuery.sort.length > 0 ? normalizedQuery.sort : ['id']
       };
       
@@ -76,8 +139,8 @@ export class ItemLoader {
         this.getTotalCount(collection),
         this.getFilteredCount({
           collection,
-          filter: normalizedQuery.filter,
-          search: normalizedQuery.search
+          filter: modifiedFilter,
+          search: modifiedSearch
         })
       ]);
 
