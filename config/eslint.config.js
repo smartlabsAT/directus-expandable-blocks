@@ -103,6 +103,20 @@ export default [
       'no-unused-vars': 'off' // Use TypeScript's version instead
     }
   },
+  // Special rules for test files
+  {
+    files: ['test/**/*.{js,ts}', '**/*.spec.{js,ts}', '**/*.test.{js,ts}'],
+    rules: {
+      'no-console': 'off' // Allow all console methods in test files
+    }
+  },
+  // Special rules for logger files
+  {
+    files: ['**/logger.ts', '**/logger-wrapper.ts'],
+    rules: {
+      'no-console': 'off' // Logger files need console access
+    }
+  },
   {
     ignores: [
       'dist/',

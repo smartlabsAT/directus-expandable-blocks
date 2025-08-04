@@ -24,7 +24,10 @@
         <v-list-item-icon>
           <v-icon name="content_copy" />
         </v-list-item-icon>
-        <v-list-item-content>Duplicate</v-list-item-content>
+        <v-list-item-content>
+          <div>Duplicate</div>
+          <div class="action-description">Create a copy of this block</div>
+        </v-list-item-content>
       </v-list-item>
 
       <v-list-item
@@ -36,7 +39,10 @@
         <v-list-item-icon>
           <v-icon name="undo" />
         </v-list-item-icon>
-        <v-list-item-content>Discard Changes</v-list-item-content>
+        <v-list-item-content>
+          <div>Discard Changes</div>
+          <div class="action-description">Revert to last saved state</div>
+        </v-list-item-content>
       </v-list-item>
 
       <v-list-item
@@ -46,7 +52,10 @@
         <v-list-item-icon>
           <v-icon name="link_off" />
         </v-list-item-icon>
-        <v-list-item-content>{{ isDeleted ? 'Remove Deleted Item' : 'Unlink' }}</v-list-item-content>
+        <v-list-item-content>
+          <div>{{ isDeleted ? 'Remove Reference' : 'Unassign' }}</div>
+          <div class="action-description">{{ isDeleted ? 'Remove this deleted reference' : 'Remove from this page only' }}</div>
+        </v-list-item-content>
       </v-list-item>
 
       <v-divider v-if="allowDelete && !isDeleted" />
@@ -60,7 +69,10 @@
         <v-list-item-icon>
           <v-icon name="delete" />
         </v-list-item-icon>
-        <v-list-item-content>Delete</v-list-item-content>
+        <v-list-item-content>
+          <div>Delete Everywhere</div>
+          <div class="action-description">Delete item and all references</div>
+        </v-list-item-content>
       </v-list-item>
     </v-list>
   </v-menu>
@@ -83,3 +95,24 @@ defineEmits<{
   'delete': [];
 }>();
 </script>
+
+<style scoped>
+.action-description {
+  font-size: 12px;
+  color: var(--foreground-subdued);
+  margin-top: 2px;
+}
+
+.danger .action-description {
+  color: var(--danger-75);
+}
+
+/* Fix padding for disabled items specifically in this menu */
+:deep(.v-list-item[disabled]) {
+  .v-list-item-content {
+    /* Override the default padding to match enabled items */
+    padding: 0 !important;
+    opacity: 0.5;
+  }
+}
+</style>

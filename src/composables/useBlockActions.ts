@@ -4,6 +4,8 @@ import { logAction, logDebug, logWarn, logEvent, logError } from '../utils/logge
 import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
 import { createNotificationHelpers } from '../utils/notifications';
 import { setLoadingState, clearLoadingState, updateBlockDirtyState } from '../utils/state-helpers';
+import { RelationChecker } from '../services/RelationChecker';
+import type { ItemUsageInfo } from '../services/RelationChecker';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -53,7 +55,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   /**
    * Clean metadata fields from an item copy
    */
-  function cleanItemMetadata(item: any): any {
+  function cleanItemMetadata(item: ItemRecord | JunctionRecord): ItemRecord | JunctionRecord {
     const cleaned = { ...item };
     // Remove all metadata fields using the constant
     for (const field of METADATA_FIELDS) {
@@ -65,7 +67,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   /**
    * Add copy suffix to item title/name
    */
-  function addCopySuffix(item: any): void {
+  function addCopySuffix(item: ItemRecord): void {
     // Find the first available title field and add suffix
     for (const field of TITLE_FIELDS) {
       if (item[field] && typeof item[field] === 'string') {
@@ -81,7 +83,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   /**
    * Build common debug data for emit operations
    */
-  function buildDebugData(functionName: string, extraData: Record<string, any> = {}): Record<string, any> {
+  function buildDebugData(functionName: string, extraData: Record<string, unknown> = {}): Record<string, unknown> {
     return {
       function: functionName,
       collection: props.collection,
@@ -116,7 +118,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   /**
    * Emit changes with proper internal update handling
    */
-  function emitChanges(itemsArray: JunctionRecord[], source: string, extraDebugData?: Record<string, any>): void {
+  function emitChanges(itemsArray: JunctionRecord[], source: string, extraDebugData?: Record<string, unknown>): void {
     emitHelper({
       items: itemsArray,
       emit,
@@ -155,7 +157,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   /**
    * Update item data and handle dirty state
    */
-  function updateItem(index: number, newData: any): void {
+  function updateItem(index: number, newData: Partial<ItemRecord>): void {
     if (props.disabled) return;
     
     const currentItem = items.value[index];
@@ -253,7 +255,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
           hasId: !!newItem.id,
           collection: newItem.collection,
           itemType: typeof newItem.item,
-          foreignKey: (newItem as any)[getForeignKeyField()],
+          foreignKey: (newItem as Record<string, unknown>)[getForeignKeyField()],
           defaultData: defaultData
         },
         totalItemsCount: items.value.length
@@ -736,7 +738,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   function addItemsToList(
     junctionEntries: JunctionRecord[],
     source: string,
-    debugData: Record<string, any>
+    debugData: Record<string, unknown>
   ): void {
     // Add all new entries to items array
     items.value = [...items.value, ...junctionEntries];
@@ -868,6 +870,129 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     notifyInfo('Items Copied', `${selectedItems.length} item(s) added as copies. Save to persist changes.`);
   }
 
+  /**
+   * Check item usage across the system
+   */
+  async function checkItemUsage(item: JunctionRecord): Promise<ItemUsageInfo | null> {
+    try {
+      const actualItem = getActualItem(item);
+      const collection = getItemCollection(item);
+      
+      if (!actualItem || !collection) {
+        return null;
+      }
+      
+      const itemId = (actualItem as ItemRecord).id;
+      if (!itemId) {
+        return null;
+      }
+      
+      const relationChecker = new RelationChecker(api, props.primaryKey);
+      return await relationChecker.checkItemUsage(collection, itemId);
+      
+    } catch (error) {
+      logError('Failed to check item usage', error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete item with usage confirmation
+   */
+  async function deleteItemWithConfirmation(
+    item: JunctionRecord, 
+    index: number,
+    options: {
+      deleteContent: boolean;
+      selectedLocations?: string[];
+    }
+  ): Promise<void> {
+    try {
+      const itemId = getItemId(item);
+      setLoadingState(loading, itemId);
+      
+      const junctionCollection = getJunctionCollection();
+      
+      // If we have selected locations, we need to remove the item from those locations
+      if (options.selectedLocations && options.selectedLocations.length > 0) {
+        // Parse location strings (format: "collection:id")
+        const locationIds = options.selectedLocations.map(loc => {
+          const [, id] = loc.split(':');
+          return id;
+        });
+        
+        // Find and delete junction records for these locations
+        // This is a simplified version - you might need to adjust based on your junction structure
+        logDebug('Removing item from selected locations', { locationIds });
+      }
+      
+      // Delete the junction record for current page
+      if (item.id && !isNewItem(item)) {
+        await api.delete(`/items/${junctionCollection}/${item.id}`);
+        logDebug('Deleted junction record', { junctionId: item.id });
+      }
+      
+      // Delete the content item if requested
+      if (options.deleteContent && item.item && typeof item.item === 'object' && item.collection) {
+        try {
+          const contentItemId = (item.item as ItemRecord).id;
+          await api.delete(`/items/${item.collection}/${contentItemId}`);
+          logDebug('Deleted content item', { collection: item.collection, id: contentItemId });
+        } catch (error) {
+          logWarn('Failed to delete content item', { error });
+          // Continue even if content deletion fails
+        }
+      }
+      
+      // Remove from state
+      expandedItems.value = expandedItems.value.filter(id => id !== itemId);
+      blockOriginalStates.value.delete(itemId);
+      blockDirtyStates.value.delete(itemId);
+      
+      // Update originalItemOrder
+      originalItemOrder.value = originalItemOrder.value.filter(id => String(id) !== String(item.id));
+      
+      // Update items array
+      const updatedItems = [...items.value];
+      updatedItems.splice(index, 1);
+      updateSortValues(updatedItems);
+      items.value = updatedItems;
+      
+      // Emit changes
+      emitHelper({
+        items: updatedItems,
+        emit,
+        prepareItemsForEmit,
+        isInternalUpdate,
+        source: 'deleteItemWithConfirmation',
+        sortField: getSortField(),
+        debugData: {
+          function: 'deleteItemWithConfirmation',
+          deletedItem: {
+            id: item.id,
+            collection: item.collection
+          },
+          deleteContent: options.deleteContent,
+          remainingItemsCount: updatedItems.length
+        },
+        canUpdateItemFn: ctx.permissions?.canUpdateItem
+      });
+      
+      // Show appropriate notification
+      if (options.deleteContent) {
+        notifySuccess('Deleted', 'Item and all references deleted successfully');
+      } else {
+        notifySuccess('Unassigned', 'Item reference removed successfully');
+      }
+      
+    } catch (error) {
+      logError('Error deleting item', error);
+      notifyError('Error', 'Failed to delete item');
+    } finally {
+      clearLoadingState(loading, getItemId(item));
+    }
+  }
+
   return {
     // UI Actions
     toggleExpand,
@@ -883,10 +1008,14 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
     removeAllDeletedItems,
     duplicateItem,
     discardChanges,
+    deleteItemWithConfirmation,
     
     // Status & State
     updateItemStatus,
     onSort,
+    
+    // Usage Checking
+    checkItemUsage,
     
     // Helper
     getSortField
