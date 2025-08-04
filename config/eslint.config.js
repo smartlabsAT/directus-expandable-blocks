@@ -16,6 +16,15 @@ export default [
         sourceType: 'module'
       },
       globals: {
+        // Vue 3 Compiler Macros (auto-imported)
+        defineProps: 'readonly',
+        defineEmits: 'readonly',
+        defineExpose: 'readonly',
+        defineOptions: 'readonly',
+        defineSlots: 'readonly',
+        defineModel: 'readonly',
+        withDefaults: 'readonly',
+        
         // Node.js globals
         process: 'readonly',
         console: 'readonly',

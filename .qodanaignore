@@ -1,0 +1,60 @@
+# Qodana ignore file
+# This file contains patterns for files/directories to be excluded from analysis
+
+# Build outputs
+dist/
+build/
+*.min.js
+*.min.css
+
+# Dependencies
+node_modules/
+vendor/
+
+# Test outputs
+test-output/
+coverage/
+.nyc_output/
+
+# Cache and temporary files
+.cache/
+.temp/
+*.log
+.DS_Store
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Generated files
+*.generated.ts
+*.generated.js
+
+# Documentation
+docs/
+wiki/
+*.md
+
+# Configuration files that don't need analysis
+*.json
+*.yaml
+*.yml
+.env*
+.gitignore
+.eslintignore
+.prettierignore
+
+# Scripts that are build tools
+scripts/**/*.js
+scripts/**/*.cjs
+config/scripts/**/*.sh
+
+# Test setup and mocks
+test/setup.ts
+test/mocks/**/*
+test/**/*.mock.ts
+
+# Vue 3 specific - compiler macros are auto-imported
+# These imports are handled by Vue compiler
+src/**/*.vue
