@@ -69,7 +69,11 @@ function initializeCache(context: any): DirectusCacheWrapper {
 export function cacheMiddleware(context: any) {
   return (req: any, _res: Response, next: NextFunction) => {
     // Check if cache is disabled via header
-    const cacheEnabled = req.headers['x-cache-enabled'] !== 'false';
+    // const cacheEnabled = req.headers['x-cache-enabled'] !== 'false';
+    
+    // TEMPORARY: Cache disabled for development/testing
+    // To re-enable caching, uncomment the line above and comment the line below
+    const cacheEnabled = false;
     
     // Add cache to request
     (req as any).cache = cacheEnabled ? initializeCache(context) : null;
