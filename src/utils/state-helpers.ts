@@ -12,7 +12,7 @@ import { logger } from './logger-wrapper';
  * Deep equality check for objects
  * Compares two values for deep equality, handling nested objects and arrays
  */
-export function deepEqual(a: any, b: any): boolean {
+export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a == null || b == null) return false;
   if (typeof a !== typeof b) return false;
@@ -20,13 +20,16 @@ export function deepEqual(a: any, b: any): boolean {
   
   if (Array.isArray(a) !== Array.isArray(b)) return false;
   
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
+  const objA = a as Record<string, unknown>;
+  const objB = b as Record<string, unknown>;
+  
+  const keysA = Object.keys(objA);
+  const keysB = Object.keys(objB);
   if (keysA.length !== keysB.length) return false;
   
   for (const key of keysA) {
     if (!keysB.includes(key)) return false;
-    if (!deepEqual(a[key], b[key])) return false;
+    if (!deepEqual(objA[key], objB[key])) return false;
   }
   
   return true;
@@ -49,29 +52,30 @@ export function deepClone<T>(obj: T): T {
   
   // Handle Date
   if (obj instanceof Date) {
-    return new Date(obj.getTime()) as any;
+    return new Date((obj as Date).getTime()) as T;
   }
   
   // Handle Array
   if (Array.isArray(obj)) {
-    return obj.map(item => deepClone(item)) as any;
+    return (obj as unknown[]).map(item => deepClone(item)) as T;
   }
   
   // Handle Object
-  const clonedObj = {} as any;
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      clonedObj[key] = deepClone(obj[key]);
+  const clonedObj = {} as Record<string, unknown>;
+  const sourceObj = obj as Record<string, unknown>;
+  for (const key in sourceObj) {
+    if (Object.prototype.hasOwnProperty.call(sourceObj, key)) {
+      clonedObj[key] = deepClone(sourceObj[key]);
     }
   }
   
-  return clonedObj;
+  return clonedObj as T;
 }
 
 /**
  * State tracking manager for managing original states and dirty flags
  */
-export class StateTracker<T = any> {
+export class StateTracker<T = unknown> {
   private originalStates: Map<string, T> = new Map();
   private dirtyFlags: Map<string, boolean> = new Map();
   
@@ -180,7 +184,7 @@ export class StateTracker<T = any> {
   /**
    * Get debug info
    */
-  getDebugInfo(): Record<string, any> {
+  getDebugInfo(): Record<string, unknown> {
     return {
       originalStatesCount: this.originalStates.size,
       dirtyFlagsCount: this.dirtyFlags.size,
@@ -320,7 +324,7 @@ export function createStateDiff<T>(
     }
     
     const changes: string[] = [];
-    const checkChanges = (obj1: any, obj2: any, path = '') => {
+    const checkChanges = (obj1: unknown, obj2: unknown, path = '') => {
       if (obj1 === obj2) return;
       if (obj1 == null || obj2 == null) {
         changes.push(path || 'root');
@@ -331,15 +335,17 @@ export function createStateDiff<T>(
         return;
       }
       
-      const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+      const o1 = obj1 as Record<string, unknown>;
+      const o2 = obj2 as Record<string, unknown>;
+      const allKeys = new Set([...Object.keys(o1), ...Object.keys(o2)]);
       for (const key of allKeys) {
         const newPath = path ? `${path}.${key}` : key;
-        if (!(key in obj1)) {
+        if (!(key in o1)) {
           changes.push(`${newPath} (added)`);
-        } else if (!(key in obj2)) {
+        } else if (!(key in o2)) {
           changes.push(`${newPath} (removed)`);
         } else {
-          checkChanges(obj1[key], obj2[key], newPath);
+          checkChanges(o1[key], o2[key], newPath);
         }
       }
     };
@@ -353,7 +359,7 @@ export function createStateDiff<T>(
  * Safe JSON stringify for debugging
  * Handles circular references and functions
  */
-export function safeStringify(obj: any, space?: number): string {
+export function safeStringify(obj: unknown, space?: number): string {
   const seen = new WeakSet();
   return JSON.stringify(obj, (_key, value) => {
     if (typeof value === 'object' && value !== null) {
@@ -397,10 +403,10 @@ export function clearLoadingState(loading: Ref<Record<string | number, boolean>>
  */
 export function updateBlockDirtyState(
   blockId: string,
-  currentData: any,
-  originalStates: Map<string, any>,
+  currentData: unknown,
+  originalStates: Map<string, unknown>,
   dirtyStates: Map<string, boolean>,
-  deepEqual: (a: any, b: any) => boolean
+  deepEqual: (a: unknown, b: unknown) => boolean
 ): void {
   const originalData = originalStates.get(blockId);
   if (originalData) {
