@@ -58,10 +58,10 @@
         </v-list-item-content>
       </v-list-item>
 
-      <v-divider v-if="allowDelete && !isDeleted" />
+      <v-divider v-if="allowDelete && !isDeleted && !isNew" />
 
       <v-list-item
-        v-if="allowDelete && !isDeleted"
+        v-if="allowDelete && !isDeleted && !isNew"
         clickable
         class="danger"
         @click="$emit('delete')"
@@ -84,6 +84,7 @@ interface Props {
   allowDelete: boolean;
   isDirty: boolean;
   isDeleted?: boolean;
+  isNew?: boolean;
 }
 
 defineProps<Props>();

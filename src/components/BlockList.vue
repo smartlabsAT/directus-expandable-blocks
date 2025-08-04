@@ -63,6 +63,7 @@
                   :allow-delete="allowDelete && canDeleteItem(item)"
                   :is-dirty="(canReadItem(item) && isBlockDirty(getItemId(item), item.item)) || isDeletedItem(item)"
                   :is-deleted="isDeletedItem(item)"
+                  :is-new="isNewItem(item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
                   @unlink="$emit('unlink', item, index)"
