@@ -329,6 +329,8 @@ describe('DeleteConfirmationDialog', () => {
     it('should handle missing item gracefully', () => {
       const wrapper = createWrapper({ 
         item: null,
+        itemTitle: null,
+        collectionName: null,
         usageInfo: {
           totalCount: 0,
           currentPageUsage: false,
@@ -337,8 +339,11 @@ describe('DeleteConfirmationDialog', () => {
         }
       });
       
-      expect(wrapper.text()).toContain('Untitled');
-      expect(wrapper.text()).toContain('Unknown');
+      // Check that the no-item-display div is rendered with fallback text
+      const noItemDisplay = wrapper.find('.no-item-display');
+      expect(noItemDisplay.exists()).toBe(true);
+      expect(noItemDisplay.text()).toContain('Untitled');
+      expect(noItemDisplay.text()).toContain('Unknown');
     });
 
     it('should handle empty usage locations', () => {
