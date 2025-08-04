@@ -17,12 +17,12 @@ function getGlobalCacheConfig(): Partial<CacheServiceConfig> {
   
   if (hasEnvConfig) {
     return {
-      defaultTTL: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL'] || '600000'), // 10 min default
+      defaultTTL: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL'] || '30000'), // 30 sec default
       ttlOverrides: {
-        metadata: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_METADATA'] || '30') * 60 * 1000,
-        search: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH'] || '5') * 60 * 1000,
-        detail: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL'] || '10') * 60 * 1000,
-        paths: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_PATHS'] || '10') * 60 * 1000
+        metadata: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_METADATA'] || '0.5') * 60 * 1000,
+        search: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH'] || '0.5') * 60 * 1000,
+        detail: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL'] || '0.5') * 60 * 1000,
+        paths: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_PATHS'] || '0.5') * 60 * 1000
       },
       maxKeys: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_MAX_SIZE'] || '50000'),
       prefix: 'expandable_blocks'
@@ -30,12 +30,12 @@ function getGlobalCacheConfig(): Partial<CacheServiceConfig> {
   }
   
   return {
-    defaultTTL: CacheTTL.MEDIUM, // 10 minutes
+    defaultTTL: 30 * 1000, // 30 seconds
     ttlOverrides: {
-      metadata: 30 * 60 * 1000, // 30 minutes
-      search: 5 * 60 * 1000,    // 5 minutes
-      detail: 10 * 60 * 1000,   // 10 minutes
-      paths: 10 * 60 * 1000     // 10 minutes
+      metadata: 30 * 1000,    // 30 seconds
+      search: 30 * 1000,      // 30 seconds
+      detail: 30 * 1000,      // 30 seconds
+      paths: 30 * 1000        // 30 seconds
     },
     maxKeys: 50000,
     prefix: 'expandable_blocks'
@@ -69,11 +69,7 @@ function initializeCache(context: any): DirectusCacheWrapper {
 export function cacheMiddleware(context: any) {
   return (req: any, _res: Response, next: NextFunction) => {
     // Check if cache is disabled via header
-    // const cacheEnabled = req.headers['x-cache-enabled'] !== 'false';
-    
-    // TEMPORARY: Cache disabled for development/testing
-    // To re-enable caching, uncomment the line above and comment the line below
-    const cacheEnabled = false;
+    const cacheEnabled = req.headers['x-cache-enabled'] !== 'false';
     
     // Add cache to request
     (req as any).cache = cacheEnabled ? initializeCache(context) : null;

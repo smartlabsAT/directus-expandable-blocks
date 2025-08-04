@@ -250,7 +250,7 @@ export const EXCLUDED_FIELDS = [
 ];
 
 export const DEFAULT_COLLECTION_ICON = 'box';
-export const DEFAULT_CACHE_TTL = 300; // 5 minutes
+export const DEFAULT_CACHE_TTL = 30; // 30 seconds
 
 // Special IDs
 export const SYNTHETIC_RELATION_ID = -1;

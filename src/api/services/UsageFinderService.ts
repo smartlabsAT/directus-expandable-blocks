@@ -11,7 +11,7 @@ import type { Logger, DirectusServices, DirectusSchema, DirectusAccountability }
  */
 export class UsageFinderService {
   // Constants
-  private static readonly CACHE_TTL_MINUTES = 5;
+  private static readonly CACHE_TTL_MINUTES = 0.5; // 30 seconds
   private static readonly CACHE_TTL = UsageFinderService.CACHE_TTL_MINUTES * 60 * 1000;
   private static readonly DEFAULT_MAX_DEPTH = 5;
   private static readonly MAX_DISPLAY_NAME_LENGTH = 100;
@@ -78,6 +78,7 @@ export class UsageFinderService {
       try {
         // Handle M2A relations
         if (relation.one_collection === null && relation.one_allowed_collections) {
+          this.logger.debug(`Processing M2A relation: ${relation.many_collection} -> ${relation.one_allowed_collections}`);
           await this.processM2ARelations(relation, collection, itemId, options, usageMap, usages);
         }
         // Handle regular M2O relations
@@ -91,6 +92,8 @@ export class UsageFinderService {
 
     // If grouping duplicates, convert map to array
     const finalUsages = groupDuplicates ? Array.from(usageMap.values()) : usages;
+    
+    this.logger.debug(`Final usages for ${collection}/${itemId}: ${finalUsages.length} items`);
     
     this.setCache(cacheKey, finalUsages);
     return finalUsages;
@@ -406,7 +409,10 @@ export class UsageFinderService {
       query = query.limit(limit);
     }
 
-    return query;
+    const results = await query;
+    
+
+    return results;
   }
 
   /**
@@ -675,8 +681,35 @@ export class UsageFinderService {
     if (ids.length === 0) return [];
 
     try {
+      // Filter out null IDs
+      const validIds = ids.filter(id => id !== null && id !== undefined);
+      
+      if (validIds.length === 0) return [];
+      
+      // Use ItemsService for permission-aware loading if accountability exists
+      if (this.accountability && this.services) {
+        const { ItemsService } = this.services;
+        const itemsService = new ItemsService(collection, {
+          knex: this.database,
+          schema: this.schema,
+          accountability: this.accountability
+        });
+        
+        try {
+          const items = await itemsService.readByQuery({
+            filter: { id: { _in: validIds } },
+            limit: -1
+          });
+          return items;
+        } catch (permissionError) {
+          // Fall back to direct database query if no permission
+          this.logger.debug(`Permission error loading ${collection}, falling back to direct query`);
+        }
+      }
+      
+      // Direct database query (no permission check)
       return await this.database(collection)
-        .whereIn('id', ids.map(id => String(id)));
+        .whereIn('id', validIds.map(id => String(id)));
     } catch (error) {
       this.logger.error(`Error loading items from ${collection}:`, error);
       return [];
