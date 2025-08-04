@@ -32,6 +32,9 @@ docker pull jetbrains/qodana-js:2023.3
 echo -e "${YELLOW}🚀 Running analysis...${NC}"
 echo ""
 
+# Copy qodana.yaml to project root for Docker to find it
+cp "$PROJECT_ROOT/config/qodana.yaml" "$PROJECT_ROOT/qodana.yaml" 2>/dev/null || true
+
 # Run with or without token
 if [ -n "$QODANA_TOKEN" ]; then
     echo -e "${GREEN}✓ Using Qodana Cloud token${NC}"
@@ -41,7 +44,6 @@ if [ -n "$QODANA_TOKEN" ]; then
         -e QODANA_TOKEN="$QODANA_TOKEN" \
         -p 8080:8080 \
         jetbrains/qodana-js:2023.3 \
-        --config /data/project/config/qodana.yaml \
         --show-report
 else
     echo -e "${YELLOW}⚠️  Running without Qodana Cloud (Community mode)${NC}"
@@ -49,8 +51,7 @@ else
         -v "$PROJECT_ROOT:/data/project/" \
         -v "$PROJECT_ROOT/test-output/qodana:/data/results/" \
         -p 8080:8080 \
-        jetbrains/qodana-js:community \
-        --config /data/project/config/qodana.yaml \
+        jetbrains/qodana-js:2023.3 \
         --show-report
 fi
 

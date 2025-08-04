@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Qodana",
+          "informationUri": "https://qodana.jetbrains.com"
+        }
+      },
+      "results": [],
+      "automationDetails": {
+        "id": "baseline/expandable-blocks"
+      },
+      "newlineSequences": ["\r\n", "\n"],
+      "properties": {
+        "baseline": {
+          "TypeScriptCheckImport": {
+            "excludePaths": ["src/**/*.vue"]
+          },
+          "TypeScriptUnresolvedReference": {
+            "excludePaths": ["src/**/*.vue"]
+          },
+          "ES6UnusedImports": {
+            "excludePaths": ["src/**/*.vue"]
+          },
+          "ES6PreferShortImport": {
+            "enabled": false
+          },
+          "RegExpRedundantEscape": {
+            "enabled": false
+          },
+          "JSUnusedLocalSymbols": {
+            "excludePaths": ["test/**/*"]
+          }
+        }
+      }
+    }
+  ]
+}
