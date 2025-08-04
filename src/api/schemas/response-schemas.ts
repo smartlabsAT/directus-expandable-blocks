@@ -21,6 +21,7 @@ export interface MetadataResponse {
   collection: string;
   possibleLocations: any[];
   searchableFields: any[];
+  displayableFields?: any[]; // All fields that can be displayed in UI
   translationInfo: {
     hasTranslations: boolean;
     [key: string]: any;

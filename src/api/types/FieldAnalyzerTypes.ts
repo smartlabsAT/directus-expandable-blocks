@@ -89,6 +89,9 @@ export interface SearchableField {
   /** Available languages for this field */
   available_languages?: string[];
   
+  /** Whether field is searchable (can be used in text search) */
+  searchable?: boolean;
+  
   /** Related translation table */
   translation_table?: string;
   

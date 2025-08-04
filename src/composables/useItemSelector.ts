@@ -64,18 +64,33 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       const metadata = response.data as CollectionMetadata;
       
-      if (metadata?.searchableFields) {
-        // Transform searchableFields to match the expected format
-        availableFields.value = metadata.searchableFields.map((field: any) => ({
+      // Use displayableFields for UI (includes all fields like dropdowns, colors, etc.)
+      if (metadata?.displayableFields) {
+        availableFields.value = metadata.displayableFields.map((field: any) => ({
           field: field.field,
           type: field.type,
-          name: field.name || field.field,
+          name: field.field_name || field.name || field.field,
           interface: field.interface,
           display: field.display,
           options: field.options,
-          display_name: field.display_name || field.field,
-          searchable: field.searchable,
-          weight: field.weight,
+          display_name: field.field_name || field.name || field.field,
+          searchable: field.searchable || false,
+          weight: field.weight || 0,
+          translatable: field.translatable || false,
+          translation_type: field.translation_type || 'none'
+        }));
+      } else if (metadata?.searchableFields) {
+        // Fallback to searchableFields if displayableFields not available (backward compatibility)
+        availableFields.value = metadata.searchableFields.map((field: any) => ({
+          field: field.field,
+          type: field.type,
+          name: field.field_name || field.name || field.field,
+          interface: field.interface,
+          display: field.display,
+          options: field.options,
+          display_name: field.field_name || field.name || field.field,
+          searchable: true, // searchableFields are always searchable
+          weight: field.weight || 0,
           translatable: field.translatable || false,
           translation_type: field.translation_type || 'none'
         }));

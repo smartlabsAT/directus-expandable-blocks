@@ -112,7 +112,6 @@
             'is-selected': isSelected(item),
             'has-relations': hasRelations(item)
           }"
-          @click="toggleSelection(item)"
       >
         <!-- Checkbox Column -->
         <div class="table-cell checkbox-cell">
@@ -974,6 +973,7 @@ function handleTitleClick() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  max-width: 100%;
 }
 
 /* Title with Status Container */
@@ -981,6 +981,8 @@ function handleTitleClick() {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0; /* Allow flex children to shrink for ellipsis */
+  width: 100%;
 }
 
 /* Item Title */
@@ -991,6 +993,8 @@ function handleTitleClick() {
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  flex: 1; /* Take available space */
+  min-width: 0; /* Critical for ellipsis in flex containers */
 }
 
 /* Update Info */

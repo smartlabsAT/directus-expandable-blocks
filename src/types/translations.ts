@@ -84,6 +84,7 @@ export interface LanguageOption {
 export interface CollectionMetadata {
   collection: string;
   searchableFields: FieldWithTranslation[];
+  displayableFields?: FieldWithTranslation[]; // All fields that can be displayed in UI
   translationInfo?: TranslationInfo;
   possibleLocations?: any[];
   cached_at?: string;
