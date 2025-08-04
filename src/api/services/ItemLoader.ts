@@ -80,7 +80,7 @@ export class ItemLoader {
               // Skip translatable fields to avoid duplicates
               if (!field.translatable) {
                 searchConditions.push({
-                  [field.field]: { _contains: normalizedQuery.search }
+                  [field.field]: { _icontains: normalizedQuery.search }
                 });
               }
             });
@@ -93,7 +93,7 @@ export class ItemLoader {
                 // Add each translation field as a separate condition
                 searchConditions.push({
                   translations: {
-                    [field.field]: { _contains: normalizedQuery.search }
+                    [field.field]: { _icontains: normalizedQuery.search }
                   }
                 });
               }
