@@ -968,19 +968,36 @@ function renderContentEditable() {
       }
       
       if (editingValueIndex.value === index) {
-        // Show inline edit input
-        tagSpan.innerHTML = `
-          <span class="tag-content">
-            <span class="tag-field">${tag.field}</span>
-            <span class="tag-operator">${tag.operatorDisplay}</span>
-            <input class="inline-edit-input" value="${editValue.value}" />
-          </span>
-          <span class="tag-close" data-index="${index}">×</span>
-        `;
+        // Show inline edit input - using DOM API for security
+        const tagContent = document.createElement('span');
+        tagContent.className = 'tag-content';
+        
+        const fieldSpan = document.createElement('span');
+        fieldSpan.className = 'tag-field';
+        fieldSpan.textContent = tag.field;
+        
+        const operatorSpan = document.createElement('span');
+        operatorSpan.className = 'tag-operator';
+        operatorSpan.textContent = tag.operatorDisplay;
+        
+        const input = document.createElement('input');
+        input.className = 'inline-edit-input';
+        input.value = editValue.value;
+        
+        tagContent.appendChild(fieldSpan);
+        tagContent.appendChild(operatorSpan);
+        tagContent.appendChild(input);
+        
+        const closeSpan = document.createElement('span');
+        closeSpan.className = 'tag-close';
+        closeSpan.dataset.index = index.toString();
+        closeSpan.textContent = '×';
+        
+        tagSpan.appendChild(tagContent);
+        tagSpan.appendChild(closeSpan);
         
         // Add event listeners after DOM update
         nextTick(() => {
-          const input = tagSpan.querySelector('.inline-edit-input') as HTMLInputElement;
           if (input) {
             input.addEventListener('input', (e) => {
               editValue.value = (e.target as HTMLInputElement).value;
@@ -998,17 +1015,39 @@ function renderContentEditable() {
           }
         });
       } else {
-        tagSpan.innerHTML = `
-          <span class="tag-content">
-            <span class="tag-field">${tag.field}</span>
-            <span class="tag-operator">${tag.operatorDisplay}</span>
-            <span class="tag-value">${tag.value}</span>
-          </span>
-          <span class="tag-close" data-index="${index}">×</span>
-        `;
+        // Regular tag display - using DOM API for security
+        const tagContent = document.createElement('span');
+        tagContent.className = 'tag-content';
+        
+        const fieldSpan = document.createElement('span');
+        fieldSpan.className = 'tag-field';
+        fieldSpan.textContent = tag.field;
+        
+        const operatorSpan = document.createElement('span');
+        operatorSpan.className = 'tag-operator';
+        operatorSpan.textContent = tag.operatorDisplay;
+        
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'tag-value';
+        valueSpan.textContent = tag.value;
+        
+        tagContent.appendChild(fieldSpan);
+        tagContent.appendChild(operatorSpan);
+        tagContent.appendChild(valueSpan);
+        
+        const closeSpan = document.createElement('span');
+        closeSpan.className = 'tag-close';
+        closeSpan.dataset.index = index.toString();
+        closeSpan.textContent = '×';
+        
+        tagSpan.appendChild(tagContent);
+        tagSpan.appendChild(closeSpan);
       }
     } else {
-      tagSpan.innerHTML = `<strong>${tag.logicalOp}</strong>`;
+      // Logical operator tag - using DOM API for security
+      const strong = document.createElement('strong');
+      strong.textContent = tag.logicalOp;
+      tagSpan.appendChild(strong);
     }
     
     editableContainer.value.appendChild(tagSpan);

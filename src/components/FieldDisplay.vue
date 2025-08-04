@@ -254,7 +254,7 @@ const showImageModal = ref(false);
 const showColorCode = ref(false);
 
 interface Props {
-  value: any;
+  value: string | number | boolean | null | Record<string, unknown> | unknown[];
   field: string;
   fieldInfo?: {
     field: string;
@@ -262,7 +262,7 @@ interface Props {
     type: string;
     interface?: string;
     display?: string;
-    options?: any;
+    options?: Record<string, unknown>;
   };
   maxLength?: number;
 }
@@ -401,7 +401,7 @@ const isFileField = computed(() => {
   return false;
 });
 
-function isImageExtension(value: any): boolean {
+function isImageExtension(value: unknown): boolean {
   // If it's an object, check the filename_download
   if (typeof value === 'object' && value !== null) {
     if (value.filename_download && typeof value.filename_download === 'string') {
@@ -537,8 +537,39 @@ const strippedHtml = computed(() => {
 
 const sanitizedHtml = computed(() => {
   if (!isWysiwyg.value) return '';
-  // Basic HTML sanitization - in production, you might want to use DOMPurify
-  return displayValue.value;
+  
+  // Simple HTML sanitization without external libraries
+  const html = displayValue.value;
+  
+  // Create a temporary element to parse HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  
+  // Remove all script tags and event handlers
+  const scripts = temp.querySelectorAll('script, link, meta, style');
+  scripts.forEach(el => el.remove());
+  
+  // Remove all on* event attributes
+  const allElements = temp.querySelectorAll('*');
+  allElements.forEach(el => {
+    // Remove event handlers
+    for (let i = el.attributes.length - 1; i >= 0; i--) {
+      const attr = el.attributes[i];
+      if (attr.name.startsWith('on') || attr.name === 'href' && attr.value.startsWith('javascript:')) {
+        el.removeAttribute(attr.name);
+      }
+    }
+    
+    // Sanitize href attributes for anchors
+    if (el.tagName === 'A') {
+      const href = el.getAttribute('href');
+      if (href && (href.startsWith('javascript:') || href.startsWith('data:'))) {
+        el.removeAttribute('href');
+      }
+    }
+  });
+  
+  return temp.innerHTML;
 });
 
 const hasLongContent = computed(() => {
@@ -560,7 +591,7 @@ const formattedJson = computed(() => {
 });
 
 // Date formatting
-function formatDate(value: any): string {
+function formatDate(value: string | number | Date | null): string {
   if (!value) return '';
   
   try {
@@ -794,7 +825,7 @@ function getUserColor(): string {
 }
 
 // Relation display helper
-function getRelationDisplay(item: any): string {
+function getRelationDisplay(item: Record<string, unknown>): string {
   if (!item) return '';
   
   // If it's just an ID
