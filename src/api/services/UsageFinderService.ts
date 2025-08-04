@@ -701,7 +701,7 @@ export class UsageFinderService {
             limit: -1
           });
           return items;
-        } catch (permissionError) {
+        } catch {
           // Fall back to direct database query if no permission
           this.logger.debug(`Permission error loading ${collection}, falling back to direct query`);
         }

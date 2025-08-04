@@ -1,7 +1,6 @@
 import type { Response, NextFunction } from 'express';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import type { CacheServiceConfig } from '../types/CacheTypes';
-import { CacheTTL } from '../types/CacheTypes';
 
 // Singleton cache instance
 let cacheInstance: DirectusCacheWrapper | null = null;
