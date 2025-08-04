@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
@@ -31,6 +31,12 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
   const selectedLanguage = ref<string>('en-US');
   const availableLanguages = ref<LanguageOption[]>([]);
 
+  // Watch for language changes and reload items
+  watch(selectedLanguage, (newLang, oldLang) => {
+    if (newLang !== oldLang && selectedCollection.value && availableItems.value.length > 0) {
+      loadItems();
+    }
+  });
 
   // Pagination state
   const currentPage = ref(1);
