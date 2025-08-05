@@ -5,7 +5,6 @@ import { FieldAnalyzer } from './FieldAnalyzer';
 import { checkTableExists, extractAggregateCount } from '../utils/database-utils';
 import { getErrorMessage } from '../utils/error-utils';
 import { normalizeQuery } from '../utils/query-utils';
-import { TITLE_FIELDS } from '../utils/constants';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 // ============================================================================
@@ -118,10 +117,10 @@ export class ItemLoader {
         }
       }
 
-      // Handle sort field mapping for "name" -> actual title field
-      let modifiedSort = normalizedQuery.sort;
-      if (modifiedSort.length > 0) {
-        modifiedSort = await this.mapSortFields(collection, modifiedSort);
+      // Validate and prepare sort fields
+      let validatedSort = normalizedQuery.sort;
+      if (validatedSort.length > 0) {
+        validatedSort = await this.validateSortFields(collection, validatedSort);
       }
 
       const itemsService = this.createItemsService(collection);
@@ -131,7 +130,7 @@ export class ItemLoader {
         fields: expandedFields,
         filter: modifiedFilter,
         search: modifiedSearch,
-        sort: modifiedSort.length > 0 ? modifiedSort : ['id']
+        sort: validatedSort.length > 0 ? validatedSort : ['id']
       };
       
       if (normalizedQuery.deep) {
@@ -438,53 +437,77 @@ export class ItemLoader {
   }
 
   /**
-   * Map sort fields, replacing "name" with actual title field
+   * Validate sort fields and replace invalid ones with 'id'
    */
-  private async mapSortFields(collection: string, sortFields: string[]): Promise<string[]> {
-    // Get collection fields to check which title field exists
-    let collectionFields: string[] = [];
-    
+  private async validateSortFields(collection: string, sortFields: string[]): Promise<string[]> {
     try {
-      // Get fields from schema
-      const collectionSchema = this.schema.collections[collection];
-      if (collectionSchema && collectionSchema.fields) {
-        collectionFields = Object.keys(collectionSchema.fields);
+      // Get collection fields from schema
+      const collectionSchema = this.schema?.collections?.[collection];
+      if (!collectionSchema || !collectionSchema.fields) {
+        // If we can't get schema, fallback to 'id' sort
+        this.logger.warn('No schema found for collection, using id sort', { collection });
+        return ['id'];
       }
-    } catch (error) {
-      this.logger.warn('Failed to get collection fields for sort mapping', { collection, error: getErrorMessage(error) });
-      // Continue without field mapping if we can't get fields
-      return sortFields;
-    }
 
-    // Map each sort field
-    return sortFields.map(sortField => {
-      // Extract field name and direction
-      const isDescending = sortField.startsWith('-');
-      const fieldName = isDescending ? sortField.substring(1) : sortField;
-      
-      // If sorting by "name", find the actual title field
-      if (fieldName === 'name') {
-        // Find the first available title field
-        for (const titleField of TITLE_FIELDS) {
-          if (collectionFields.includes(titleField)) {
-            this.logger.debug('Mapped sort field "name" to actual field', { 
+      const collectionFields = Object.keys(collectionSchema.fields);
+      const validatedFields: string[] = [];
+
+      for (const sortField of sortFields) {
+        // Extract field name and direction
+        const isDescending = sortField.startsWith('-');
+        const fieldName = isDescending ? sortField.substring(1) : sortField;
+        
+        // Handle nested fields (e.g., translations.title)
+        if (fieldName.includes('.')) {
+          const [relationField] = fieldName.split('.');
+          
+          // Check if the relation field exists
+          if (collectionFields.includes(relationField)) {
+            // For valid relation fields, trust that Directus will handle the nested path
+            validatedFields.push(sortField);
+          } else {
+            // Invalid relation field, use 'id' as fallback
+            this.logger.warn('Invalid relation field in sort, using id fallback', { 
               collection, 
-              mappedTo: titleField 
+              sortField,
+              relationField 
             });
-            return isDescending ? `-${titleField}` : titleField;
+            if (!validatedFields.includes('id') && !validatedFields.includes('-id')) {
+              validatedFields.push(isDescending ? '-id' : 'id');
+            }
+          }
+        } else {
+          // Simple field - check if it exists
+          if (collectionFields.includes(fieldName) || fieldName === 'id') {
+            validatedFields.push(sortField);
+          } else {
+            // Field doesn't exist, use 'id' as fallback
+            this.logger.warn('Invalid sort field, using id fallback', { 
+              collection, 
+              sortField,
+              availableFields: collectionFields.slice(0, 10) 
+            });
+            if (!validatedFields.includes('id') && !validatedFields.includes('-id')) {
+              validatedFields.push(isDescending ? '-id' : 'id');
+            }
           }
         }
-        
-        // If no title field found, log warning and keep "name"
-        this.logger.warn('No title field found for sort mapping', { 
-          collection, 
-          availableFields: collectionFields,
-          titleFields: TITLE_FIELDS 
-        });
       }
-      
-      // Return original sort field if not "name"
-      return sortField;
-    });
+
+      // If no valid fields remain, use 'id'
+      if (validatedFields.length === 0) {
+        this.logger.warn('No valid sort fields found, defaulting to id', { collection });
+        return ['id'];
+      }
+
+      return validatedFields;
+    } catch (error) {
+      this.logger.error('Error validating sort fields, using id fallback', { 
+        collection, 
+        error: getErrorMessage(error) 
+      });
+      return ['id'];
+    }
   }
+
 }
