@@ -18,10 +18,10 @@
         <div v-if="showTitleColumn"
              class="table-cell title-cell header-title-cell"
              :class="{ 
-               'is-sortable': true,
+               'is-sortable': isTitleColumnSortable,
                'is-sorted': isTitleFieldSorted 
              }"
-             @click="handleTitleClick">
+             @click="isTitleColumnSortable && handleTitleClick()">
           <span class="field-header-label title-header-label">
             <v-icon 
                 v-if="isTitleFieldSorted"
@@ -359,7 +359,18 @@ const actualTitleField = computed(() => {
   
   // Check first item to detect which title field is used
   const firstItem = props.items[0];
-  return detectTitleField(firstItem);
+  const detectedField = detectTitleField(firstItem);
+  
+  // Verify that the detected field is actually available in the collection
+  if (detectedField && props.availableFields) {
+    const fieldExists = props.availableFields.some(f => f.field === detectedField);
+    if (!fieldExists) {
+      // The detected field doesn't exist in availableFields, don't use it
+      return null;
+    }
+  }
+  
+  return detectedField;
 });
 
 // Computed: Check if the title field is sorted
@@ -370,6 +381,14 @@ const isTitleFieldSorted = computed(() => {
 // Computed: Check if we should show the title column
 const showTitleColumn = computed(() => {
   return actualTitleField.value !== null;
+});
+
+// Computed: Check if the title column is sortable
+const isTitleColumnSortable = computed(() => {
+  if (!actualTitleField.value) return false;
+  
+  // Check if the actual title field is sortable
+  return isFieldSortable(actualTitleField.value);
 });
 
 // Grid Template Columns - dynamically calculate column widths
