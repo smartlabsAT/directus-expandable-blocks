@@ -10,6 +10,8 @@
 
 A powerful, production-ready M2A (Many-to-Any) bundle extension for Directus with inline expandable editing, advanced item selection, comprehensive permissions, and seamless integration with Directus' native save system.
 
+![Directus Expandable Blocks Extension - Feature Presentation](https://raw.githubusercontent.com/wiki/smartlabsAT/directus-expandable-blocks/assets/demo.gif)
+
 [📚 Documentation](https://github.com/smartlabsAT/directus-expandable-blocks/wiki) • 
 [🐛 Report Bug](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=bug_report.md) • 
 [✨ Request Feature](https://github.com/smartlabsAT/directus-expandable-blocks/issues/new?template=feature_request.md) • 

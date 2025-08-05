@@ -80,3 +80,9 @@ auto
 *.sock
 *.socket
 
+# Large media files (hosted in wiki repo)
+docs/assets/demo.gif
+docs/assets/*.gif
+docs/assets/*.mp4
+docs/assets/*.mov
+
