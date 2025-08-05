@@ -270,6 +270,13 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
    * Show delete confirmation dialog
    */
   function showDeleteDialog(item: JunctionRecord, index: number): void {
+    // For new items that haven't been saved yet, just unlink them immediately
+    if (isNewItem(item)) {
+      unlinkItem(item, index);
+      return;
+    }
+    
+    // For existing items, show the delete dialog as before
     itemToDelete.value = { item, index };
     deleteDialog.value = true;
     logDebug('Delete dialog shown for item', { itemId: getItemId(item) });

@@ -234,7 +234,7 @@ describe('useBlockActions', () => {
       expect(ctx.ui.itemToDelete.value).toEqual({ item: ctx.state.items.value[0], index: 0 });
     });
 
-    it('shows delete dialog for new blocks', () => {
+    it('unlinks new blocks immediately without showing dialog', () => {
       const newItem = {
         id: 'new_123',
         collection: 'content_text',
@@ -249,9 +249,11 @@ describe('useBlockActions', () => {
       
       actions.showDeleteDialog(newItem, 2);
       
-      // The implementation always shows the dialog
-      expect(ctx.ui.deleteDialog.value).toBe(true);
-      expect(ctx.ui.itemToDelete.value).toEqual({ item: newItem, index: 2 });
+      // For new items, the dialog should NOT be shown
+      expect(ctx.ui.deleteDialog.value).toBe(false);
+      expect(ctx.ui.itemToDelete.value).toBe(null);
+      // The item should be removed immediately
+      expect(ctx.state.items.value).not.toContain(newItem);
     });
   });
 
