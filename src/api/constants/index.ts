@@ -156,7 +156,7 @@ export const HEADERS = {
 /**
  * API Version
  */
-export const API_VERSION = '1.0.0';
+export const API_VERSION = '1.1.0';
 
 /**
  * Default CORS Origins (if not configured via environment)
