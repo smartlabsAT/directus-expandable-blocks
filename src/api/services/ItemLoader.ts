@@ -5,6 +5,7 @@ import { FieldAnalyzer } from './FieldAnalyzer';
 import { checkTableExists, extractAggregateCount } from '../utils/database-utils';
 import { getErrorMessage } from '../utils/error-utils';
 import { normalizeQuery } from '../utils/query-utils';
+import { TITLE_FIELDS } from '../utils/constants';
 import type { DirectusServices, DirectusSchema, DirectusAccountability } from '../types/directus-api';
 
 // ============================================================================
@@ -117,6 +118,12 @@ export class ItemLoader {
         }
       }
 
+      // Handle sort field mapping for "name" -> actual title field
+      let modifiedSort = normalizedQuery.sort;
+      if (modifiedSort.length > 0) {
+        modifiedSort = await this.mapSortFields(collection, modifiedSort);
+      }
+
       const itemsService = this.createItemsService(collection);
       const queryOptions: any = {
         limit: normalizedQuery.limit,
@@ -124,7 +131,7 @@ export class ItemLoader {
         fields: expandedFields,
         filter: modifiedFilter,
         search: modifiedSearch,
-        sort: normalizedQuery.sort.length > 0 ? normalizedQuery.sort : ['id']
+        sort: modifiedSort.length > 0 ? modifiedSort : ['id']
       };
       
       if (normalizedQuery.deep) {
@@ -428,5 +435,56 @@ export class ItemLoader {
       page,
       page_count: pageCount
     };
+  }
+
+  /**
+   * Map sort fields, replacing "name" with actual title field
+   */
+  private async mapSortFields(collection: string, sortFields: string[]): Promise<string[]> {
+    // Get collection fields to check which title field exists
+    let collectionFields: string[] = [];
+    
+    try {
+      // Get fields from schema
+      const collectionSchema = this.schema.collections[collection];
+      if (collectionSchema && collectionSchema.fields) {
+        collectionFields = Object.keys(collectionSchema.fields);
+      }
+    } catch (error) {
+      this.logger.warn('Failed to get collection fields for sort mapping', { collection, error: getErrorMessage(error) });
+      // Continue without field mapping if we can't get fields
+      return sortFields;
+    }
+
+    // Map each sort field
+    return sortFields.map(sortField => {
+      // Extract field name and direction
+      const isDescending = sortField.startsWith('-');
+      const fieldName = isDescending ? sortField.substring(1) : sortField;
+      
+      // If sorting by "name", find the actual title field
+      if (fieldName === 'name') {
+        // Find the first available title field
+        for (const titleField of TITLE_FIELDS) {
+          if (collectionFields.includes(titleField)) {
+            this.logger.debug('Mapped sort field "name" to actual field', { 
+              collection, 
+              mappedTo: titleField 
+            });
+            return isDescending ? `-${titleField}` : titleField;
+          }
+        }
+        
+        // If no title field found, log warning and keep "name"
+        this.logger.warn('No title field found for sort mapping', { 
+          collection, 
+          availableFields: collectionFields,
+          titleFields: TITLE_FIELDS 
+        });
+      }
+      
+      // Return original sort field if not "name"
+      return sortField;
+    });
   }
 }
