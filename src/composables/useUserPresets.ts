@@ -15,7 +15,7 @@ interface CollectionSettings {
   sortDirection?: 'asc' | 'desc';
   itemsPerPage?: number;
   showLastUpdate?: boolean;
-  viewMode?: 'list' | 'table';
+  // viewMode removed - always table view
   rememberSearch?: boolean;
   lastSearch?: string;
   drawerWidth?: number;
@@ -284,12 +284,14 @@ export function useUserPresets() {
     updateCollectionSettings(collection, { showLastUpdate });
   }
   
-  function getViewMode(collection: string): 'list' | 'table' {
-    return getCollectionSettings(collection).viewMode || 'table';
+  // View mode functions removed - always table view
+  function getViewMode(_collection: string): 'list' | 'table' {
+    return 'table'; // Always return table
   }
   
-  async function saveViewMode(collection: string, viewMode: 'list' | 'table'): Promise<void> {
-    updateCollectionSettings(collection, { viewMode });
+  async function saveViewMode(_collection: string, _viewMode: 'list' | 'table'): Promise<void> {
+    // No longer saving view mode - always table
+    return Promise.resolve();
   }
   
   function getRememberSearch(collection: string): boolean {

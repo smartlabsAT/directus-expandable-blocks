@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
@@ -31,6 +31,12 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
   const selectedLanguage = ref<string>('en-US');
   const availableLanguages = ref<LanguageOption[]>([]);
 
+  // Watch for language changes and reload items
+  watch(selectedLanguage, (newLang, oldLang) => {
+    if (newLang !== oldLang && selectedCollection.value && availableItems.value.length > 0) {
+      loadItems();
+    }
+  });
 
   // Pagination state
   const currentPage = ref(1);
@@ -64,18 +70,33 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       const metadata = response.data as CollectionMetadata;
       
-      if (metadata?.searchableFields) {
-        // Transform searchableFields to match the expected format
-        availableFields.value = metadata.searchableFields.map((field: any) => ({
+      // Use displayableFields for UI (includes all fields like dropdowns, colors, etc.)
+      if (metadata?.displayableFields) {
+        availableFields.value = metadata.displayableFields.map((field: any) => ({
           field: field.field,
           type: field.type,
-          name: field.name || field.field,
+          name: field.field_name || field.name || field.field,
           interface: field.interface,
           display: field.display,
           options: field.options,
-          display_name: field.display_name || field.field,
-          searchable: field.searchable,
-          weight: field.weight,
+          display_name: field.field_name || field.name || field.field,
+          searchable: field.searchable || false,
+          weight: field.weight || 0,
+          translatable: field.translatable || false,
+          translation_type: field.translation_type || 'none'
+        }));
+      } else if (metadata?.searchableFields) {
+        // Fallback to searchableFields if displayableFields not available (backward compatibility)
+        availableFields.value = metadata.searchableFields.map((field: any) => ({
+          field: field.field,
+          type: field.type,
+          name: field.field_name || field.name || field.field,
+          interface: field.interface,
+          display: field.display,
+          options: field.options,
+          display_name: field.field_name || field.name || field.field,
+          searchable: true, // searchableFields are always searchable
+          weight: field.weight || 0,
           translatable: field.translatable || false,
           translation_type: field.translation_type || 'none'
         }));
@@ -126,9 +147,10 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
 
   /**
    * Parse multiple search queries from a single string with logical operators
-   * Example: "title=product OR status=active" -> {_or: [{field: 'title'...}, {field: 'status'...}]}
+   * Returns both structured queries and unparsed text for fulltext search
+   * Example: "id>99 hello" -> {queries: [{field: 'id'...}], unparsedText: 'hello'}
    */
-  function parseMultipleQueries(query: string): any {
+  function parseMultipleQueries(query: string): { queries: any[], unparsedText: string } {
     const operators: Record<string, string> = {
       '=%': '_contains',
       '!~': '_ncontains',
@@ -147,6 +169,9 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       '!null': '_nnull'
     };
 
+    // Track what parts were successfully parsed
+    const parsedParts: string[] = [];
+    
     // Split by AND/OR while preserving the operators
     const parts = query.split(/\s+(AND|OR)\s+/i);
     
@@ -159,25 +184,44 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       // Match pattern: field operator value (with support for quoted values)
       // Allow dots in field names for translations.field syntax
-      const regex = new RegExp(`([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|([^\\s]+))`, 'g');
+      // Support both double and single quotes
+      const regex = new RegExp(`([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|'([^']+)'|([^\\s]+))`, 'g');
       
       let match;
       while ((match = regex.exec(query)) !== null) {
-        const [, field, operator, quotedValue, unquotedValue] = match;
-        const value = quotedValue || unquotedValue;
+        const [fullMatch, field, operator, quotedDouble, quotedSingle, unquotedValue] = match;
+        const value = quotedDouble || quotedSingle || unquotedValue;
         
         results.push({
           field,
           operator: operators[operator] || '_eq',
           value
         });
+        
+        // Track what was parsed
+        parsedParts.push(fullMatch);
       }
       
-      return results;
+      // Get unparsed text (everything that wasn't matched)
+      let unparsedText = query;
+
+      parsedParts.forEach(part => {
+        // Use global replace to handle multiple occurrences
+        unparsedText = unparsedText.split(part).join('');
+      });
+      unparsedText = unparsedText.trim();
+      
+      // If nothing was parsed, the whole query is unparsed text
+      if (results.length === 0 && parsedParts.length === 0) {
+        unparsedText = query;
+      }
+      
+      return { queries: results, unparsedText };
     }
     
     // Parse with logical operators
     const filters = [];
+    const unparsedParts: string[] = [];
     let currentLogicalOp = 'AND'; // Default
     
     for (let i = 0; i < parts.length; i++) {
@@ -193,12 +237,18 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           .map(op => op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
           .join('|');
       // Allow dots in field names for translations.field syntax
-      const regex = new RegExp(`^([\\w\\.]+)(${operatorPattern})(?:"([^"]+)"|(.+))$`);
+      // Support quoted strings (double or single) and capture remaining text
+      const regex = new RegExp(`^([\\w\\.]+)\\s*(${operatorPattern})\\s*(?:"([^"]+)"|'([^']+)'|([^\\s]+))(?:\\s+(.*))?$`);
       const match = part.match(regex);
       
       if (match) {
-        const [, field, operator, quotedValue, unquotedValue] = match;
-        const value = (quotedValue || unquotedValue || '').trim();
+        const [, field, operator, quotedDouble, quotedSingle, unquotedValue, restText] = match;
+        const value = (quotedDouble || quotedSingle || unquotedValue || '').trim();
+        
+        // If there's unparsed text after the value, add it to unparsedParts
+        if (restText) {
+          unparsedParts.push(restText);
+        }
         
         filters.push({
           field,
@@ -206,10 +256,16 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           value,
           logicalOp: i > 0 ? currentLogicalOp : null
         });
+      } else {
+        // This part couldn't be parsed as a structured query
+        unparsedParts.push(part);
       }
     }
     
-    return filters;
+    return { 
+      queries: filters, 
+      unparsedText: unparsedParts.join(' ').trim() 
+    };
   }
 
   /**
@@ -277,13 +333,31 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       const params: any = {
         limit: itemsPerPage.value,
         offset: offset,
-        fields: ['*', 'user_updated.first_name', 'user_updated.last_name', 'user_updated.email'],
+        fields: ['*'],
         meta: '*'
       };
       
       // Add sorting if specified
       if (sortField.value) {
-        params.sort = `${sortDirection.value === 'desc' ? '-' : ''}${sortField.value}`;
+        // Check if this field exists only in translations
+        const isTranslationOnlyField = translationInfo.value?.translationFields?.some(
+          (tf: any) => tf.field === sortField.value
+        ) && !availableFields.value.some(
+          f => f.field === sortField.value && !f.translatable
+        );
+        
+        if (isTranslationOnlyField) {
+          // For translation-only fields, use nested path: translations.fieldname
+          // This allows Directus to sort by the nested field
+          params.sort = `${sortDirection.value === 'desc' ? '-' : ''}translations.${sortField.value}`;
+          logDebug('Using nested sort path for translation-only field', { 
+            field: sortField.value,
+            sortPath: `translations.${sortField.value}`
+          });
+        } else {
+          // Regular field - use direct path
+          params.sort = `${sortDirection.value === 'desc' ? '-' : ''}${sortField.value}`;
+        }
       }
       
       // Include translations if collection has them
@@ -303,15 +377,23 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
 
       // Apply search or filter
       if (searchQuery.value) {
-        // Check if query contains multiple search terms
-        const queries = parseMultipleQueries(searchQuery.value);
-        if (queries.length > 0) {
+        // Parse query to get both structured queries and unparsed text
+        const parseResult = parseMultipleQueries(searchQuery.value);
+        
+        logDebug('Query parse result', {
+          originalQuery: searchQuery.value,
+          queries: parseResult.queries,
+          unparsedText: parseResult.unparsedText
+        });
+        
+        // Handle structured queries if present
+        if (parseResult.queries.length > 0) {
           // Build complex filter from multiple queries
           let currentGroup: any[] = [];
           const orGroups: any[] = [];
           let hasOr = false;
           
-          queries.forEach((q: any, index: number) => {
+          parseResult.queries.forEach((q: any, index: number) => {
             const transformed = transformFieldForTranslation(
               q.field,
               q.operator,
@@ -320,7 +402,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
             
             const filterToAdd = transformed.needsAnd ? { _and: [transformed.filter] } : transformed.filter;
             
-            if (q.logicalOp === 'OR' || (index > 0 && queries[index - 1].logicalOp === 'OR')) {
+            if (q.logicalOp === 'OR' || (index > 0 && parseResult.queries[index - 1].logicalOp === 'OR')) {
               hasOr = true;
               if (currentGroup.length > 0) {
                 orGroups.push(currentGroup.length === 1 ? currentGroup[0] : { _and: currentGroup });
@@ -339,64 +421,18 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
             params.filter = { _or: orGroups };
           } else {
             // Build filters with translation support
-            const filters = queries.map((q: any) => {
+            const filters = parseResult.queries.map((q: any) => {
               const transformed = transformFieldForTranslation(q.field, q.operator, q.value);
               return transformed.filter;
             });
             
             params.filter = filters.length === 1 ? filters[0] : { _and: filters };
           }
-        } else {
-          // Fulltext search with translation support
-          if (translationInfo.value?.hasTranslations && translationInfo.value.translationFields?.length > 0) {
-            // Create OR conditions for all searchable fields including translations
-            const searchConditions: any[] = [];
-            const languageCode = selectedLanguage.value || 'en-US';
-            
-            // Build conditions for translation fields
-            const translationConditions: any[] = [];
-            translationInfo.value.translationFields.forEach(field => {
-              if (['string', 'text'].includes(field.type)) {
-                translationConditions.push({
-                  [field.field]: { _contains: searchQuery.value }
-                });
-              }
-            });
-            
-            // Add translation condition if we have translatable fields
-            if (translationConditions.length > 0) {
-              // For each translation field, add a condition with language filter
-              translationConditions.forEach(condition => {
-                searchConditions.push({
-                  _and: [
-                    { translations: { languages_code: { _eq: languageCode } } },
-                    { translations: condition }
-                  ]
-                });
-              });
-            }
-            
-            // Also search in main fields
-            if (availableFields.value?.length > 0) {
-              availableFields.value.forEach(field => {
-                if (['string', 'text'].includes(field.type) && !isFieldTranslatable(field.field)) {
-                  searchConditions.push({
-                    [field.field]: { _contains: searchQuery.value }
-                  });
-                }
-              });
-            }
-            
-            if (searchConditions.length > 0) {
-              params.filter = { _or: searchConditions };
-            } else {
-              // Fallback to normal search if no conditions
-              params.search = searchQuery.value;
-            }
-          } else {
-            // Normal fulltext search
-            params.search = searchQuery.value;
-          }
+        }
+        
+        // Add fulltext search for unparsed text if present
+        if (parseResult.unparsedText) {
+          params.search = parseResult.unparsedText;
         }
       }
 
@@ -407,6 +443,14 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       if (params.deep) {
         params.deep = JSON.stringify(params.deep);
       }
+      
+      logDebug('API request params', {
+        collection: selectedCollection.value,
+        filter: params.filter,
+        search: params.search,
+        hasFilter: !!params.filter,
+        hasSearch: !!params.search
+      });
       
       const response = await api.get(`/expandable-blocks-api/${selectedCollection.value}/search`, { 
         params,

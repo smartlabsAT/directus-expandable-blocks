@@ -16,6 +16,15 @@ export default [
         sourceType: 'module'
       },
       globals: {
+        // Vue 3 Compiler Macros (auto-imported)
+        defineProps: 'readonly',
+        defineEmits: 'readonly',
+        defineExpose: 'readonly',
+        defineOptions: 'readonly',
+        defineSlots: 'readonly',
+        defineModel: 'readonly',
+        withDefaults: 'readonly',
+        
         // Node.js globals
         process: 'readonly',
         console: 'readonly',
@@ -101,6 +110,20 @@ export default [
       'vue/no-v-html': 'off',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off' // Use TypeScript's version instead
+    }
+  },
+  // Special rules for test files
+  {
+    files: ['test/**/*.{js,ts}', '**/*.spec.{js,ts}', '**/*.test.{js,ts}'],
+    rules: {
+      'no-console': 'off' // Allow all console methods in test files
+    }
+  },
+  // Special rules for logger files
+  {
+    files: ['**/logger.ts', '**/logger-wrapper.ts'],
+    rules: {
+      'no-console': 'off' // Logger files need console access
     }
   },
   {

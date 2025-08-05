@@ -1,7 +1,6 @@
 import type { Response, NextFunction } from 'express';
 import { DirectusCacheWrapper } from '../services/DirectusCacheWrapper';
 import type { CacheServiceConfig } from '../types/CacheTypes';
-import { CacheTTL } from '../types/CacheTypes';
 
 // Singleton cache instance
 let cacheInstance: DirectusCacheWrapper | null = null;
@@ -17,12 +16,12 @@ function getGlobalCacheConfig(): Partial<CacheServiceConfig> {
   
   if (hasEnvConfig) {
     return {
-      defaultTTL: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL'] || '600000'), // 10 min default
+      defaultTTL: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_DEFAULT_TTL'] || '30000'), // 30 sec default
       ttlOverrides: {
-        metadata: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_METADATA'] || '30') * 60 * 1000,
-        search: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH'] || '5') * 60 * 1000,
-        detail: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL'] || '10') * 60 * 1000,
-        paths: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_PATHS'] || '10') * 60 * 1000
+        metadata: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_METADATA'] || '0.5') * 60 * 1000,
+        search: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_SEARCH'] || '0.5') * 60 * 1000,
+        detail: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_DETAIL'] || '0.5') * 60 * 1000,
+        paths: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_TTL_PATHS'] || '0.5') * 60 * 1000
       },
       maxKeys: parseInt(process.env['EXPANDABLE_BLOCKS_CACHE_MAX_SIZE'] || '50000'),
       prefix: 'expandable_blocks'
@@ -30,12 +29,12 @@ function getGlobalCacheConfig(): Partial<CacheServiceConfig> {
   }
   
   return {
-    defaultTTL: CacheTTL.MEDIUM, // 10 minutes
+    defaultTTL: 30 * 1000, // 30 seconds
     ttlOverrides: {
-      metadata: 30 * 60 * 1000, // 30 minutes
-      search: 5 * 60 * 1000,    // 5 minutes
-      detail: 10 * 60 * 1000,   // 10 minutes
-      paths: 10 * 60 * 1000     // 10 minutes
+      metadata: 30 * 1000,    // 30 seconds
+      search: 30 * 1000,      // 30 seconds
+      detail: 30 * 1000,      // 30 seconds
+      paths: 30 * 1000        // 30 seconds
     },
     maxKeys: 50000,
     prefix: 'expandable_blocks'

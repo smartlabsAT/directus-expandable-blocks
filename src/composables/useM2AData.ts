@@ -511,20 +511,26 @@ export function useM2AData(
             markBlockDirty(itemId, false);
           }
         }
-      } else if (!isInternalUpdate.value) {
-        // For non-initial loads
+      } else if (!isInternalUpdate.value || isAfterSave) {
+        // For non-initial loads OR after save events
         const itemData = record.item || record;
         if (itemData && typeof itemData === 'object') {
-          // After a save, always update original state to the new saved state
-          if (isAfterSave || !blockOriginalStates.value.has(itemId)) {
-            updateOriginalState(itemId, { ...itemData });
-          }
-          // After a save, mark all blocks as clean
+          // After a save, ALWAYS update original state to the new saved state
           if (isAfterSave) {
+            updateOriginalState(itemId, { ...itemData });
             markBlockDirty(itemId, false);
-          } else if (!blockDirtyStates.value.has(itemId)) {
-            // Otherwise, only set dirty state if it doesn't exist
-            markBlockDirty(itemId, false);
+          } else if (!blockOriginalStates.value.has(itemId)) {
+            // For new blocks without original state
+            updateOriginalState(itemId, { ...itemData });
+            // Set clean unless already marked dirty
+            if (!blockDirtyStates.value.has(itemId)) {
+              markBlockDirty(itemId, false);
+            }
+          } else {
+            // Block exists with original state - preserve dirty state if it exists
+            if (!blockDirtyStates.value.has(itemId)) {
+              markBlockDirty(itemId, false);
+            }
           }
         }
       }

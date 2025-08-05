@@ -21,9 +21,9 @@ export const CacheTTLHelper = {
   hours: (n: number) => n * 60 * 60 * 1000,
 
   // Presets (in milliseconds)
-  SHORT: 5 * 60 * 1000,      // 5 minutes
-  MEDIUM: 60 * 60 * 1000,    // 1 hour
-  LONG: 24 * 60 * 60 * 1000, // 24 hours
+  SHORT: 30 * 1000,           // 30 seconds
+  MEDIUM: 30 * 1000,          // 30 seconds
+  LONG: 30 * 1000,            // 30 seconds
   NONE: 0,                     // No expiration
 } as const;
 

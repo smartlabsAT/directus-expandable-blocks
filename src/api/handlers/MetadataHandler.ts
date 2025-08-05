@@ -121,6 +121,15 @@ export class MetadataHandler {
         field_name: field.name,
         type: field.type
       })),
+      // Include all displayable fields (for "Select fields to display" feature)
+      displayableFields: fieldAnalysis.displayableFields?.map((field: any) => ({
+        field: field.field,
+        field_name: field.name,
+        type: field.type,
+        interface: field.interface,
+        searchable: field.searchable || false,
+        translatable: field.translatable || false
+      })) || [],
       translationInfo: fieldAnalysis.translationInfo,
       collectionMetadata: fieldAnalysis.collectionMetadata,
       cached_at: new Date().toISOString()

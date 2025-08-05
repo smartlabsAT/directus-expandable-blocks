@@ -1,10 +1,14 @@
 <template>
-  <!-- Drag Handle -->
+  <!-- Drag Handle or Spacer -->
   <v-icon
     v-if="sortable && !disabled"
     name="drag_indicator"
     class="drag-handle"
     @click.stop
+  />
+  <div
+    v-else-if="sortable"
+    class="drag-handle-spacer"
   />
 
   <!-- Collection Icon with Dirty/New Indicator -->
@@ -19,6 +23,11 @@
       v-tooltip="'New block'"
     />
     <div
+      v-else-if="isDeleted"
+      class="deleted-indicator"
+      v-tooltip="'Deleted item'"
+    />
+    <div
       v-else-if="isDirty"
       class="dirty-indicator"
       v-tooltip="'Unsaved changes'"
@@ -28,9 +37,12 @@
   <!-- Main Info Section -->
   <div class="block-info">
     <div class="block-main">
-      <span class="block-title">
+      <span class="block-title" :class="{ 'deleted-title': isDeleted }">
         <template v-if="canRead === false">
           <v-icon name="block" x-small /> No permission
+        </template>
+        <template v-else-if="isDeleted">
+          Deleted Item
         </template>
         <template v-else>{{ title }}</template>
       </span>
@@ -102,6 +114,7 @@ interface Props {
   collectionIcon: string | null;
   isNew: boolean;
   isDirty: boolean;
+  isDeleted?: boolean;
   title: string;
   collectionName: string;
   showItemId: boolean;
@@ -168,5 +181,10 @@ const usageTooltip = computed(() => {
   :deep(.v-icon) {
     opacity: 0.7;
   }
+}
+
+.drag-handle-spacer {
+  width: 24px; /* Same width as the drag handle icon */
+  display: inline-block;
 }
 </style>

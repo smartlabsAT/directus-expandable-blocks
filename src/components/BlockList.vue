@@ -19,6 +19,7 @@
           :compact-mode="compactMode"
           :can-read="canReadItem(item)"
           :can-update="canUpdateItem(item)"
+          :is-deleted="isDeletedItem(item)"
           :usage-data="getBlockUsageData(item)"
           @toggle-expand="$emit('toggle-expand', getItemId(item))"
           @update-item="$emit('update-item', index, $event)"
@@ -29,7 +30,8 @@
               :disabled="disabled"
               :collection-icon="getCollectionIcon(item)"
               :is-new="isNewItem(item)"
-              :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
+              :is-dirty="(canReadItem(item) && isBlockDirty(getItemId(item), item.item)) || isDeletedItem(item)"
+              :is-deleted="isDeletedItem(item)"
               :title="getItemTitle(item)"
               :collection-name="getCollectionName(item)"
               :show-item-id="showItemId"
@@ -59,7 +61,9 @@
                 <block-actions
                   :allow-duplicate="allowDuplicate && canUpdateItem(item)"
                   :allow-delete="allowDelete && canDeleteItem(item)"
-                  :is-dirty="canReadItem(item) && isBlockDirty(getItemId(item), item.item)"
+                  :is-dirty="(canReadItem(item) && isBlockDirty(getItemId(item), item.item)) || isDeletedItem(item)"
+                  :is-deleted="isDeletedItem(item)"
+                  :is-new="isNewItem(item)"
                   @duplicate="$emit('duplicate', item, index)"
                   @discard-changes="$emit('discard-changes', item, index)"
                   @unlink="$emit('unlink', item, index)"
@@ -156,6 +160,7 @@ const getBlockUsageData = (item: JunctionRecord) => props.expandableBlocks.getBl
 const canReadItem = (item: JunctionRecord) => props.expandableBlocks.canReadItem(item);
 const canUpdateItem = (item: JunctionRecord) => props.expandableBlocks.canUpdateItem(item);
 const canDeleteItem = (item: JunctionRecord) => props.expandableBlocks.canDeleteItem(item);
+const isDeletedItem = (item: JunctionRecord) => props.expandableBlocks.isDeletedItem(item);
 
 // Check if any block has usage indicators
 const hasAnyUsageIndicator = computed(() => {

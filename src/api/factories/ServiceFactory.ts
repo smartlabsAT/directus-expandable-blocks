@@ -167,10 +167,16 @@ export class ServiceFactory {
       .from('directus_relations')
       .where(function () {
         this.where('one_collection', collection)
-          .orWhere('one_allowed_collections', '=', collection)
-          .orWhere('one_allowed_collections', 'like', `${collection},%`)
-          .orWhere('one_allowed_collections', 'like', `%,${collection},%`)
-          .orWhere('one_allowed_collections', 'like', `%,${collection}`);
+          // For M2A relations, one_collection is NULL and collection is in one_allowed_collections
+          .orWhere(function() {
+            this.whereNull('one_collection')
+              .andWhere(function() {
+                this.where('one_allowed_collections', '=', collection)
+                  .orWhere('one_allowed_collections', 'like', `${collection},%`)
+                  .orWhere('one_allowed_collections', 'like', `%,${collection},%`)
+                  .orWhere('one_allowed_collections', 'like', `%,${collection}`);
+              });
+          });
       })
       .whereNot(function () {
         this.where('many_collection', collection)

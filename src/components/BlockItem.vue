@@ -6,7 +6,8 @@
       compact: compactMode,
       disabled: disabled,
       'read-only': canUpdate === false,
-      'no-permission': canRead === false
+      'no-permission': canRead === false,
+      'deleted-item': isDeleted
     }"
   >
     <!-- Block Header -->
@@ -37,9 +38,19 @@
           </v-notice>
 
           <template v-else>
+            <!-- Deleted Item Notice -->
+            <v-notice
+              v-if="isDeleted"
+              type="danger"
+              icon="delete"
+              class="deleted-notice"
+            >
+              This item has been deleted. You can only unlink it from this list.
+            </v-notice>
+
             <!-- Usage Warning -->
             <v-notice
-              v-if="usageData && usageData.usageCount > 0"
+              v-else-if="usageData && usageData.usageCount > 0"
               type="warning"
               icon="warning"
               class="usage-warning"
@@ -70,6 +81,7 @@
             </v-notice>
 
             <v-form
+              v-if="!isDeleted"
               :initial-values="itemData"
               :fields="fields"
               :model-value="itemData"
@@ -98,17 +110,29 @@ interface Props {
   item: JunctionRecord;
   isExpanded: boolean;
   loading: boolean;
-  fields: any[];
+  fields: Array<{
+    field: string;
+    name?: string;
+    type?: string;
+    meta?: Record<string, unknown>;
+    schema?: Record<string, unknown>;
+  }>;
   disabled: boolean;
   compactMode?: boolean;
   canRead?: boolean;
   canUpdate?: boolean;
+  isDeleted?: boolean;
   usageData?: {
     usageCount: number;
     externalCount: number;
     internalCount: number;
-    usageLocations?: any[];
-    usageSummary?: any;
+    usageLocations?: Array<{
+      collection: string;
+      id: string | number;
+      field?: string;
+      title?: string;
+    }>;
+    usageSummary?: Record<string, unknown>;
   } | null;
 }
 
@@ -118,7 +142,7 @@ const itemData = computed(() => props.item.item || props.item);
 
 defineEmits<{
   'toggle-expand': [];
-  'update-item': [newData: any];
+  'update-item': [newData: Record<string, unknown>];
 }>();
 </script>
 
@@ -135,9 +159,21 @@ defineEmits<{
   margin-bottom: 20px;
 }
 
+.deleted-notice {
+  margin-bottom: 20px;
+}
+
 .block-header.no-permission {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.deleted-item {
+  opacity: 0.6;
+  
+  .block-header {
+    background: var(--background-normal-alt) !important;
+  }
 }
 </style>
 

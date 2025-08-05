@@ -117,7 +117,9 @@ export class FieldAnalyzer {
   private readonly logger: Logger;
 
   private analysisCache: Map<string, { timestamp: number; data: any }> = new Map();
-  private cacheTimeout = 5 * 60 * 1000;
+  private cacheTimeout = process.env.NODE_ENV === 'development' 
+    ? 10 * 1000  // 10 seconds in development for faster updates
+    : 30 * 1000; // 30 seconds in production for better performance
 
   constructor(config: FieldAnalyzerConfig) {
     this.services = config.services;
@@ -140,7 +142,10 @@ export class FieldAnalyzer {
   async analyzeCollectionComplete(collection: string, options?: {
     fieldOptions?: FieldAnalyzerOptions; translationOptions?: TranslationAnalysisOptions;
   }): Promise<{
-    searchableFields: SearchableField[]; translationInfo: TranslationInfo; collectionMetadata: {
+    searchableFields: SearchableField[]; 
+    displayableFields: SearchableField[]; // All fields that can be displayed (including dropdowns, colors, etc.)
+    translationInfo: TranslationInfo; 
+    collectionMetadata: {
       totalFields: number; translatableCount: number; systemFieldsCount: number;
     };
   }> {
@@ -160,6 +165,7 @@ export class FieldAnalyzer {
       if (!allFields || allFields.length === 0) {
         return {
           searchableFields: [],
+          displayableFields: [],
           translationInfo: {
             hasTranslations: false,
             translationType: TranslationType.NONE
@@ -175,6 +181,9 @@ export class FieldAnalyzer {
       const translationInfo = await this.analyzeTranslations(collection, options?.translationOptions);
 
       const searchableFields = await this.processSearchableFields(allFields, translationInfo, options?.fieldOptions || {});
+      
+      // Process displayable fields (all fields that can be shown in the UI, including select dropdowns, colors, etc.)
+      const displayableFields = await this.processDisplayableFields(allFields, translationInfo);
 
       const collectionMetadata = {
         totalFields: allFields.length,
@@ -183,7 +192,10 @@ export class FieldAnalyzer {
       };
 
       const result = {
-        searchableFields, translationInfo, collectionMetadata,
+        searchableFields, 
+        displayableFields,
+        translationInfo, 
+        collectionMetadata,
       };
 
       this.setCachedResult(cacheKey, result);
@@ -224,6 +236,57 @@ export class FieldAnalyzer {
 
     if (!options.includeHidden && field.meta?.hidden) {
       return false;
+    }
+
+    // First, check if this is a searchable field type
+    const searchableTypes = ['string', 'text', 'csv', 'hash', 'uuid'];
+    
+    // Only these types are searchable with _contains operator
+    if (!searchableTypes.includes(field.type)) {
+      return false; // Not a searchable type
+    }
+    
+    // For searchable types, check metadata to determine if field should be excluded
+    if (field.type === 'string' || field.type === 'text') {
+      // Check if field has select-type interface
+      const selectInterfaces = [
+        'select-dropdown',
+        'select-dropdown-m2o',
+        'select-radio',
+        'select-multiple-checkbox',
+        'select-multiple-dropdown',
+        'select-color'
+      ];
+      
+      if (field.meta?.interface && selectInterfaces.includes(field.meta.interface)) {
+        return false; // Select interface = not suitable for text search
+      }
+      
+      // Check if field has predefined choices
+      if (field.meta?.options?.choices && Array.isArray(field.meta.options.choices) && field.meta.options.choices.length > 0) {
+        return false; // Has predefined options = not suitable for full-text search
+      }
+      
+      // Check for other non-text interfaces
+      const nonTextInterfaces = [
+        'boolean',
+        'toggle',
+        'datetime',
+        'date',
+        'time',
+        'timestamp',
+        'file',
+        'files',
+        'image',
+        'color',
+        'icon',
+        'slider',
+        'rating'
+      ];
+      
+      if (field.meta?.interface && nonTextInterfaces.includes(field.meta.interface)) {
+        return false; // Non-text interface
+      }
     }
 
     if (options.types.length > 0 && !options.types.includes(field.type)) {
@@ -289,6 +352,105 @@ export class FieldAnalyzer {
     }
 
     return searchableField;
+  }
+
+  /**
+   * Process all fields for display purposes (including dropdowns, colors, etc.)
+   * This method returns ALL fields that can be shown in the UI, not just searchable ones
+   */
+  private async processDisplayableFields(
+    allFields: RawField[],
+    translationInfo: TranslationInfo
+  ): Promise<SearchableField[]> {
+    const displayableFields: SearchableField[] = [];
+    
+    for (const field of allFields) {
+      // Skip only system fields that should never be displayed
+      if (isSystemField(field.field)) {
+        // But allow some system fields that users might want to see
+        if (!['id', 'user_created', 'date_created', 'user_updated', 'date_updated'].includes(field.field)) {
+          continue;
+        }
+      }
+      
+      // Skip truly hidden fields
+      if (field.meta?.hidden && field.field !== 'status') {
+        continue; // status is often hidden but still useful to display
+      }
+      
+      // Skip alias/presentation-only fields
+      if (field.type === 'alias' && field.meta?.interface !== 'presentation-divider') {
+        continue;
+      }
+      
+      // Transform to SearchableField format for consistency
+      const displayableField = this.transformToSearchableField(field);
+      
+      // Mark if field is actually searchable (for UI hints)
+      displayableField.searchable = this.isFieldSearchable(field);
+      
+      // Check if field is translatable
+      if (translationInfo.hasTranslations) {
+        displayableField.translatable = this.isFieldTranslatable(field, translationInfo);
+      }
+      
+      displayableFields.push(displayableField);
+    }
+    
+    return displayableFields;
+  }
+  
+  /**
+   * Check if a field is searchable (can be used in text search)
+   */
+  private isFieldSearchable(field: RawField): boolean {
+    // Only these types are searchable with _contains operator
+    const searchableTypes = ['string', 'text', 'csv', 'hash', 'uuid'];
+    if (!searchableTypes.includes(field.type)) {
+      return false;
+    }
+    
+    // Check for select-type interfaces (not suitable for text search)
+    if (field.type === 'string' || field.type === 'text') {
+      const selectInterfaces = [
+        'select-dropdown',
+        'select-dropdown-m2o',
+        'select-radio',
+        'select-multiple-checkbox',
+        'select-multiple-dropdown',
+        'select-color'
+      ];
+      
+      if (field.meta?.interface && selectInterfaces.includes(field.meta.interface)) {
+        return false;
+      }
+      
+      // Check if field has predefined choices
+      if (field.meta?.options?.choices && Array.isArray(field.meta.options.choices) && field.meta.options.choices.length > 0) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Check if a field is translatable based on translation info
+   */
+  private isFieldTranslatable(field: RawField, translationInfo: TranslationInfo): boolean {
+    if (!translationInfo.hasTranslations) return false;
+    
+    // Check if field is in the list of translatable fields
+    if (translationInfo.translationFields) {
+      return translationInfo.translationFields.some((f: any) => f.field === field.field);
+    }
+    
+    // Default check for common translatable field types
+    if (field.type === 'json' && field.meta?.interface === 'translations') {
+      return true;
+    }
+    
+    return false;
   }
 
   // ============================================================================

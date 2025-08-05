@@ -159,7 +159,7 @@ export class M2AHelper {
       // If there are nested M2A fields, load them recursively
       if (fieldInfo.hasNestedM2A && depth < maxDepth) {
         for (const record of records) {
-          if (record.item && typeof record.item === 'object') {
+          if (record.item && typeof record.item === 'object' && record.item !== null) {
             const itemCollection = record.collection;
             const nestedFieldInfo = fieldInfo.nestedM2AFields?.[itemCollection];
             

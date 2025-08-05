@@ -48,6 +48,7 @@ export class SearchHandler {
       const filter = validateFilter(req.query['filter']);
       const sort = validateSort(req.query['sort']);
       const search = req.query['search'] as string | undefined;
+      const deep = req.query['deep'] ? JSON.parse(req.query['deep'] as string) : undefined;
 
       // Get item loader service
       const itemLoader = await this.serviceFactory.getItemLoader();
@@ -60,6 +61,7 @@ export class SearchHandler {
         ...(search !== undefined && { search }),
         ...(filter !== undefined && { filter }),
         ...(sort !== undefined && { sort }),
+        ...(deep !== undefined && { deep }),
         expandTranslations: true  // Always expand translations for search
       };
 

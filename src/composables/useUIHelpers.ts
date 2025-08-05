@@ -61,6 +61,7 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
       .filter((field: any) => {
         if (field.meta?.hidden || field.meta?.readonly) return false;
         if (METADATA_FIELDS.includes(field.field)) return false;
+        if (field.field === 'status') return false; // Status is shown in block header
         if (!field.meta?.interface) return false;
         
         if (mergedOptions.value?.showFieldsFilter && mergedOptions.value?.showFieldsFilter.length > 0) {
@@ -84,6 +85,14 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   function getItemStatus(item: JunctionRecord): string {
     const actualItem = getActualItem(item);
+    // Handle null/deleted items
+    if (!actualItem || actualItem === null) {
+      return 'deleted';  // or 'unknown' or whatever makes sense
+    }
+    // Handle items that are just IDs
+    if (typeof actualItem === 'string' || typeof actualItem === 'number') {
+      return 'draft';  // Default status for items without data
+    }
     return (actualItem as ItemRecord).status || 'draft';
   }
 
@@ -94,7 +103,8 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
 
   // Nested M2A helpers
   function hasNestedM2A(item: JunctionRecord): boolean {
-    if (!item.item || typeof item.item !== 'object') return false;
+    // Handle null/deleted items
+    if (!item || !item.item || item.item === null || typeof item.item !== 'object') return false;
     if (!m2aStructure.value?.nestedM2AFields) return false;
     
     const collection = item.collection;
@@ -102,7 +112,8 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
   }
 
   function getM2AFields(item: JunctionRecord): Record<string, any> {
-    if (!item.item || typeof item.item !== 'object') return {};
+    // Handle null/deleted items
+    if (!item || !item.item || item.item === null || typeof item.item !== 'object') return {};
     
     const m2aFields: Record<string, any> = {};
     
@@ -113,6 +124,11 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
     }
     
     return m2aFields;
+  }
+
+  // Check if item is deleted
+  function isDeletedItem(item: JunctionRecord): boolean {
+    return item && item.item === null;
   }
 
   // Formatting helpers
@@ -140,6 +156,9 @@ export function useUIHelpers(ctx: ExpandableBlocksContext) {
     // Nested M2A helpers
     hasNestedM2A,
     getM2AFields,
+    
+    // Item state helpers
+    isDeletedItem,
     
     // Formatting
     formatFieldName

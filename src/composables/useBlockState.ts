@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { ref, computed, type Ref } from 'vue';
 import { logger } from '../utils/logger-wrapper';
 import { deepClone, deepEqual } from '../utils/helpers';
 import { isTemporaryId } from '../utils/validation';
@@ -28,6 +28,13 @@ export function useBlockState(_relationInfo?: Ref<any>) {
   const isInitialLoad = ref(true);
   const isInternalUpdate = ref(false);
   const isFullyInitialized = ref(false);
+  
+  // Computed: deleted items
+  const deletedItems = computed(() => {
+    return items.value.filter(item => item && item.item === null);
+  });
+  
+  const deletedItemsCount = computed(() => deletedItems.value.length);
 
 
   /**
@@ -335,6 +342,8 @@ export function useBlockState(_relationInfo?: Ref<any>) {
     isInitialLoad,
     isInternalUpdate,
     isFullyInitialized,
+    deletedItems,
+    deletedItemsCount,
     
     // Core functions
     isBlockDirty,

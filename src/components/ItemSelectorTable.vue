@@ -18,10 +18,10 @@
         <div v-if="showTitleColumn"
              class="table-cell title-cell header-title-cell"
              :class="{ 
-               'is-sortable': true,
+               'is-sortable': isTitleColumnSortable,
                'is-sorted': isTitleFieldSorted 
              }"
-             @click="handleTitleClick">
+             @click="isTitleColumnSortable && handleTitleClick()">
           <span class="field-header-label title-header-label">
             <v-icon 
                 v-if="isTitleFieldSorted"
@@ -55,14 +55,16 @@
                 small
                 class="sort-icon"
             />
-            <span class="field-label-text">{{ getFieldLabel(field) }}</span>
-            <v-icon 
-                v-if="isFieldTranslatable && isFieldTranslatable(field)" 
-                name="translate" 
-                x-small
-                v-tooltip.top="'Translatable field'"
-                class="field-translation-icon"
-            />
+            <span class="field-label-text">
+              {{ getFieldLabel(field) }}
+              <v-icon 
+                  v-if="isFieldTranslatable && isFieldTranslatable(field)" 
+                  name="translate" 
+                  x-small
+                  v-tooltip.top="'Translatable field'"
+                  class="field-translation-icon"
+              />
+            </span>
           </span>
           <v-button
               v-show="hoveredField === field || activeColumnSettings === field"
@@ -110,7 +112,6 @@
             'is-selected': isSelected(item),
             'has-relations': hasRelations(item)
           }"
-          @click="toggleSelection(item)"
       >
         <!-- Checkbox Column -->
         <div class="table-cell checkbox-cell">
@@ -136,9 +137,6 @@
             <!-- Update Info -->
             <span v-if="showLastUpdate && item?.date_updated" class="update-info">
               {{ formatRelativeTime(item.date_updated) }}
-              <span v-if="item?.user_updated">
-                by {{ getUserDisplayName(item.user_updated) }}
-              </span>
             </span>
           </div>
         </div>
@@ -361,7 +359,18 @@ const actualTitleField = computed(() => {
   
   // Check first item to detect which title field is used
   const firstItem = props.items[0];
-  return detectTitleField(firstItem);
+  const detectedField = detectTitleField(firstItem);
+  
+  // Verify that the detected field is actually available in the collection
+  if (detectedField && props.availableFields) {
+    const fieldExists = props.availableFields.some(f => f.field === detectedField);
+    if (!fieldExists) {
+      // The detected field doesn't exist in availableFields, don't use it
+      return null;
+    }
+  }
+  
+  return detectedField;
 });
 
 // Computed: Check if the title field is sorted
@@ -372,6 +381,14 @@ const isTitleFieldSorted = computed(() => {
 // Computed: Check if we should show the title column
 const showTitleColumn = computed(() => {
   return actualTitleField.value !== null;
+});
+
+// Computed: Check if the title column is sortable
+const isTitleColumnSortable = computed(() => {
+  if (!actualTitleField.value) return false;
+  
+  // Check if the actual title field is sortable
+  return isFieldSortable(actualTitleField.value);
 });
 
 // Grid Template Columns - dynamically calculate column widths
@@ -451,6 +468,7 @@ function isFieldSortable(field: string): boolean {
     return false;
   }
   
+  // Translation fields ARE sortable - we use nested path (translations.fieldname)
   return true;
 }
 
@@ -522,18 +540,6 @@ function formatRelativeTime(dateString: string): string {
   } else {
     return 'now';
   }
-}
-
-function getUserDisplayName(user: any): string {
-  if (!user) return '';
-  
-  if (user.first_name || user.last_name) {
-    return [user.first_name, user.last_name].filter(Boolean).join(' ');
-  } else if (user.email) {
-    return user.email.split('@')[0];
-  }
-  
-  return 'Unknown';
 }
 
 // Column width adjustment methods
@@ -882,7 +888,7 @@ function handleTitleClick() {
   align-items: center;
   gap: 4px;
   flex: 1;
-  padding-right: 28px; /* Space for absolute positioned button */
+  padding-right: 3px; /* Space for absolute positioned button */
   padding-left: 18px; /* Space for sort icon - slightly more */
   min-width: 0;
   position: relative;
@@ -895,12 +901,17 @@ function handleTitleClick() {
   white-space: nowrap;
   min-width: 0;
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .field-translation-icon {
   color: var(--primary);
   opacity: 0.7;
   flex-shrink: 0;
+  display: inline-flex;
+  margin-left: 2px;
 }
 
 /* Special handling for title header label */
@@ -928,6 +939,10 @@ function handleTitleClick() {
 /* Non-sortable headers */
 .header-field-cell:not(.is-sortable) {
   cursor: default;
+  
+  .field-label-text {
+    opacity: 0.8;
+  }
 }
 
 /* Sort Icon */
@@ -977,6 +992,7 @@ function handleTitleClick() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  max-width: 100%;
 }
 
 /* Title with Status Container */
@@ -984,6 +1000,8 @@ function handleTitleClick() {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0; /* Allow flex children to shrink for ellipsis */
+  width: 100%;
 }
 
 /* Item Title */
@@ -994,6 +1012,8 @@ function handleTitleClick() {
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  flex: 1; /* Take available space */
+  min-width: 0; /* Critical for ellipsis in flex containers */
 }
 
 /* Update Info */

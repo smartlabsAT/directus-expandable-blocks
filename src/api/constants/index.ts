@@ -51,10 +51,10 @@ export const FIELD_CONSTANTS = {
  * Cache Time-To-Live values (in seconds)
  */
 export const CACHE_TTL = {
-  SHORT: 300,      // 5 minutes
-  MEDIUM: 1800,    // 30 minutes
-  LONG: 3600,      // 1 hour
-  VERY_LONG: 86400 // 24 hours
+  SHORT: 30,       // 30 seconds
+  MEDIUM: 30,      // 30 seconds
+  LONG: 30,        // 30 seconds
+  VERY_LONG: 30    // 30 seconds
 } as const;
 
 /**
@@ -156,7 +156,7 @@ export const HEADERS = {
 /**
  * API Version
  */
-export const API_VERSION = '1.0.0';
+export const API_VERSION = '1.1.0';
 
 /**
  * Default CORS Origins (if not configured via environment)

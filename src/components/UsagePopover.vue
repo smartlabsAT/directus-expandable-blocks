@@ -95,7 +95,7 @@ import { extractItemTitle } from '../utils/helpers';
 interface UsageItem {
   id: string | number;
   title?: string;
-  path?: string | any[];
+  path?: string | Array<{ collection: string; id: string | number; field?: string; }>;
   edit_url?: string;
   breadcrumbs?: Array<{
     label: string;
@@ -104,7 +104,7 @@ interface UsageItem {
     url?: string;
     icon?: string;
   }>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface UsageRelation {
@@ -171,7 +171,7 @@ function openInNewTab(collection: string, item: UsageItem) {
   window.open(url, '_blank');
 }
 
-function getPathArray(item: UsageItem): any[] {
+function getPathArray(item: UsageItem): Array<{ collection: string; id: string | number; field?: string; }> {
   // Check if path is an array (new format from API)
   if (Array.isArray(item.path)) {
     return item.path;
@@ -183,7 +183,7 @@ function getPathArray(item: UsageItem): any[] {
   return [];
 }
 
-function formatPathAsBreadcrumbs(pathArray: any[]) {
+function formatPathAsBreadcrumbs(pathArray: Array<{ collection: string; id: string | number; field?: string; }>) {
   if (!pathArray || pathArray.length === 0) return [];
   
   // Skip the first item (current item) to avoid duplication with the title

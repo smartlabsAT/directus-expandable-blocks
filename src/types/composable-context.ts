@@ -21,6 +21,7 @@ export interface BlockStateContext {
   isInternalUpdate: Ref<boolean>;
   isInitialLoad: Ref<boolean>;
   isFullyInitialized: Ref<boolean>;
+  deletedItemsCount: ComputedRef<number>;
 }
 
 /**

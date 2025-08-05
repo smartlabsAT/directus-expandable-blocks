@@ -23,7 +23,7 @@ A clear description of what actually happened.
 
 ## 📱 Environment
 - **Directus Version**: [e.g. 11.2.0]
-- **Extension Version**: [e.g. 1.0.0]
+- **Extension Version**: [e.g. 1.1.0]
 - **Browser**: [e.g. Chrome 120, Safari 17]
 - **OS**: [e.g. macOS 14, Windows 11, Ubuntu 22.04]
 - **Device**: [e.g. Desktop, iPhone 15, iPad Pro]

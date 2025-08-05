@@ -54,14 +54,83 @@ export class ItemLoader {
         ? await this.expandTranslationFields(collection, normalizedQuery.fields)
         : normalizedQuery.fields;
 
+      // Handle search with translation support
+      let modifiedFilter = normalizedQuery.filter;
+      let modifiedSearch = normalizedQuery.search;
+      
+      if (normalizedQuery.search) {
+        // Check if collection has translations
+        if (!this.fieldAnalyzer) {
+          this.fieldAnalyzer = new FieldAnalyzer({
+            services: this.services,
+            schema: this.schema,
+            database: this.database,
+            accountability: this.accountability
+          });
+        }
+        const analysisResult = await this.fieldAnalyzer.analyzeCollectionComplete(collection);
+        
+        if (analysisResult.translationInfo?.hasTranslations) {
+          // Build a filter that searches in both main fields and translations
+          const searchConditions: any[] = [];
+          
+          // Add searchable main fields
+          if (analysisResult.searchableFields?.length > 0) {
+            analysisResult.searchableFields.forEach(field => {
+              // Skip translatable fields to avoid duplicates
+              if (!field.translatable) {
+                searchConditions.push({
+                  [field.field]: { _icontains: normalizedQuery.search }
+                });
+              }
+            });
+          }
+          
+          // Add translation fields
+          if (analysisResult.translationInfo?.translationFields && analysisResult.translationInfo.translationFields.length > 0) {
+            analysisResult.translationInfo.translationFields.forEach(field => {
+              if (['string', 'text'].includes(field.type)) {
+                // Add each translation field as a separate condition
+                searchConditions.push({
+                  translations: {
+                    [field.field]: { _icontains: normalizedQuery.search }
+                  }
+                });
+              }
+            });
+          }
+          
+          // Create the search filter
+          if (searchConditions.length > 0) {
+            const searchFilter = { _or: searchConditions };
+            
+            // Combine with existing filter if present
+            if (modifiedFilter) {
+              modifiedFilter = { _and: [modifiedFilter, searchFilter] };
+            } else {
+              modifiedFilter = searchFilter;
+            }
+            
+            // Clear the search parameter since we're using filter instead
+            modifiedSearch = '';
+          }
+        }
+      }
+
+      // Validate and prepare sort fields
+      let validatedSort = normalizedQuery.sort;
+      if (validatedSort.length > 0) {
+        validatedSort = await this.validateSortFields(collection, validatedSort);
+      }
+
       const itemsService = this.createItemsService(collection);
       const queryOptions: any = {
         limit: normalizedQuery.limit,
         offset: normalizedQuery.offset,
         fields: expandedFields,
-        filter: normalizedQuery.filter,
-        search: normalizedQuery.search,
-        sort: normalizedQuery.sort.length > 0 ? normalizedQuery.sort : ['id']
+        filter: modifiedFilter,
+        search: modifiedSearch,
+        sort: validatedSort.length > 0 ? validatedSort : ['id']
       };
       
       if (normalizedQuery.deep) {
@@ -76,8 +145,8 @@ export class ItemLoader {
         this.getTotalCount(collection),
         this.getFilteredCount({
           collection,
-          filter: normalizedQuery.filter,
-          search: normalizedQuery.search
+          filter: modifiedFilter,
+          search: modifiedSearch
         })
       ]);
 
@@ -366,4 +435,79 @@ export class ItemLoader {
       page_count: pageCount
     };
   }
+
+  /**
+   * Validate sort fields and replace invalid ones with 'id'
+   */
+  private async validateSortFields(collection: string, sortFields: string[]): Promise<string[]> {
+    try {
+      // Get collection fields from schema
+      const collectionSchema = this.schema?.collections?.[collection];
+      if (!collectionSchema || !collectionSchema.fields) {
+        // If we can't get schema, fallback to 'id' sort
+        this.logger.warn('No schema found for collection, using id sort', { collection });
+        return ['id'];
+      }
+
+      const collectionFields = Object.keys(collectionSchema.fields);
+      const validatedFields: string[] = [];
+
+      for (const sortField of sortFields) {
+        // Extract field name and direction
+        const isDescending = sortField.startsWith('-');
+        const fieldName = isDescending ? sortField.substring(1) : sortField;
+        
+        // Handle nested fields (e.g., translations.title)
+        if (fieldName.includes('.')) {
+          const [relationField] = fieldName.split('.');
+          
+          // Check if the relation field exists
+          if (collectionFields.includes(relationField)) {
+            // For valid relation fields, trust that Directus will handle the nested path
+            validatedFields.push(sortField);
+          } else {
+            // Invalid relation field, use 'id' as fallback
+            this.logger.warn('Invalid relation field in sort, using id fallback', { 
+              collection, 
+              sortField,
+              relationField 
+            });
+            if (!validatedFields.includes('id') && !validatedFields.includes('-id')) {
+              validatedFields.push(isDescending ? '-id' : 'id');
+            }
+          }
+        } else {
+          // Simple field - check if it exists
+          if (collectionFields.includes(fieldName) || fieldName === 'id') {
+            validatedFields.push(sortField);
+          } else {
+            // Field doesn't exist, use 'id' as fallback
+            this.logger.warn('Invalid sort field, using id fallback', { 
+              collection, 
+              sortField,
+              availableFields: collectionFields.slice(0, 10) 
+            });
+            if (!validatedFields.includes('id') && !validatedFields.includes('-id')) {
+              validatedFields.push(isDescending ? '-id' : 'id');
+            }
+          }
+        }
+      }
+
+      // If no valid fields remain, use 'id'
+      if (validatedFields.length === 0) {
+        this.logger.warn('No valid sort fields found, defaulting to id', { collection });
+        return ['id'];
+      }
+
+      return validatedFields;
+    } catch (error) {
+      this.logger.error('Error validating sort fields, using id fallback', { 
+        collection, 
+        error: getErrorMessage(error) 
+      });
+      return ['id'];
+    }
+  }
+
 }
