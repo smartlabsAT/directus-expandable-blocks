@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
@@ -31,6 +31,12 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
   const selectedLanguage = ref<string>('en-US');
   const availableLanguages = ref<LanguageOption[]>([]);
 
+  // Watch for language changes and reload items
+  watch(selectedLanguage, (newLang, oldLang) => {
+    if (newLang !== oldLang && selectedCollection.value && availableItems.value.length > 0) {
+      loadItems();
+    }
+  });
 
   // Pagination state
   const currentPage = ref(1);
@@ -64,18 +70,33 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       
       const metadata = response.data as CollectionMetadata;
       
-      if (metadata?.searchableFields) {
-        // Transform searchableFields to match the expected format
-        availableFields.value = metadata.searchableFields.map((field: any) => ({
+      // Use displayableFields for UI (includes all fields like dropdowns, colors, etc.)
+      if (metadata?.displayableFields) {
+        availableFields.value = metadata.displayableFields.map((field: any) => ({
           field: field.field,
           type: field.type,
-          name: field.name || field.field,
+          name: field.field_name || field.name || field.field,
           interface: field.interface,
           display: field.display,
           options: field.options,
-          display_name: field.display_name || field.field,
-          searchable: field.searchable,
-          weight: field.weight,
+          display_name: field.field_name || field.name || field.field,
+          searchable: field.searchable || false,
+          weight: field.weight || 0,
+          translatable: field.translatable || false,
+          translation_type: field.translation_type || 'none'
+        }));
+      } else if (metadata?.searchableFields) {
+        // Fallback to searchableFields if displayableFields not available (backward compatibility)
+        availableFields.value = metadata.searchableFields.map((field: any) => ({
+          field: field.field,
+          type: field.type,
+          name: field.field_name || field.name || field.field,
+          interface: field.interface,
+          display: field.display,
+          options: field.options,
+          display_name: field.field_name || field.name || field.field,
+          searchable: true, // searchableFields are always searchable
+          weight: field.weight || 0,
           translatable: field.translatable || false,
           translation_type: field.translation_type || 'none'
         }));

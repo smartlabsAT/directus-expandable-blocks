@@ -80,7 +80,7 @@ export class ItemLoader {
               // Skip translatable fields to avoid duplicates
               if (!field.translatable) {
                 searchConditions.push({
-                  [field.field]: { _contains: normalizedQuery.search }
+                  [field.field]: { _icontains: normalizedQuery.search }
                 });
               }
             });
@@ -93,7 +93,7 @@ export class ItemLoader {
                 // Add each translation field as a separate condition
                 searchConditions.push({
                   translations: {
-                    [field.field]: { _contains: normalizedQuery.search }
+                    [field.field]: { _icontains: normalizedQuery.search }
                   }
                 });
               }
@@ -117,6 +117,12 @@ export class ItemLoader {
         }
       }
 
+      // Validate and prepare sort fields
+      let validatedSort = normalizedQuery.sort;
+      if (validatedSort.length > 0) {
+        validatedSort = await this.validateSortFields(collection, validatedSort);
+      }
+
       const itemsService = this.createItemsService(collection);
       const queryOptions: any = {
         limit: normalizedQuery.limit,
@@ -124,7 +130,7 @@ export class ItemLoader {
         fields: expandedFields,
         filter: modifiedFilter,
         search: modifiedSearch,
-        sort: normalizedQuery.sort.length > 0 ? normalizedQuery.sort : ['id']
+        sort: validatedSort.length > 0 ? validatedSort : ['id']
       };
       
       if (normalizedQuery.deep) {
@@ -429,4 +435,79 @@ export class ItemLoader {
       page_count: pageCount
     };
   }
+
+  /**
+   * Validate sort fields and replace invalid ones with 'id'
+   */
+  private async validateSortFields(collection: string, sortFields: string[]): Promise<string[]> {
+    try {
+      // Get collection fields from schema
+      const collectionSchema = this.schema?.collections?.[collection];
+      if (!collectionSchema || !collectionSchema.fields) {
+        // If we can't get schema, fallback to 'id' sort
+        this.logger.warn('No schema found for collection, using id sort', { collection });
+        return ['id'];
+      }
+
+      const collectionFields = Object.keys(collectionSchema.fields);
+      const validatedFields: string[] = [];
+
+      for (const sortField of sortFields) {
+        // Extract field name and direction
+        const isDescending = sortField.startsWith('-');
+        const fieldName = isDescending ? sortField.substring(1) : sortField;
+        
+        // Handle nested fields (e.g., translations.title)
+        if (fieldName.includes('.')) {
+          const [relationField] = fieldName.split('.');
+          
+          // Check if the relation field exists
+          if (collectionFields.includes(relationField)) {
+            // For valid relation fields, trust that Directus will handle the nested path
+            validatedFields.push(sortField);
+          } else {
+            // Invalid relation field, use 'id' as fallback
+            this.logger.warn('Invalid relation field in sort, using id fallback', { 
+              collection, 
+              sortField,
+              relationField 
+            });
+            if (!validatedFields.includes('id') && !validatedFields.includes('-id')) {
+              validatedFields.push(isDescending ? '-id' : 'id');
+            }
+          }
+        } else {
+          // Simple field - check if it exists
+          if (collectionFields.includes(fieldName) || fieldName === 'id') {
+            validatedFields.push(sortField);
+          } else {
+            // Field doesn't exist, use 'id' as fallback
+            this.logger.warn('Invalid sort field, using id fallback', { 
+              collection, 
+              sortField,
+              availableFields: collectionFields.slice(0, 10) 
+            });
+            if (!validatedFields.includes('id') && !validatedFields.includes('-id')) {
+              validatedFields.push(isDescending ? '-id' : 'id');
+            }
+          }
+        }
+      }
+
+      // If no valid fields remain, use 'id'
+      if (validatedFields.length === 0) {
+        this.logger.warn('No valid sort fields found, defaulting to id', { collection });
+        return ['id'];
+      }
+
+      return validatedFields;
+    } catch (error) {
+      this.logger.error('Error validating sort fields, using id fallback', { 
+        collection, 
+        error: getErrorMessage(error) 
+      });
+      return ['id'];
+    }
+  }
+
 }

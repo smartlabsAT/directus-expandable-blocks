@@ -42,7 +42,7 @@
         @duplicate="duplicateItem"
         @discard-changes="discardChanges"
         @unlink="unlinkItem"
-        @delete="showDeleteDialog"
+        @delete="handleShowDeleteDialog"
         @sort="onSort"
     />
 
@@ -91,19 +91,21 @@
         @update:items-per-page="(value) => itemSelector.updateItemsPerPage(value)"
     />
 
-    <!-- Delete Dialog -->
-    <v-dialog :model-value="deleteDialog" @update:model-value="deleteDialog = $event">
-      <v-card>
-        <v-card-title>Delete Block</v-card-title>
-        <v-card-text>
-          Are you sure you want to delete this block? This action cannot be undone.
-        </v-card-text>
-        <v-card-actions>
-          <v-button secondary @click="deleteDialog = false">Cancel</v-button>
-          <v-button danger @click="confirmDeleteItem">Delete</v-button>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Enhanced Delete Confirmation Dialog -->
+    <DeleteConfirmationDialog
+      v-model="deleteDialog"
+      :item="itemToDelete?.item || null"
+      :item-title="itemToDelete ? getItemTitle(itemToDelete.item) : 'Untitled'"
+      :item-icon="itemToDelete ? (getCollectionIcon(itemToDelete.item) || 'box') : 'box'"
+      :collection-name="itemToDelete ? (getCollectionName(itemToDelete.item) || 'Unknown') : 'Unknown'"
+      :usage-info="deleteUsageInfo"
+      :loading="deleteUsageLoading"
+      :error="deleteUsageError || null"
+      :current-page-id="primaryKey || null"
+      :allow-force-delete="mergedOptions?.allowForceDelete || false"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+    />
   </div>
 </template>
 
@@ -117,6 +119,7 @@ import {useApi} from '@directus/extensions-sdk';
 import BlockList from './components/BlockList.vue';
 import AddBlockButton from './components/AddBlockButton.vue';
 import ItemSelectorDrawer from './components/ItemSelectorDrawer.vue';
+import DeleteConfirmationDialog from './components/DeleteConfirmationDialog.vue';
 import type {UseExpandableBlocksProps} from './composables/useExpandableBlocks';
 import { logDebug } from './utils/logger-wrapper';
 
@@ -151,6 +154,7 @@ const {
   expandedItems,
   loading,
   deleteDialog,
+  itemToDelete,
   mergedOptions,
   availableStatuses,
   allowedCollections,
@@ -171,23 +175,25 @@ const {
   getActualItemId: _getActualItemId,
   isNewItem: _isNewItem,
   isBlockDirty: _isBlockDirty,
-  getItemTitle: _getItemTitle,
-  getCollectionName: _getCollectionName,
-  getCollectionIcon: _getCollectionIcon,
+  getItemTitle,
+  getCollectionName,
+  getCollectionIcon,
   getFieldsForItem: _getFieldsForItem,
   toggleExpand,
   updateItem,
   addNewItem,
   addExistingItems,
   addAsNewItems,
-  showDeleteDialog,
+  showDeleteDialog: _showDeleteDialog,
   unlinkItem,
-  confirmDeleteItem,
+  confirmDeleteItem: _confirmDeleteItem,
   removeAllDeletedItems,
   duplicateItem,
   discardChanges,
   updateItemStatus,
   onSort,
+  checkItemUsage,
+  deleteItemWithConfirmation,
   hasStatusField: _hasStatusField,
   getItemStatus: _getItemStatus,
   getStatusLabel: _getStatusLabel,
@@ -249,6 +255,67 @@ function handleItemSelectionAsCopy(selectedItems: any[]) {
     addAsNewItems(itemSelector.selectedCollection.value, selectedItems);
   }
   itemSelector.close();
+}
+
+// Delete dialog state
+const deleteUsageInfo = ref(null);
+const deleteUsageLoading = ref(false);
+const deleteUsageError = ref<string | null>(null);
+
+// Check item usage BEFORE opening delete dialog
+async function handleShowDeleteDialog(item: any, index: number) {
+  logDebug('Preparing to show delete dialog', { item, index });
+  
+  // Set the item to delete
+  itemToDelete.value = { item, index };
+  
+  // Load usage info first
+  deleteUsageLoading.value = true;
+  deleteUsageError.value = null;
+  deleteUsageInfo.value = null;
+  
+  try {
+    const usageInfo = await checkItemUsage(item);
+    deleteUsageInfo.value = usageInfo;
+    logDebug('Item usage check complete', { usageInfo });
+    
+    // Now show the dialog with the usage info already loaded
+    deleteDialog.value = true;
+  } catch (error) {
+    deleteUsageError.value = 'Failed to check item usage. Please try again.';
+    logDebug('Error checking item usage', { error });
+    
+    // Still show dialog even on error
+    deleteDialog.value = true;
+  } finally {
+    deleteUsageLoading.value = false;
+  }
+}
+
+// Handle delete confirmation
+async function handleDeleteConfirm(options: { deleteContent: boolean; selectedLocations: string[] }) {
+  if (!itemToDelete.value) return;
+  
+  deleteDialog.value = false;
+  
+  await deleteItemWithConfirmation(
+    itemToDelete.value.item,
+    itemToDelete.value.index,
+    options
+  );
+  
+  // Reset state
+  itemToDelete.value = null;
+  deleteUsageInfo.value = null;
+  deleteUsageError.value = null;
+}
+
+// Handle delete cancel
+function handleDeleteCancel() {
+  deleteDialog.value = false;
+  itemToDelete.value = null;
+  deleteUsageInfo.value = null;
+  deleteUsageError.value = null;
 }
 
 // Store debounced function for cleanup

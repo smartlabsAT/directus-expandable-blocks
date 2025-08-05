@@ -71,9 +71,18 @@ wiki-repo/
 # Qodana
 .qodana/
 qodana.sarif.json
+# Temporary qodana files copied from config folder
+/qodana.yaml
+/qodana-baseline.sarif
 
 # Socket files and IPC
 auto
 *.sock
 *.socket
+
+# Large media files (hosted in wiki repo)
+docs/assets/demo.gif
+docs/assets/*.gif
+docs/assets/*.mp4
+docs/assets/*.mov
 

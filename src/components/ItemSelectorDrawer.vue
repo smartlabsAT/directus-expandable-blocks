@@ -244,7 +244,7 @@
           kind="warning"
           icon
           @click="handleConfirmCopy"
-          v-tooltip.top="'Creates an independent copy of the selected item. Changes to the copy will not affect the original.'"
+          v-tooltip.bottom="'Creates an independent copy of the selected item. Changes to the copy will not affect the original.'"
       >
         <v-icon name="content_copy"/>
       </v-button>
@@ -1110,9 +1110,14 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0; /* Allow flex children to shrink for ellipsis */
   
   .item-title {
-    flex: 0 1 auto;
+    flex: 1 1 auto; /* Take available space and allow shrinking */
+    min-width: 0; /* Critical for ellipsis in flex containers */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .spacer {

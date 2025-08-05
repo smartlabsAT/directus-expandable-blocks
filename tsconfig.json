@@ -14,12 +14,12 @@
     "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "types": ["node"],
+    "types": ["node", "@vue/runtime-core"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "src/**/*.vue", "src/**/*.d.ts", "src/api/**/*.ts"],
+  "include": ["src/**/*", "src/**/*.vue", "src/**/*.d.ts", "src/api/**/*.ts", "src/vue-macros.d.ts", "src/env.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

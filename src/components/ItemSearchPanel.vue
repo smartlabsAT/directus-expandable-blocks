@@ -170,7 +170,7 @@ interface FieldInfo {
   type: string;
   interface?: string;
   display?: string;
-  options?: any;
+  options?: Record<string, unknown>;
 }
 
 interface Props {
@@ -178,7 +178,11 @@ interface Props {
   loading?: boolean;
   showHelp?: boolean;
   availableFields?: FieldInfo[];
-  translationInfo?: any;
+  translationInfo?: {
+    hasTranslations: boolean;
+    translationFields: Array<{ field: string; name?: string; }>;
+    translationLanguages?: string[];
+  };
   totalItems?: number | null;
 }
 
@@ -200,7 +204,7 @@ const nonTranslatableFields = computed(() => {
     return props.availableFields;
   }
   
-  const translatableFieldNames = props.translationInfo.translationFields.map((tf: any) => tf.field);
+  const translatableFieldNames = props.translationInfo.translationFields.map(tf => tf.field);
   return props.availableFields.filter(field => !translatableFieldNames.includes(field.field));
 });
 
@@ -238,7 +242,8 @@ function handleSearchUpdate(value: string) {
 
 function addFieldToSearch(field: string) {
   if (useTagSearch.value) {
-    (searchTagInputRef.value as any)?.addFieldToSearch(field);
+    const searchInput = searchTagInputRef.value as { addFieldToSearch?: (field: string) => void };
+    searchInput?.addFieldToSearch?.(field);
   } else {
     (simpleSearchInputRef.value as any)?.addFieldToSearch(field);
   }

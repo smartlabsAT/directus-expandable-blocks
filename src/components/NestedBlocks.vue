@@ -53,7 +53,7 @@ import { ref } from 'vue';
 import { extractItemTitle } from '../utils/helpers';
 
 interface Props {
-  blocks: any[];
+  blocks: any[] | null;
   title: string;
   depth?: number;
 }

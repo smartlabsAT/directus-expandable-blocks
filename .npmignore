@@ -1,0 +1,59 @@
+# Test files
+test/
+**/*.spec.ts
+**/*.spec.js
+**/*.test.ts
+**/*.test.js
+coverage/
+test-output/
+
+# Documentation assets
+docs/assets/*.gif
+docs/assets/*.mp4
+docs/assets/*.mov
+docs/assets/demo.gif
+
+# Development configs
+.github/
+.vscode/
+config/
+*.config.ts
+*.config.js
+!vite.config.ts
+
+# Scripts
+scripts/
+
+# Wiki
+wiki/
+wiki-repo/
+
+# Demos
+demos/
+demo-results/
+demo-test-results/
+
+# Other
+.DS_Store
+*.log
+.env*
+.gitignore
+.prettierrc
+.editorconfig
+
+# Qodana
+.qodana/
+qodana.yaml
+qodana-baseline.sarif
+qodana.sarif.json
+
+# Lock files (controversial, but saves space)
+# pnpm-lock.yaml
+
+# Source maps
+*.map
+
+# Temporary files
+tmp/
+temp/
+*.tmp

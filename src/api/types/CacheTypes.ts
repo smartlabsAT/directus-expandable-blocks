@@ -200,17 +200,17 @@ export const CacheKeys = {
  * Standard TTL values in milliseconds
  */
 export const CacheTTL = {
-  /** 30 minutes - for rarely changing data like collection metadata */
-  LONG: 30 * 60 * 1000,
+  /** 30 seconds - unified cache time */
+  LONG: 30 * 1000,
   
-  /** 10 minutes - for moderately changing data */
-  MEDIUM: 10 * 60 * 1000,
+  /** 30 seconds - unified cache time */
+  MEDIUM: 30 * 1000,
   
-  /** 5 minutes - for frequently changing data */
-  SHORT: 5 * 60 * 1000,
+  /** 30 seconds - for frequently changing data */
+  SHORT: 30 * 1000,
   
-  /** 1 minute - for very dynamic data */
-  VERY_SHORT: 60 * 1000,
+  /** 30 seconds - unified cache time */
+  VERY_SHORT: 30 * 1000,
   
   /** No expiration */
   NONE: 0

@@ -616,6 +616,8 @@ export function useExpandableBlocks(
     discardChanges: blockActions.discardChanges,
     updateItemStatus: blockActions.updateItemStatus,
     onSort: blockActions.onSort,
+    checkItemUsage: blockActions.checkItemUsage,
+    deleteItemWithConfirmation: blockActions.deleteItemWithConfirmation,
     
     // UI helpers
     ...uiHelpers,

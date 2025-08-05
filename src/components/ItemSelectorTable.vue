@@ -18,10 +18,10 @@
         <div v-if="showTitleColumn"
              class="table-cell title-cell header-title-cell"
              :class="{ 
-               'is-sortable': true,
+               'is-sortable': isTitleColumnSortable,
                'is-sorted': isTitleFieldSorted 
              }"
-             @click="handleTitleClick">
+             @click="isTitleColumnSortable && handleTitleClick()">
           <span class="field-header-label title-header-label">
             <v-icon 
                 v-if="isTitleFieldSorted"
@@ -112,7 +112,6 @@
             'is-selected': isSelected(item),
             'has-relations': hasRelations(item)
           }"
-          @click="toggleSelection(item)"
       >
         <!-- Checkbox Column -->
         <div class="table-cell checkbox-cell">
@@ -360,7 +359,18 @@ const actualTitleField = computed(() => {
   
   // Check first item to detect which title field is used
   const firstItem = props.items[0];
-  return detectTitleField(firstItem);
+  const detectedField = detectTitleField(firstItem);
+  
+  // Verify that the detected field is actually available in the collection
+  if (detectedField && props.availableFields) {
+    const fieldExists = props.availableFields.some(f => f.field === detectedField);
+    if (!fieldExists) {
+      // The detected field doesn't exist in availableFields, don't use it
+      return null;
+    }
+  }
+  
+  return detectedField;
 });
 
 // Computed: Check if the title field is sorted
@@ -371,6 +381,14 @@ const isTitleFieldSorted = computed(() => {
 // Computed: Check if we should show the title column
 const showTitleColumn = computed(() => {
   return actualTitleField.value !== null;
+});
+
+// Computed: Check if the title column is sortable
+const isTitleColumnSortable = computed(() => {
+  if (!actualTitleField.value) return false;
+  
+  // Check if the actual title field is sortable
+  return isFieldSortable(actualTitleField.value);
 });
 
 // Grid Template Columns - dynamically calculate column widths
@@ -974,6 +992,7 @@ function handleTitleClick() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  max-width: 100%;
 }
 
 /* Title with Status Container */
@@ -981,6 +1000,8 @@ function handleTitleClick() {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0; /* Allow flex children to shrink for ellipsis */
+  width: 100%;
 }
 
 /* Item Title */
@@ -991,6 +1012,8 @@ function handleTitleClick() {
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  flex: 1; /* Take available space */
+  min-width: 0; /* Critical for ellipsis in flex containers */
 }
 
 /* Update Info */

@@ -110,7 +110,13 @@ interface Props {
   item: JunctionRecord;
   isExpanded: boolean;
   loading: boolean;
-  fields: any[];
+  fields: Array<{
+    field: string;
+    name?: string;
+    type?: string;
+    meta?: Record<string, unknown>;
+    schema?: Record<string, unknown>;
+  }>;
   disabled: boolean;
   compactMode?: boolean;
   canRead?: boolean;
@@ -120,8 +126,13 @@ interface Props {
     usageCount: number;
     externalCount: number;
     internalCount: number;
-    usageLocations?: any[];
-    usageSummary?: any;
+    usageLocations?: Array<{
+      collection: string;
+      id: string | number;
+      field?: string;
+      title?: string;
+    }>;
+    usageSummary?: Record<string, unknown>;
   } | null;
 }
 
@@ -131,7 +142,7 @@ const itemData = computed(() => props.item.item || props.item);
 
 defineEmits<{
   'toggle-expand': [];
-  'update-item': [newData: any];
+  'update-item': [newData: Record<string, unknown>];
 }>();
 </script>
 
