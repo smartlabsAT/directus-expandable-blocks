@@ -4,6 +4,17 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-08-23
+
+### Fixed
+- **Issue #23**: Fixed sticky table header in item selector component not staying in place when scrolling
+  - Restructured template with separate header and body containers for proper sticky behavior
+  - Header container now sticks at `top: 125px` below Directus navigation
+  - Implemented horizontal scroll synchronization between header and body
+  - Fixed column alignment issues with sort icons and spacers
+  - Preserved all design elements (zebra striping, hover states, selection)
+  - Maintained sticky checkbox and actions columns functionality
+
 ## [1.1.0] - 2025-08-05
 
 > **Major Release, 30+ new features, and Usage References & Tracking system!**
