@@ -2,6 +2,7 @@ import { ref, watch } from 'vue';
 import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
+import { handleApiError } from '../utils/error-helpers';
 import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption, ExpandableBlocksOptions } from '../types';
 import { createApiClient } from '../services/api-client';
 import type { IDirectusApiClient, SearchOptions } from '../services/api-client.types';
@@ -168,9 +169,12 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         }
       }
       
-    } catch (error) {
-      logError('Error loading collection metadata', error);
-      apiError.value = 'Fehler beim Laden der Metadaten. Bitte versuchen Sie es später erneut.';
+    } catch (error: any) {
+      // Use centralized error handling
+      apiError.value = handleApiError(error, 'load', {
+        logContext: { collection: selectedCollection.value }
+      });
+      
       // Fallback to empty fields
       availableFields.value = [];
     }
@@ -506,24 +510,17 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         loadItemDetails(itemIds);
       }
     } catch (error: any) {
-      logError('Error loading items', error);
       availableItems.value = [];
       totalItems.value = 0;
       
-      // Extract meaningful error message from API response
-      if (error.response?.data?.errors?.[0]?.message) {
-        // Our API error format
-        apiError.value = error.response.data.errors[0].message;
-      } else if (error.response?.data?.message) {
-        // Alternative error format
-        apiError.value = error.response.data.message;
-      } else if (error.message) {
-        // Generic error message
-        apiError.value = error.message;
-      } else {
-        // Fallback
-        apiError.value = 'Die API ist nicht erreichbar. Bitte versuchen Sie es später erneut.';
-      }
+      // Use centralized error handling
+      apiError.value = handleApiError(error, 'search', {
+        logContext: { 
+          collection: selectedCollection.value,
+          searchValue: searchValue.value,
+          page: currentPage.value 
+        }
+      });
     } finally {
       loading.value = false;
     }
