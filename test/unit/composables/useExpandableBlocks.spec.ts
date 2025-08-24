@@ -83,10 +83,40 @@ vi.mock('@/utils/m2a-helper', () => ({
   M2AHelper: vi.fn()
 }));
 
+
 vi.mock('@/utils/logger-wrapper', () => ({
+  logger: {
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    log: vi.fn(),
+    info: vi.fn()
+  },
   logDebug: vi.fn(),
-  logError: vi.fn()
-}));
+  logError: vi.fn(),
+  logWarn: vi.fn(),
+  logAction: vi.fn(),
+  logStateChange: vi.fn(),
+  logEvent: vi.fn(),
+  logInit: vi.fn(),
+  logLifecycle: vi.fn(),
+  logData: vi.fn(),
+  logPerformance: vi.fn(),
+  createScopedLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    log: vi.fn(),
+    info: vi.fn(),
+    stateChange: vi.fn(),
+    event: vi.fn(),
+    action: vi.fn(),
+    init: vi.fn(),
+    lifecycle: vi.fn(),
+    data: vi.fn(),
+    performance: vi.fn()
+  }))
+}))
 
 vi.mock('@/utils/helpers', () => ({
   deepClone: vi.fn((obj) => JSON.parse(JSON.stringify(obj))),
