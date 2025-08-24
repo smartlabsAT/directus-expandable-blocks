@@ -3,6 +3,7 @@
  */
 
 import type { AxiosInstance } from 'axios';
+import type { FeatureSet } from './api-availability-checker';
 
 /**
  * Search query options
@@ -154,6 +155,7 @@ export interface ApiClientConfig {
   retry?: boolean;
   retryOptions?: RetryOptions;
   onError?: (error: ApiError) => void;
+  checkApiAvailability?: boolean; // Enable API availability checking
 }
 
 /**
@@ -201,6 +203,10 @@ export interface IDirectusApiClient {
 
   // Get raw API instance for direct calls
   getApi(): AxiosInstance;
+  
+  // Feature availability
+  getAvailableFeatures(): Promise<FeatureSet>;
+  isFeatureAvailable(feature: keyof FeatureSet): Promise<boolean>;
 }
 
 /**
