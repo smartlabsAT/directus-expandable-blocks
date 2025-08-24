@@ -28,6 +28,25 @@ export default defineEndpoint({
         router.use(cacheMiddleware(context));
 
         /**
+         * Health Check Endpoint
+         * Returns API status and available features
+         */
+        router.get('/health', (_req, res) => {
+            res.json({ 
+                status: 'ok', 
+                service: 'expandable-blocks-api',
+                version: '1.0.0',
+                features: {
+                    relationChecking: true,
+                    usageTracking: true,
+                    deleteProtection: true,
+                    cascadeDelete: true,
+                    usageSummary: true
+                }
+            });
+        });
+
+        /**
          * OpenAPI Documentation
          */
         router.get('/docs', (_req, res) => {
