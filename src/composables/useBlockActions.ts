@@ -5,6 +5,8 @@ import { isValidPrimaryKey, isValidCollection } from '../utils/validation';
 import { createNotificationHelpers } from '../utils/notifications';
 import { setLoadingState, clearLoadingState, updateBlockDirtyState } from '../utils/state-helpers';
 import { RelationChecker } from '../services/RelationChecker';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 import type { ItemUsageInfo } from '../services/RelationChecker';
 import type { JunctionRecord, ItemRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
@@ -25,6 +27,9 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
   const { emit, api, props, stores: { notificationsStore }, helpers: { m2aHelper, deepEqual } } = ctx.deps;
   const { deleteDialog, itemToDelete, mergedOptions, canAddMoreBlocks } = ctx.ui;
   const { relationInfo, m2aStructure } = ctx.data;
+  
+  // Create API client instance
+  const apiClient: IDirectusApiClient = createApiClient(api);
 
   /**
    * Get sort field from relation info
@@ -345,7 +350,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       const deletePromises = deletedItems.map(async (item) => {
         if (item.id && !isNewItem(item)) {
           try {
-            await api.delete(`/items/${junctionCollection}/${item.id}`);
+            await apiClient.deleteItem(junctionCollection, item.id);
             logDebug(`Removed deleted item junction: ${item.id}`);
           } catch (error) {
             logWarn(`Failed to remove deleted item junction: ${item.id}`, { error });
@@ -410,12 +415,12 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       // Delete junction record
       if (item.id && !isNewItem(item)) {
         const junctionCollection = getJunctionCollection();
-        await api.delete(`/items/${junctionCollection}/${item.id}`);
+        await apiClient.deleteItem(junctionCollection, item.id);
         
         // Optionally delete the actual item
         if (item.item && typeof item.item === 'object' && item.item !== null && item.collection) {
           try {
-            await api.delete(`/items/${item.collection}/${(item.item as ItemRecord).id}`);
+            await apiClient.deleteItem(item.collection, (item.item as ItemRecord).id);
           } catch (error) {
             logWarn('Failed to delete content item', { error });
           }
@@ -935,7 +940,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       
       // Delete the junction record for current page
       if (item.id && !isNewItem(item)) {
-        await api.delete(`/items/${junctionCollection}/${item.id}`);
+        await apiClient.deleteItem(junctionCollection, item.id);
         logDebug('Deleted junction record', { junctionId: item.id });
       }
       
@@ -943,7 +948,7 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
       if (options.deleteContent && item.item && typeof item.item === 'object' && item.collection) {
         try {
           const contentItemId = (item.item as ItemRecord).id;
-          await api.delete(`/items/${item.collection}/${contentItemId}`);
+          await apiClient.deleteItem(item.collection, contentItemId);
           logDebug('Deleted content item', { collection: item.collection, id: contentItemId });
         } catch (error) {
           logWarn('Failed to delete content item', { error });
