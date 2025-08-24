@@ -7,6 +7,8 @@
 
 import type { AxiosInstance } from 'axios';
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
+import { createApiAvailabilityChecker } from './api-availability-checker';
+import type { ApiAvailabilityChecker, FeatureSet } from './api-availability-checker';
 import type {
   IDirectusApiClient,
   ApiClientConfig,
@@ -26,6 +28,7 @@ import type {
 export class DirectusApiClient implements IDirectusApiClient {
   private api: AxiosInstance;
   private config: ApiClientConfig;
+  private availabilityChecker: ApiAvailabilityChecker;
 
   constructor(api: AxiosInstance, config: ApiClientConfig = {}) {
     this.api = api;
@@ -35,8 +38,12 @@ export class DirectusApiClient implements IDirectusApiClient {
         maxRetries: 3,
         retryDelay: 1000,
       },
+      checkApiAvailability: true,
       ...config
     };
+    
+    // Initialize availability checker
+    this.availabilityChecker = createApiAvailabilityChecker(api);
     
     logDebug('DirectusApiClient initialized', { config: this.config });
   }
@@ -354,6 +361,44 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   getApi(): AxiosInstance {
     return this.api;
+  }
+
+  /**
+   * Get available features based on API availability
+   */
+  async getAvailableFeatures(): Promise<FeatureSet> {
+    if (!this.config.checkApiAvailability) {
+      // If checking is disabled, assume all basic features are available
+      return {
+        basicCRUD: true,
+        search: true,
+        filtering: true,
+        sorting: true,
+        pagination: true,
+        relationChecking: false,
+        usageTracking: false,
+        deleteProtection: false,
+        cascadeDelete: false,
+        usageSummary: false,
+        hasCustomApi: false,
+        hasNativeApi: true
+      };
+    }
+    
+    return this.availabilityChecker.getAvailableFeatures();
+  }
+
+  /**
+   * Check if a specific feature is available
+   */
+  async isFeatureAvailable(feature: keyof FeatureSet): Promise<boolean> {
+    if (!this.config.checkApiAvailability) {
+      // Assume basic features are available
+      const basicFeatures = ['basicCRUD', 'search', 'filtering', 'sorting', 'pagination', 'hasNativeApi'];
+      return basicFeatures.includes(feature);
+    }
+    
+    return this.availabilityChecker.isFeatureAvailable(feature);
   }
 
   /**
