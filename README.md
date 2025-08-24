@@ -8,7 +8,7 @@
 [![Tests](https://img.shields.io/badge/tests-470%20passing-success?style=flat-square)](https://github.com/smartlabsAT/directus-expandable-blocks)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
-A powerful, production-ready M2A (Many-to-Any) bundle extension for Directus with inline expandable editing, advanced item selection, comprehensive permissions, and seamless integration with Directus' native save system.
+A powerful, production-ready M2A (Many-to-Any) interface extension for Directus with inline expandable editing, advanced item selection, comprehensive permissions, and seamless integration with Directus' native save system.
 
 ![Directus Expandable Blocks Extension - Feature Presentation](https://raw.githubusercontent.com/wiki/smartlabsAT/directus-expandable-blocks/assets/demo.gif)
 
@@ -24,7 +24,6 @@ A powerful, production-ready M2A (Many-to-Any) bundle extension for Directus wit
 - [Installation](#-installation)
 - [Usage](#-usage)
 - [Configuration](#️-configuration)
-- [API Endpoints](#-api-endpoints)
 - [Testing](#-testing)
 - [Development](#-development)
 - [Documentation](#-documentation)
@@ -93,7 +92,7 @@ Unlike other block editors, this extension **works directly with Directus' nativ
 - 👥 **Role-Based Control** - Configure per-role access
 - 🔒 **Read-Only Mode** - Automatic for restricted items
 - ⚠️ **Permission Indicators** - Visual feedback for restricted actions
-- 🛡️ **Secure API** - Rate limiting, validation, and security headers
+- 🛡️ **Security** - Built-in validation and permission checks
 
 #### **Usage Tracking & References** 🚀 *(Killer Feature)*
 - 🔍 **Reference Detection** - Instantly see ALL places where an item is used across your entire Directus instance
@@ -128,18 +127,12 @@ Unlike other block editors, this extension **works directly with Directus' nativ
 ### 🛠️ Developer Features
 
 #### **Extension Architecture**
-- 📦 **Bundle Extension** - Interface + API endpoints in one package
+- 📦 **Interface Extension** - Clean, focused interface implementation
 - 🔌 **Composable Architecture** - Reusable Vue composables
 - 🎨 **Component Library** - Modular, tested components
 - 🔧 **Utility Functions** - Shared helpers and validators
 - 📝 **TypeScript Types** - Full type definitions
 
-#### **API Endpoints**
-- 🔍 **Search Endpoint** - Advanced search with relations
-- 📊 **Items Endpoint** - Fetch items with full data
-- 🔐 **Permission Aware** - Automatic filtering based on user
-- ⚡ **Cached Responses** - Configurable cache strategies
-- 📖 **OpenAPI Docs** - Full API documentation
 
 ## 📦 Installation
 
@@ -158,7 +151,7 @@ pnpm add directus-extension-expandable-blocks
 ### Manual Installation
 
 1. Download the latest release from [GitHub Releases](https://github.com/smartlabsAT/directus-expandable-blocks/releases)
-2. Extract to your Directus `extensions/` directory (not `extensions/interfaces/` - this is a bundle extension)
+2. Extract to your Directus `extensions/` directory
 3. Restart Directus
 
 ### Docker Installation
@@ -246,36 +239,6 @@ EXPANDABLE_BLOCKS_CACHE_TTL_PATHS=10
 EXPANDABLE_BLOCKS_CACHE_MAX_SIZE=50000
 ```
 
-## 🔌 API Endpoints
-
-The extension provides powerful API endpoints:
-
-### Search Endpoint
-```http
-GET /expandable-blocks-api/:collection/search
-```
-
-Query parameters:
-- `search` - Search term
-- `filter` - Directus filter object
-- `limit` - Results per page
-- `offset` - Pagination offset
-- `sort` - Sort fields
-- `fields` - Fields to return
-
-### Items Endpoint
-```http
-POST /expandable-blocks-api/:collection/items
-```
-
-Body:
-```json
-{
-  "ids": ["id1", "id2"],
-  "fields": ["*", "translations.*"],
-  "includeUsage": true
-}
-```
 
 ## 🧪 Testing
 
@@ -330,7 +293,6 @@ expandable-blocks/
 │   ├── scripts/      # Build scripts
 │   └── *.config.*    # Various configs
 ├── src/
-│   ├── api/          # Backend services
 │   ├── components/   # Vue components
 │   ├── composables/  # Vue composables
 │   ├── types/        # TypeScript types
@@ -349,7 +311,6 @@ Visit our **[GitHub Wiki](https://github.com/smartlabsAT/directus-expandable-blo
 - 📦 [Installation Guide](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/Installation)
 - ⚙️ [Configuration](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/Configuration)
 - 🏗️ [Architecture](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/Architecture-Overview)
-- 🔌 [API Integration](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/API-Integration)
 - 🔐 [Security](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/Security)
 - 🚀 [Advanced Features](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/Advanced-Features)
 - 🎬 [Demo Videos](https://github.com/smartlabsAT/directus-expandable-blocks/wiki/Demo-Video-Recording)
