@@ -4,6 +4,8 @@ import { M2AHelper, type M2AFieldInfo } from '../utils/m2a-helper';
 import { deepClone, deepEqual, getActualItemId } from '../utils/helpers';
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 import { isItemObject } from '../utils/validation';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 import { useBlockState } from './useBlockState';
 import { useBlockActions } from './useBlockActions';
 import { useM2AData } from './useM2AData';
@@ -48,8 +50,9 @@ export function useExpandableBlocks(
   const notificationsStore = useNotificationsStore() as DirectusNotificationsStore;
   const permissionsStore = usePermissionsStore ? usePermissionsStore() : null;
 
-  // Initialize M2A Helper
+  // Initialize M2A Helper and API Client
   const m2aHelper = new M2AHelper(api, stores);
+  const apiClient: IDirectusApiClient = createApiClient(api);
 
   // Local state
   const relationInfo = ref<RelationInfo | null>(null);
@@ -416,18 +419,19 @@ export function useExpandableBlocks(
       // Load usage data for each collection
       const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
         try {
-          const response = await api.post(
-            `/expandable-blocks-api/${collection}/detail`,
-            { ids, fields: '*' }
+          // Use native API client to load items with relations
+          const responseData = await apiClient.loadItemsWithRelations(
+            collection,
+            ids,
+            ['*.*']
           );
           
           // Store usage data by item ID
           const currentParentId = props.primaryKey;
           
           // Ensure response data exists and is an array
-          const responseData = response?.data?.data;
           if (!Array.isArray(responseData)) {
-            logWarn('Invalid response data from detail API', { collection, responseData });
+            logWarn('Invalid response data from API', { collection, responseData });
             return;
           }
           
