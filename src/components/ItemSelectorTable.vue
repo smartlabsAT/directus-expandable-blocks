@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, defineProps, defineEmits, withDefaults } from 'vue';
+import { computed, ref } from 'vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import ColumnWidthPopover from './ColumnWidthPopover.vue';
