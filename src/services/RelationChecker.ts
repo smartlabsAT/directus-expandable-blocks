@@ -27,17 +27,47 @@ export class RelationChecker {
   private api: DirectusAPI;
   private apiClient: IDirectusApiClient;
   private currentPageId: string | number | null;
+  private isRelationCheckingAvailable: boolean = false;
 
   constructor(api: DirectusAPI, currentPageId?: string | number | null) {
     this.api = api;
     this.apiClient = createApiClient(api as any);
     this.currentPageId = currentPageId || null;
+    
+    // Check if relation checking is available on initialization
+    this.checkFeatureAvailability();
+  }
+  
+  /**
+   * Check if relation checking features are available
+   */
+  private async checkFeatureAvailability(): Promise<void> {
+    try {
+      this.isRelationCheckingAvailable = await this.apiClient.isFeatureAvailable('relationChecking');
+      if (!this.isRelationCheckingAvailable) {
+        logWarn('Relation checking not available - running in degraded mode');
+      }
+    } catch (error) {
+      logError('Failed to check feature availability', error);
+      this.isRelationCheckingAvailable = false;
+    }
   }
 
   /**
    * Check where an item is being used across the system
    */
   async checkItemUsage(collection: string, itemId: string | number): Promise<ItemUsageInfo> {
+    // If relation checking is not available, return safe defaults
+    if (!this.isRelationCheckingAvailable) {
+      logDebug('Relation checking not available, returning safe defaults', { collection, itemId });
+      return {
+        totalCount: 0,
+        currentPageUsage: false,
+        locations: [],
+        canDelete: false // Be conservative - don't allow deletion without checking
+      };
+    }
+    
     try {
       logDebug('Checking item usage', { collection, itemId, currentPageId: this.currentPageId });
 
@@ -123,6 +153,21 @@ export class RelationChecker {
    */
   async checkMultipleItemsUsage(items: Array<{ collection: string; id: string | number }>): Promise<Map<string, ItemUsageInfo>> {
     const results = new Map<string, ItemUsageInfo>();
+
+    // If relation checking is not available, return safe defaults for all items
+    if (!this.isRelationCheckingAvailable) {
+      logDebug('Relation checking not available, returning safe defaults for all items');
+      for (const item of items) {
+        const key = `${item.collection}:${item.id}`;
+        results.set(key, {
+          totalCount: 0,
+          currentPageUsage: false,
+          locations: [],
+          canDelete: false // Be conservative
+        });
+      }
+      return results;
+    }
 
     try {
       // Group items by collection for efficiency
