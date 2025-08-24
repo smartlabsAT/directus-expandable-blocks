@@ -207,6 +207,19 @@ export interface IDirectusApiClient {
   // Feature availability
   getAvailableFeatures(): Promise<FeatureSet>;
   isFeatureAvailable(feature: keyof FeatureSet): Promise<boolean>;
+  
+  // CRUD operations
+  createItem<T = any>(collection: string, data: Partial<T>): Promise<T>;
+  updateItem<T = any>(collection: string, id: string | number, data: Partial<T>): Promise<T>;
+  deleteItem(collection: string, id: string | number): Promise<void>;
+  
+  // User operations
+  getCurrentUser<T = any>(): Promise<T>;
+  
+  // Preset operations
+  getPresets(filter?: Record<string, any>): Promise<any[]>;
+  createPreset(data: any): Promise<any>;
+  updatePreset(id: string | number, data: any): Promise<any>;
 }
 
 /**

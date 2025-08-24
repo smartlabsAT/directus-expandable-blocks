@@ -2,6 +2,8 @@ import { ref, computed } from 'vue';
 import { useStores, useApi } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 
 
 
@@ -40,6 +42,7 @@ export function useUserPresets() {
   }
   
   const api = useApi();
+  const apiClient: IDirectusApiClient = createApiClient(api);
   
   // Get current user ID
   const currentUserId = computed(() => {
@@ -95,18 +98,10 @@ export function useUserPresets() {
       }
       
       // Fallback to API
-      const response = await api.get('/presets', {
-        params: {
-          filter: {
-            collection: { _eq: PRESET_COLLECTION },
-            user: { _nnull: true } // Only get user-specific presets
-          },
-          fields: ['id', 'layout_options'],
-          limit: 1
-        }
+      const presets = await apiClient.getPresets({
+        collection: { _eq: PRESET_COLLECTION },
+        user: { _nnull: true } // Only get user-specific presets
       });
-      
-      const presets = response.data?.data || [];
       
       if (presets.length > 0) {
         const preset = presets[0];
@@ -179,16 +174,16 @@ export function useUserPresets() {
         
         if (presetId.value) {
           // Update existing preset
-          await api.patch(`/presets/${presetId.value}`, {
+          await apiClient.updatePreset(presetId.value, {
             layout_options: allSettings.value
           });
           logDebug('Updated preset via API', { presetId: presetId.value });
         } else {
           // Create new preset
           logDebug('Creating preset via API with user ID', { userId: currentUserId.value });
-          response = await api.post('/presets', presetData);
-          if (response.data?.data?.id) {
-            presetId.value = response.data.data.id;
+          const preset = await apiClient.createPreset(presetData);
+          if (preset?.id) {
+            presetId.value = preset.id;
             logDebug('Created preset via API', { presetId: presetId.value });
           }
         }

@@ -274,7 +274,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, nextTick, defineProps, defineEmits, withDefaults} from 'vue';
+import {ref, computed, watch, onMounted, nextTick} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import ItemSearchPanel from './ItemSearchPanel.vue';
 import FieldDisplay from './FieldDisplay.vue';
