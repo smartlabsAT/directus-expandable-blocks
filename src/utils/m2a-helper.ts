@@ -1,17 +1,21 @@
 import { logger } from './logger-wrapper';
 import { isNotNullish } from './validation';
 import { METADATA_FIELDS } from './helpers';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 import type { M2AFieldInfo } from '../types';
 
 export type { M2AFieldInfo };
 
 export class M2AHelper {
   private api: any;
+  private apiClient: IDirectusApiClient;
   private fieldsStore: any;
   private relationsStore: any;
   
   constructor(api: any, stores: any) {
     this.api = api;
+    this.apiClient = createApiClient(api);
     this.fieldsStore = stores.useFieldsStore();
     this.relationsStore = stores.useRelationsStore();
   }
@@ -141,20 +145,18 @@ export class M2AHelper {
       }
 
       // Load junction records
-      const response = await this.api.get(`/items/${fieldInfo.junctionCollection}`, {
-        params: {
-          filter: {
-            [fieldInfo.foreignKeyField]: {
-              _eq: parentId
-            }
-          },
-          fields: fieldsParam,
-          limit: -1,
-          sort: 'id'
-        }
+      const response = await this.apiClient.searchItems(fieldInfo.junctionCollection, {
+        filter: {
+          [fieldInfo.foreignKeyField]: {
+            _eq: parentId
+          }
+        },
+        fields: fieldsParam.split(','),
+        limit: -1,
+        sort: 'id'
       });
 
-      const records = response.data.data || [];
+      const records = response.data || [];
 
       // If there are nested M2A fields, load them recursively
       if (fieldInfo.hasNestedM2A && depth < maxDepth) {
