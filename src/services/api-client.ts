@@ -402,6 +402,146 @@ export class DirectusApiClient implements IDirectusApiClient {
   }
 
   /**
+   * Create a new item in a collection
+   */
+  async createItem<T = any>(collection: string, data: Partial<T>): Promise<T> {
+    try {
+      logDebug('Creating item', { collection, data });
+      
+      const response = await this.retryRequest(() =>
+        this.api.post(`/items/${collection}`, data)
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      logError('Failed to create item', error, { collection });
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing item in a collection
+   */
+  async updateItem<T = any>(collection: string, id: string | number, data: Partial<T>): Promise<T> {
+    try {
+      logDebug('Updating item', { collection, id, data });
+      
+      const response = await this.retryRequest(() =>
+        this.api.patch(`/items/${collection}/${id}`, data)
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      logError('Failed to update item', error, { collection, id });
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an item from a collection
+   */
+  async deleteItem(collection: string, id: string | number): Promise<void> {
+    try {
+      logDebug('Deleting item', { collection, id });
+      
+      await this.retryRequest(() =>
+        this.api.delete(`/items/${collection}/${id}`)
+      );
+    } catch (error) {
+      logError('Failed to delete item', error, { collection, id });
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current user information
+   */
+  async getCurrentUser<T = any>(): Promise<T> {
+    try {
+      logDebug('Getting current user');
+      
+      const response = await this.retryRequest(() =>
+        this.api.get('/users/me', {
+          params: {
+            fields: ['*', 'role.*']
+          }
+        })
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      logError('Failed to get current user', error);
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user presets
+   */
+  async getPresets(filter?: Record<string, any>): Promise<any[]> {
+    try {
+      logDebug('Getting presets', { filter });
+      
+      const params: Record<string, any> = {};
+      if (filter) {
+        params.filter = filter;
+      }
+      
+      const response = await this.retryRequest(() =>
+        this.api.get('/presets', { params })
+      );
+      
+      return response.data.data || [];
+    } catch (error) {
+      logError('Failed to get presets', error, { filter });
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new preset
+   */
+  async createPreset(data: any): Promise<any> {
+    try {
+      logDebug('Creating preset', { data });
+      
+      const response = await this.retryRequest(() =>
+        this.api.post('/presets', data)
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      logError('Failed to create preset', error);
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing preset
+   */
+  async updatePreset(id: string | number, data: any): Promise<any> {
+    try {
+      logDebug('Updating preset', { id, data });
+      
+      const response = await this.retryRequest(() =>
+        this.api.patch(`/presets/${id}`, data)
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      logError('Failed to update preset', error, { id });
+      this.handleError(error as ApiError);
+      throw error;
+    }
+  }
+
+  /**
    * Private helper methods
    */
 
