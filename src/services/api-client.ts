@@ -19,7 +19,8 @@ import type {
   RelationInfo,
   PermissionResult,
   ApiError,
-  TranslationInfo
+  TranslationInfo,
+  ItemUsageResult
 } from './api-client.types';
 
 /**
@@ -431,7 +432,7 @@ export class DirectusApiClient implements IDirectusApiClient {
   async getItemUsage(
     collection: string,
     id: string | number
-  ): Promise<{ usage_locations?: any[], usage_summary?: any } | null> {
+  ): Promise<ItemUsageResult | null> {
     try {
       // This feature requires the external API
       const hasCustomApi = await this.availabilityChecker.checkCustomApiAvailable();
@@ -440,14 +441,22 @@ export class DirectusApiClient implements IDirectusApiClient {
         return null;
       }
       
-      const response = await this.retryRequest(() =>
-        this.api.get(`/expandable-blocks-api/${collection}/usage/${id}`)
-      );
+      // Usage data now comes from the /detail endpoint via loadItemsWithRelations
+      const items = await this.loadItemsWithRelations(collection, [id]);
+      const item = items?.[0];
       
-      return {
-        usage_locations: response.data.usage_locations || [],
-        usage_summary: response.data.usage_summary || {}
-      };
+      if (item?.usage_locations && item?.usage_summary) {
+        // Return in the format expected by RelationChecker
+        return {
+          locations: item.usage_locations || [],
+          total_count: item.usage_summary?.total_count || 0,
+          can_delete: item.usage_summary?.total_count === 0,
+          usage_locations: item.usage_locations || [],
+          usage_summary: item.usage_summary || {}
+        };
+      }
+      
+      return null;
       
     } catch (error) {
       logWarn('Failed to get item usage', { collection, id, error });

@@ -113,6 +113,17 @@ export interface TranslationInfo {
 }
 
 /**
+ * Item usage result from API
+ */
+export interface ItemUsageResult {
+  locations?: any[];
+  total_count?: number;
+  can_delete?: boolean;
+  usage_locations?: any[];
+  usage_summary?: any;
+}
+
+/**
  * Permission check result
  */
 export interface PermissionResult {
@@ -205,7 +216,7 @@ export interface IDirectusApiClient {
   getItemUsage(
     collection: string,
     id: string | number
-  ): Promise<{ usage_locations?: any[], usage_summary?: any } | null>;
+  ): Promise<ItemUsageResult | null>;
 
   // Get raw API instance for direct calls
   getApi(): AxiosInstance;
