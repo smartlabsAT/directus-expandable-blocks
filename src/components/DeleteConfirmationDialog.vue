@@ -76,9 +76,20 @@
             <p>{{ collectionName || 'Unknown' }}</p>
           </div>
 
+          <!-- Cannot verify usage warning -->
+          <v-notice
+            v-if="usageInfo.hasUncheckedUsage"
+            type="warning"
+            icon="warning"
+          >
+            <strong>Cannot verify item usage</strong>
+            <p>This item might be used in other locations. Deleting it could break references elsewhere in your content.</p>
+            <p style="margin-top: 8px;">For safe deletion with usage checking, please install the <code>expandable-blocks-api</code> extension.</p>
+          </v-notice>
+
           <!-- Multiple Usage Warning -->
           <v-notice
-            v-if="!(usageInfo.totalCount === 0 || (usageInfo.totalCount === 1 && usageInfo.currentPageUsage))"
+            v-else-if="!(usageInfo.totalCount === 0 || (usageInfo.totalCount === 1 && usageInfo.currentPageUsage))"
             type="warning"
             icon="warning"
           >
@@ -134,7 +145,7 @@
           </div>
 
           <!-- Deletion Options -->
-          <div v-if="canProceed" class="deletion-options">
+          <div v-if="usageInfo.canDelete || usageInfo.hasUncheckedUsage" class="deletion-options">
             <v-divider />
             <h4>Choose action:</h4>
             <div class="action-options">
@@ -166,6 +177,17 @@
                     <p>Remove content from database</p>
                   </div>
                 </div>
+              </label>
+            </div>
+            
+            <!-- Risk Acknowledgment Checkbox when usage cannot be verified and delete is selected -->
+            <div v-if="usageInfo.hasUncheckedUsage && deleteContent" class="risk-acknowledgment-section">
+              <label class="risk-checkbox">
+                <input
+                  type="checkbox"
+                  v-model="acknowledgeRisk"
+                />
+                <span>I understand the risk and want to delete this item anyway</span>
               </label>
             </div>
           </div>
@@ -249,6 +271,7 @@ const emit = defineEmits<{
 const deleteContent = ref(false);
 const selectedLocations = ref<string[]>([]);
 const selectAll = ref(false);
+const acknowledgeRisk = ref(false);
 
 // Reset state when dialog opens
 watch(() => props.modelValue, (isOpen) => {
@@ -256,6 +279,7 @@ watch(() => props.modelValue, (isOpen) => {
     deleteContent.value = false;
     selectedLocations.value = [];
     selectAll.value = false;
+    acknowledgeRisk.value = false;
     
     // Auto-select current page
     if (props.currentPageId && props.usageInfo) {
@@ -274,6 +298,12 @@ const canProceed = computed(() => {
   if (!props.usageInfo) return false;
   if (props.loading) return false;
   
+  // If usage couldn't be verified and user wants to delete permanently,
+  // they must acknowledge the risk
+  if (props.usageInfo.hasUncheckedUsage && deleteContent.value) {
+    return acknowledgeRisk.value;
+  }
+  
   // Can proceed if no usage or only current page
   if (props.usageInfo.canDelete) return true;
   
@@ -289,6 +319,10 @@ const confirmButtonText = computed(() => {
   if (!props.usageInfo) return 'Confirm';
   
   if (deleteContent.value) {
+    // Show special text when deleting with unchecked usage
+    if (props.usageInfo.hasUncheckedUsage) {
+      return 'Delete at Own Risk';
+    }
     return 'Delete Permanently';
   }
   
@@ -638,5 +672,39 @@ function handleConfirm() {
   margin-top: 8px;
   margin-bottom: 0;
   font-size: 13px;
+}
+
+.risk-acknowledgment-section {
+  margin-top: 12px;
+}
+
+.risk-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  margin-top: 12px;
+  background: var(--warning-10);
+  border: 2px solid var(--warning-25);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.risk-checkbox:hover {
+  background: var(--warning-15);
+  border-color: var(--warning);
+}
+
+.risk-checkbox input[type="checkbox"] {
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.risk-checkbox span {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--warning);
 }
 </style>
