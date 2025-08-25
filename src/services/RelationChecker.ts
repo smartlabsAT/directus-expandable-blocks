@@ -15,6 +15,7 @@ export interface ItemUsageInfo {
   currentPageUsage: boolean;
   locations: ItemUsageLocation[];
   canDelete: boolean;
+  hasUncheckedUsage?: boolean;  // Indicates usage couldn't be verified
 }
 
 interface DirectusAPI {
@@ -108,14 +109,15 @@ export class RelationChecker {
       // Fallback: If custom API is not available or failed, try native approach
       logDebug('Custom API not available, using native API fallback', { collection, itemId });
       
-      // If relation checking is not available at all, return permissive defaults
+      // If relation checking is not available at all, return with warning flag
       if (!this.isRelationCheckingAvailable) {
-        logDebug('Relation checking not available, returning permissive defaults', { collection, itemId });
+        logDebug('Relation checking not available, returning with warning flag', { collection, itemId });
         return {
           totalCount: 0,
           currentPageUsage: false,
           locations: [],
-          canDelete: true // Allow deletion when we can't check (will show warning in UI)
+          canDelete: true, // Allow deletion but with warning
+          hasUncheckedUsage: true // Flag that usage couldn't be verified
         };
       }
 
@@ -188,12 +190,13 @@ export class RelationChecker {
     } catch (error) {
       logError('Failed to check item usage', error, { collection, itemId });
       
-      // In case of error, be permissive to not block users
+      // In case of error, be permissive to not block users but flag as unchecked
       return {
         totalCount: 0,
         currentPageUsage: false,
         locations: [],
-        canDelete: true // Allow deletion on error (UI will show warning)
+        canDelete: true, // Allow deletion on error 
+        hasUncheckedUsage: true // Flag that usage couldn't be verified due to error
       };
     }
   }
@@ -204,16 +207,17 @@ export class RelationChecker {
   async checkMultipleItemsUsage(items: Array<{ collection: string; id: string | number }>): Promise<Map<string, ItemUsageInfo>> {
     const results = new Map<string, ItemUsageInfo>();
 
-    // If relation checking is not available, return safe defaults for all items
+    // If relation checking is not available, return with warning flag for all items
     if (!this.isRelationCheckingAvailable) {
-      logDebug('Relation checking not available, returning safe defaults for all items');
+      logDebug('Relation checking not available, returning with warning flag for all items');
       for (const item of items) {
         const key = `${item.collection}:${item.id}`;
         results.set(key, {
           totalCount: 0,
           currentPageUsage: false,
           locations: [],
-          canDelete: false // Be conservative
+          canDelete: true, // Allow deletion but with warning
+          hasUncheckedUsage: true // Flag that usage couldn't be verified
         });
       }
       return results;
