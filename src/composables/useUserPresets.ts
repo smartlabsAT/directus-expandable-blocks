@@ -170,8 +170,6 @@ export function useUserPresets() {
           user: currentUserId.value // Create as user-specific preset
         };
         
-        let response;
-        
         if (presetId.value) {
           // Update existing preset
           await apiClient.updatePreset(presetId.value, {
