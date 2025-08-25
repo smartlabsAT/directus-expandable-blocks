@@ -3,11 +3,11 @@ import { useStores } from '@directus/extensions-sdk';
 import { debounce } from 'lodash-es';
 import { logDebug, logError } from '../utils/logger-wrapper';
 import { handleApiError } from '../utils/error-helpers';
-import type { TranslationInfo, FieldWithTranslation, CollectionMetadata, LanguageOption, ExpandableBlocksOptions } from '../types';
+import type { TranslationInfo, FieldWithTranslation, LanguageOption, ExpandableBlocksOptions } from '../types';
 import { createApiClient } from '../services/api-client';
 import type { IDirectusApiClient, SearchOptions } from '../services/api-client.types';
 
-export function useItemSelector(api: any, _allowedCollections?: string[], options?: ExpandableBlocksOptions) {
+export function useItemSelector(api: any, _allowedCollections?: string[], _options?: ExpandableBlocksOptions) {
   const { useCollectionsStore } = useStores();
   const collectionsStore = useCollectionsStore();
   const itemRelations = ref<Record<string, any[]>>({});
@@ -53,14 +53,6 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
   const sortField = ref<string | null>(null);
   const sortDirection = ref<'asc' | 'desc'>('asc');
 
-  /**
-   * Get cache headers based on options
-   */
-  function getCacheHeaders() {
-    return {
-      'X-Cache-Enabled': String(options?.enableCache !== false) // Default true
-    };
-  }
 
   /**
    * Load collection metadata including searchable fields
@@ -74,12 +66,23 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       // Use the new API client to get metadata
       const metadata = await apiClient.getCollectionMetadata(selectedCollection.value);
       
+      
       // Map native Directus fields to our format
       // TODO: Once we fully migrate, we can simplify this mapping
       const metadataCompat: any = {
         ...metadata,
         displayableFields: metadata.fields
-          ?.filter(field => !['id', 'user_created', 'user_updated', 'date_created', 'date_updated'].includes(field.field))
+          ?.filter(field => {
+            // Filter out system fields but keep translatable fields
+            if (field.field === 'id') return false;
+            if (field.field === 'translations') return false; // Don't show the relation field itself
+            if (['user_created', 'user_updated', 'date_created', 'date_updated', 'sort'].includes(field.field)) {
+              return false;
+            }
+            // Hide fields marked as hidden
+            if (field.meta?.hidden) return false;
+            return true;
+          })
           .map((field: any) => ({
             field: field.field,
             type: field.type || field.schema?.data_type || 'string',
@@ -102,6 +105,13 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           availableLanguages: [] // Will be loaded separately if needed
         } : undefined
       };
+      
+      logDebug('Metadata after mapping', {
+        collection: selectedCollection.value,
+        displayableFieldsCount: metadataCompat.displayableFields?.length || 0,
+        hasTranslationInfo: !!metadataCompat.translationInfo,
+        displayableFieldNames: metadataCompat.displayableFields?.map((f: any) => f.field)
+      });
       
       // Use displayableFields for UI (includes all fields like dropdowns, colors, etc.)
       if (metadataCompat?.displayableFields) {
@@ -140,28 +150,43 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         translationInfo.value = metadataCompat.translationInfo;
         
         
-        // Update available languages if provided
-        if (metadataCompat.translationInfo.availableLanguages) {
-          availableLanguages.value = metadataCompat.translationInfo.availableLanguages;
-        }
+        // Load available languages
+        await loadAvailableLanguages();
         
-        // Add translation fields to availableFields for combined translations
+        // Add translation fields to availableFields
         if (metadataCompat.translationInfo.hasTranslations && 
-            metadataCompat.translationInfo.translationType === 'combined' &&
-            metadataCompat.translationInfo.translationFields) {
+            metadataCompat.translationInfo.translationFields && 
+            metadataCompat.translationInfo.translationFields.length > 0) {
           
-          // Add translation fields that are not already in availableFields
-          metadataCompat.translationInfo.translationFields.forEach((tf: any) => {
-            if (!availableFields.value.find(f => f.field === tf.field)) {
+          
+          // Handle both object array and string array formats
+          const fieldsToProcess = Array.isArray(metadataCompat.translationInfo.translationFields) 
+            ? metadataCompat.translationInfo.translationFields
+            : [];
+            
+          fieldsToProcess.forEach((fieldItem: any) => {
+            // Extract field name - handle both object format and string format
+            const fieldName = typeof fieldItem === 'string' ? fieldItem : fieldItem?.field;
+            
+            // Skip if field is undefined or null
+            if (!fieldName) {
+              return;
+            }
+            
+            if (!availableFields.value.find(f => f.field === fieldName)) {
+              
               availableFields.value.push({
-                field: tf.field,
-                type: tf.type,
-                name: tf.name || tf.field,
-                display_name: tf.name || tf.field,
-                searchable: false,
-                weight: 0,
+                field: fieldName,
+                type: 'string', // Default type for translation fields
+                name: fieldName || 'unknown',
+                display_name: fieldName || 'unknown',
+                searchable: true,
+                weight: 100, // Higher weight for translation fields
                 translatable: true,
-                translation_type: 'combined'
+                translation_type: metadataCompat.translationInfo.translationType || 'json',
+                interface: 'input', // Default interface
+                display: undefined,
+                options: undefined
               });
             }
           });
@@ -309,7 +334,21 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
    */
   function isFieldTranslatable(field: string): boolean {
     if (!translationInfo.value?.translationFields) return false;
-    return translationInfo.value.translationFields.some(tf => tf.field === field);
+    
+    // Handle both object array (TranslationField[]) and string array formats
+    if (Array.isArray(translationInfo.value.translationFields)) {
+      if (translationInfo.value.translationFields.length === 0) return false;
+      
+      // Check if it's an array of objects with field property
+      if (typeof translationInfo.value.translationFields[0] === 'object' && 'field' in translationInfo.value.translationFields[0]) {
+        return (translationInfo.value.translationFields as any[]).some(tf => tf.field === field);
+      } else {
+        // It's an array of strings
+        return (translationInfo.value.translationFields as string[]).includes(field);
+      }
+    }
+    
+    return false;
   }
 
   /**
@@ -356,6 +395,58 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
   }
 
   /**
+   * Load available languages from Directus
+   */
+  async function loadAvailableLanguages() {
+    try {
+      logDebug('Attempting to load languages from collection: languages');
+      
+      const response = await apiClient.searchItems('languages', {
+        fields: ['code', 'name'],
+        limit: 100,
+        sort: ['name']
+      });
+      
+      
+      if (response?.data && response.data.length > 0) {
+        availableLanguages.value = response.data.map((lang: any) => ({
+          code: lang.code,
+          name: lang.name || lang.code
+        }));
+        
+        // Set default language if not set
+        if (!selectedLanguage.value && availableLanguages.value.length > 0) {
+          selectedLanguage.value = availableLanguages.value[0].code;
+        }
+        
+      } else {
+        // Fallback to common languages
+        availableLanguages.value = [
+          { code: 'en-US', name: 'English' },
+          { code: 'de-DE', name: 'Deutsch' },
+          { code: 'fr-FR', name: 'Français' }
+        ];
+        
+        if (!selectedLanguage.value) {
+          selectedLanguage.value = 'en-US';
+        }
+      }
+    } catch (error) {
+      logError('Failed to load languages, using defaults', error);
+      // Fallback to common languages
+      availableLanguages.value = [
+        { code: 'en-US', name: 'English' },
+        { code: 'de-DE', name: 'Deutsch' },
+        { code: 'fr-FR', name: 'Français' }
+      ];
+      
+      if (!selectedLanguage.value) {
+        selectedLanguage.value = 'en-US';
+      }
+    }
+  }
+  
+  /**
    * Load items from the selected collection
    */
   async function loadItems() {
@@ -373,25 +464,32 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         meta: '*'
       };
       
+      // If collection has translations, include them in the query
+      if (translationInfo.value?.hasTranslations && translationInfo.value?.translationsCollection) {
+        // Include translation fields in the query - load ALL translations
+        params.fields = ['*', `translations.*`];
+        // Don't filter by language - we need all translations for language switching
+        // The getTranslatedFieldValue function will pick the right one
+        
+        logDebug('Including translations in query', {
+          collection: selectedCollection.value,
+          translationsCollection: translationInfo.value.translationsCollection,
+          selectedLanguage: selectedLanguage.value,
+          fields: params.fields
+        });
+      }
+      
       // Add sorting if specified
       if (sortField.value) {
-        // Check if this field exists only in translations
-        const isTranslationOnlyField = translationInfo.value?.translationFields?.some(
-          (tf: any) => tf.field === sortField.value
-        ) && !availableFields.value.some(
-          f => f.field === sortField.value && !f.translatable
-        );
+        // Check if field is translatable
+        const isTranslatableField = isFieldTranslatable(sortField.value);
         
-        if (isTranslationOnlyField) {
-          // For translation-only fields, use nested path: translations.fieldname
-          // This allows Directus to sort by the nested field
-          params.sort = `${sortDirection.value === 'desc' ? '-' : ''}translations.${sortField.value}`;
-          logDebug('Using nested sort path for translation-only field', { 
-            field: sortField.value,
-            sortPath: `translations.${sortField.value}`
-          });
+        if (isTranslatableField) {
+          // Don't add server-side sorting for translatable fields
+          // We'll handle it client-side after loading to avoid permission issues
+          // Skipping server-side sort for translatable field - will sort client-side
         } else {
-          // Regular field - use direct path
+          // Regular field - use direct path for server-side sorting
           params.sort = `${sortDirection.value === 'desc' ? '-' : ''}${sortField.value}`;
         }
       }
@@ -400,15 +498,18 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       if (translationInfo.value?.hasTranslations) {
         params.fields.push('translations.*');
         
-        // Add deep parameter to filter translations by language
-        const languageCode = selectedLanguage.value || 'en-US';
-        params.deep = {
-          translations: {
-            _filter: {
-              languages_code: { _eq: languageCode }
+        // Only add deep filter when searching, not when sorting
+        // This prevents 403 Forbidden errors when sorting by translated fields
+        if (searchQuery.value) {
+          const languageCode = selectedLanguage.value || 'en-US';
+          params.deep = {
+            translations: {
+              _filter: {
+                languages_code: { _eq: languageCode }
+              }
             }
-          }
-        };
+          };
+        }
       }
 
       // Apply search or filter
@@ -416,11 +517,6 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         // Parse query to get both structured queries and unparsed text
         const parseResult = parseMultipleQueries(searchQuery.value);
         
-        logDebug('Query parse result', {
-          originalQuery: searchQuery.value,
-          queries: parseResult.queries,
-          unparsedText: parseResult.unparsedText
-        });
         
         // Handle structured queries if present
         if (parseResult.queries.length > 0) {
@@ -475,13 +571,20 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       // Keep filter and deep as objects for the API client
       // The new API client handles the conversion internally
       
-      logDebug('API request params', {
-        collection: selectedCollection.value,
-        filter: params.filter,
-        search: params.search,
-        hasFilter: !!params.filter,
-        hasSearch: !!params.search
-      });
+      
+      // Add translation fields if translations are enabled
+      let fieldsToLoad = Array.isArray(params.fields) ? params.fields : params.fields ? params.fields.split(',') : undefined;
+      
+      // If we have translations, ensure we load the translation data
+      if (translationInfo.value?.hasTranslations && translationInfo.value?.translationsCollection) {
+        if (!fieldsToLoad) {
+          fieldsToLoad = ['*']; // Load all base fields
+        }
+        // Add translations relation to fields
+        if (!fieldsToLoad.includes('translations.*')) {
+          fieldsToLoad.push('translations.*');
+        }
+      }
       
       // Use the new API client for search
       const searchOptions: SearchOptions = {
@@ -490,13 +593,39 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
         limit: params.limit,
         offset: params.offset,
         sort: params.sort,
-        fields: Array.isArray(params.fields) ? params.fields : params.fields ? params.fields.split(',') : undefined,
+        fields: fieldsToLoad,
         deep: params.deep // Keep as object if present
       };
       
       const result = await apiClient.searchItems(selectedCollection.value, searchOptions);
       
-      availableItems.value = result.data || [];
+      let items = result.data || [];
+      
+      // Client-side sorting for translatable fields
+      if (sortField.value && isFieldTranslatable(sortField.value)) {
+        
+        items = [...items].sort((a, b) => {
+          const aValue = getTranslatedFieldValue(a, sortField.value!) || '';
+          const bValue = getTranslatedFieldValue(b, sortField.value!) || '';
+          
+          // Handle different types
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortDirection.value === 'asc' ? aValue - bValue : bValue - aValue;
+          }
+          
+          // String comparison
+          const aStr = String(aValue).toLowerCase();
+          const bStr = String(bValue).toLowerCase();
+          
+          if (sortDirection.value === 'asc') {
+            return aStr.localeCompare(bStr);
+          } else {
+            return bStr.localeCompare(aStr);
+          }
+        });
+      }
+      
+      availableItems.value = items;
       totalItems.value = result.meta?.filter_count || 0;
       
       // Clear any previous API errors
@@ -517,7 +646,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       apiError.value = handleApiError(error, 'search', {
         logContext: { 
           collection: selectedCollection.value,
-          searchValue: searchValue.value,
+          searchQuery: searchQuery.value,
           page: currentPage.value 
         }
       });
@@ -564,11 +693,13 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
 
       // Since we're now using native API, we need to adapt the response
       // TODO: Once we have proper usage tracking in native API, we can simplify this
-      items.forEach((item: any) => {
+      items.forEach((_item: any) => {
 
         // For now, we don't have usage data from native API
         // This will be handled differently in the future
-        if (false && item.usage_summary?.total_count > 0) {
+        // Disabled until usage tracking is implemented in native API
+        /* istanbul ignore next - disabled code for future implementation
+        if (item.usage_summary?.total_count > 0) {
           // Group usage locations by collection
           const byCollection = new Map<string, any>();
           
@@ -598,6 +729,7 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
           transformedRelations[item.id] = Array.from(byCollection.values());
           
         }
+        */
       });
 
 
@@ -642,13 +774,6 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       sortDirection.value = userPrefs.sortDirection;
     }
     
-    logDebug('Initialized settings', {
-      collection,
-      selectedLanguage: selectedLanguage.value,
-      itemsPerPage: itemsPerPage.value,
-      sortField: sortField.value,
-      sortDirection: sortDirection.value
-    });
   }
 
   /**
@@ -745,39 +870,26 @@ export function useItemSelector(api: any, _allowedCollections?: string[], option
       return item[field] || '';
     }
     
-    // Check if this specific field is translatable
-    const translatableField = translationInfo.value.translationFields?.find(
-      tf => tf.field === field || tf.coversFields?.includes(field)
-    );
+    // Check if this field is in the translatable fields list
+    const isTranslatableField = isFieldTranslatable(field);
     
-    if (!translatableField) {
-      return item[field] || '';
-    }
-    
-    // Check for translations array (O2M relation)
-    if (item.translations && Array.isArray(item.translations)) {
-      // Find translation for selected language
-      // Try different possible language field names
-      const translation = item.translations.find((t: any) => {
-        return t.languages_code === lang || 
-               t.languages_id === lang || 
-               t.language_code === lang ||
-               t.language === lang;
-      });
-      
-      if (translation) {
-        // For combined translations where fields are covered
-        if (translationInfo.value.translationType === 'combined' && translatableField.coversFields?.includes(field)) {
-          // Return the translated value from the translation object
-          return translation[field] || item[field] || '';
+    if (isTranslatableField && item.translations) {
+      // Field is translatable and we have translation data
+      if (Array.isArray(item.translations)) {
+        // Find the translation for the selected language
+        const translation = item.translations.find((t: any) => {
+          return t.languages_code === lang || t.languages_id === lang || t.language === lang;
+        });
+        if (translation && translation[field] !== undefined) {
+          return translation[field];
         }
-        
-        // For standard translations
-        return translation[field] || item[field] || '';
+      } else if (item.translations[field] !== undefined) {
+        // Direct translation object
+        return item.translations[field];
       }
     }
     
-    // Fallback to main value
+    // Fallback to main field value
     return item[field] || '';
   }
 
