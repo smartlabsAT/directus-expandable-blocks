@@ -417,17 +417,38 @@ export function useExpandableBlocks(
       const newUsageData: Record<string, any> = {};
       
       // Load usage data for each collection
+      const currentParentId = props.primaryKey; // Define once at the beginning
+      
       const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
         try {
-          // Use native API client to load items with relations
-          const responseData = await apiClient.loadItemsWithRelations(
-            collection,
-            ids,
-            ['*.*']
-          );
+          // First check if custom API is available for usage data
+          const hasUsageTracking = await apiClient.isFeatureAvailable('usageTracking');
+          
+          let responseData;
+          if (hasUsageTracking) {
+            // Use custom API to get usage data for each item
+            const usageDataPromises = ids.map(async (id) => {
+              const usage = await apiClient.getItemUsage(collection, id);
+              if (usage) {
+                return {
+                  id,
+                  usage_summary: usage.usage_summary,
+                  usage_locations: usage.usage_locations
+                };
+              }
+              return { id };
+            });
+            responseData = await Promise.all(usageDataPromises);
+          } else {
+            // Fallback to native API (won't have usage data)
+            responseData = await apiClient.loadItemsWithRelations(
+              collection,
+              ids,
+              ['*.*']
+            );
+          }
           
           // Store usage data by item ID
-          const currentParentId = props.primaryKey;
           
           // Ensure response data exists and is an array
           if (!Array.isArray(responseData)) {
@@ -447,56 +468,35 @@ export function useExpandableBlocks(
               return;
             }
             
+            // Filter out usage from current context (page/item we're currently editing)
             if (item.usage_summary?.total_count > 0) {
-              // Group locations by parent entity
-              const locationsByParent = new Map<string, any>();
+              const allUsageLocations = Array.isArray(item.usage_locations) ? item.usage_locations : [];
               
-              // Ensure usage_locations is an array
-              const usageLocations = Array.isArray(item.usage_locations) ? item.usage_locations : [];
-              usageLocations.forEach((location: any) => {
-                const parentKey = `${location.collection}:${location.id}`;
-                if (!locationsByParent.has(parentKey)) {
-                  locationsByParent.set(parentKey, {
-                    collection: location.collection,
-                    id: location.id,
-                    count: 0,
-                    locations: []
-                  });
-                }
-                const parent = locationsByParent.get(parentKey);
-                parent.count++;
-                parent.locations.push(location);
-              });
+              // Filter out locations from current parent
+              // Only filter if we have a valid currentParentId
+              let externalLocations = allUsageLocations;
+              if (currentParentId !== undefined && currentParentId !== null && currentParentId !== '') {
+                const currentParentIdStr = String(currentParentId);
+                externalLocations = allUsageLocations.filter((location: any) => 
+                  String(location.id) !== currentParentIdStr
+                );
+              }
               
-              // Calculate usage counts
-              let externalCount = 0;
-              let internalCount = 0;
-              const externalLocations: any[] = [];
+              // Calculate counts
+              const externalCount = externalLocations.length;
+              const internalCount = allUsageLocations.length - externalCount;
               
-              locationsByParent.forEach((parent) => {
-                if (parent.id === currentParentId) {
-                  // Internal usages: count - 1 (for current instance)
-                  internalCount = Math.max(0, parent.count - 1);
-                } else {
-                  // External usages: full count
-                  externalCount += parent.count;
-                  externalLocations.push(...parent.locations);
-                }
-              });
-              
-              const totalCount = externalCount + internalCount;
-              
-              // Only store if there are other usages
-              if (totalCount > 0) {
+              // Only store if there are external usages
+              if (externalCount > 0) {
                 const key = `${collection}:${item.id}`;
                 // Create plain object without Vue reactivity proxies
                 const usageInfo = {
-                  usageCount: totalCount,
+                  usageCount: externalCount, // Only count external
                   externalCount,
                   internalCount,
-                  externalLocations: externalLocations || [],
+                  externalLocations,
                   usageSummary: {
-                    total_count: totalCount,
+                    total_count: externalCount,
                     by_collection: item.usage_summary?.by_collection || {},
                     by_status: item.usage_summary?.by_status || {}
                   }

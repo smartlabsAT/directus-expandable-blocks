@@ -692,14 +692,10 @@ export function useItemSelector(api: any, _allowedCollections?: string[], _optio
       const transformedRelations: Record<string, any[]> = {};
 
       // Since we're now using native API, we need to adapt the response
-      // TODO: Once we have proper usage tracking in native API, we can simplify this
-      items.forEach((_item: any) => {
-
-        // For now, we don't have usage data from native API
-        // This will be handled differently in the future
-        // Disabled until usage tracking is implemented in native API
-        /* istanbul ignore next - disabled code for future implementation
-        if (item.usage_summary?.total_count > 0) {
+      // Process usage data if available (from external API)
+      items.forEach((item: any) => {
+        // Check if we have usage data from the external API
+        if (item.usage_summary?.total_count > 0 && item.usage_locations) {
           // Group usage locations by collection
           const byCollection = new Map<string, any>();
           
@@ -721,17 +717,17 @@ export function useItemSelector(api: any, _allowedCollections?: string[], _optio
             // Add item details
             group.items.push({
               id: location.id,
-              title: location.path || location.title || `ID: ${location.id}`,
+              title: location.title || location.path || `ID: ${location.id}`,
+              path: location.path,
+              edit_url: location.edit_url,
+              status: location.status,
               ...location // Keep all other fields for potential future use
             });
           });
 
           transformedRelations[item.id] = Array.from(byCollection.values());
-          
         }
-        */
       });
-
 
       itemRelations.value = transformedRelations;
       
