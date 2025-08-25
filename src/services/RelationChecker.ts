@@ -57,19 +57,67 @@ export class RelationChecker {
    * Check where an item is being used across the system
    */
   async checkItemUsage(collection: string, itemId: string | number): Promise<ItemUsageInfo> {
-    // If relation checking is not available, return safe defaults
-    if (!this.isRelationCheckingAvailable) {
-      logDebug('Relation checking not available, returning safe defaults', { collection, itemId });
-      return {
-        totalCount: 0,
-        currentPageUsage: false,
-        locations: [],
-        canDelete: false // Be conservative - don't allow deletion without checking
-      };
-    }
-    
     try {
-      logDebug('Checking item usage', { collection, itemId, currentPageId: this.currentPageId });
+      // First try to use the custom API if available
+      const hasCustomApi = await this.apiClient.isFeatureAvailable('usageTracking');
+      
+      if (hasCustomApi) {
+        logDebug('Using custom API for usage checking', { collection, itemId });
+        
+        // Try to get usage info from custom API
+        const usageInfo = await this.apiClient.getItemUsage(collection, itemId);
+        
+        if (usageInfo) {
+          // Process the usage info from custom API
+          const locations: ItemUsageLocation[] = [];
+          let currentPageUsage = false;
+          
+          // Process locations from the custom API response
+          // Filter out current page from locations
+          if (usageInfo.locations && Array.isArray(usageInfo.locations)) {
+            for (const location of usageInfo.locations) {
+              // Check if this is the current page
+              if (this.currentPageId && String(location.id) === String(this.currentPageId)) {
+                currentPageUsage = true;
+                // Skip adding this location to the list
+                continue;
+              }
+              
+              locations.push({
+                collection: location.collection,
+                id: location.id,
+                field: location.field || 'unknown',
+                title: location.title || `${location.collection} #${location.id}`,
+                status: location.status
+              });
+            }
+          }
+          
+          // Calculate real external count (excluding current page)
+          const externalCount = locations.length;
+          
+          return {
+            totalCount: externalCount, // Only count external locations
+            currentPageUsage,
+            locations,
+            canDelete: externalCount === 0 // Can delete if no external usage
+          };
+        }
+      }
+      
+      // Fallback: If custom API is not available or failed, try native approach
+      logDebug('Custom API not available, using native API fallback', { collection, itemId });
+      
+      // If relation checking is not available at all, return permissive defaults
+      if (!this.isRelationCheckingAvailable) {
+        logDebug('Relation checking not available, returning permissive defaults', { collection, itemId });
+        return {
+          totalCount: 0,
+          currentPageUsage: false,
+          locations: [],
+          canDelete: true // Allow deletion when we can't check (will show warning in UI)
+        };
+      }
 
       // Use native API client to get item data with relations
       const items = await this.apiClient.loadItemsWithRelations(
@@ -108,9 +156,11 @@ export class RelationChecker {
           }
           uniqueLocationKeys.add(locationKey);
           
-          // Check if this is the current page
-          if (this.currentPageId && location.id === this.currentPageId) {
+          // Check if this is the current page (compare as strings)
+          if (this.currentPageId && String(location.id) === String(this.currentPageId)) {
             currentPageUsage = true;
+            // Skip adding this location to the list
+            continue;
           }
           
           // Get additional info about the location
@@ -138,12 +188,12 @@ export class RelationChecker {
     } catch (error) {
       logError('Failed to check item usage', error, { collection, itemId });
       
-      // In case of error, return safe defaults
+      // In case of error, be permissive to not block users
       return {
         totalCount: 0,
         currentPageUsage: false,
         locations: [],
-        canDelete: false
+        canDelete: true // Allow deletion on error (UI will show warning)
       };
     }
   }
