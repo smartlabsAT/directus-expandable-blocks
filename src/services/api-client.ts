@@ -6,7 +6,7 @@
  */
 
 import type { AxiosInstance } from 'axios';
-import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
+import { logError, logWarn } from '../utils/logger-wrapper';
 import { createApiAvailabilityChecker } from './api-availability-checker';
 import type { ApiAvailabilityChecker, FeatureSet } from './api-availability-checker';
 import type {
@@ -44,19 +44,51 @@ export class DirectusApiClient implements IDirectusApiClient {
     
     // Initialize availability checker
     this.availabilityChecker = createApiAvailabilityChecker(api);
-    
-    logDebug('DirectusApiClient initialized', { config: this.config });
   }
 
   /**
-   * Search items in a collection using native Directus search
+   * Search items in a collection using external API when available, fallback to native
    */
   async searchItems<T = any>(
     collection: string,
     options: SearchOptions = {}
   ): Promise<SearchResult<T>> {
     try {
-      // Build query params for native Directus API
+      // Check if external API is available for enhanced search
+      const hasCustomApi = await this.availabilityChecker.checkCustomApiAvailable();
+      
+      if (hasCustomApi && options.search) {
+        // Use external API for better search performance
+        try {
+          const payload = {
+            search: options.search,
+            filter: options.filter,
+            limit: options.limit || 50,
+            offset: options.offset || (options.page && options.limit ? (options.page - 1) * options.limit : 0),
+            sort: options.sort,
+            fields: options.fields
+          };
+          
+          const response = await this.retryRequest(() =>
+            this.api.post(`/expandable-blocks-api/${collection}/search`, payload)
+          );
+          
+          const result: SearchResult<T> = {
+            data: response.data.data || [],
+            meta: response.data.meta || {
+              filter_count: response.data.data?.length || 0,
+              total_count: response.data.total || response.data.data?.length || 0
+            }
+          };
+          
+          return result;
+        } catch (externalApiError) {
+          logWarn('External API search failed, falling back to native', { error: externalApiError });
+          // Fall through to native API
+        }
+      }
+      
+      // Fallback to native Directus API
       const params: Record<string, any> = {};
       
       if (options.search) {
@@ -92,8 +124,6 @@ export class DirectusApiClient implements IDirectusApiClient {
       // Add meta for counts
       params.meta = 'filter_count,total_count';
       
-      logDebug('Searching items with native API', { collection, params });
-      
       const response = await this.retryRequest(() => 
         this.api.get(`/items/${collection}`, { params })
       );
@@ -113,7 +143,7 @@ export class DirectusApiClient implements IDirectusApiClient {
   }
 
   /**
-   * Load multiple items with their relations
+   * Load multiple items with their relations and usage information
    */
   async loadItemsWithRelations<T = any>(
     collection: string,
@@ -125,6 +155,32 @@ export class DirectusApiClient implements IDirectusApiClient {
     }
 
     try {
+      // Check if external API is available for enhanced data loading
+      const hasCustomApi = await this.availabilityChecker.checkCustomApiAvailable();
+      
+      if (hasCustomApi) {
+        // Use external API for enhanced data with usage information
+        try {
+          const payload = {
+            ids,
+            fields: fields || ['*.*']
+          };
+          
+          const response = await this.retryRequest(() =>
+            this.api.post(`/expandable-blocks-api/${collection}/detail`, payload)
+          );
+          
+          const items = response.data.data || [];
+          
+          // External API provides enhanced data with usage_locations and usage_summary
+          return items;
+        } catch (externalApiError) {
+          logWarn('External API detail failed, falling back to native', { error: externalApiError });
+          // Fall through to native API
+        }
+      }
+      
+      // Fallback to native Directus API
       const params: Record<string, any> = {
         filter: {
           id: {
@@ -139,8 +195,6 @@ export class DirectusApiClient implements IDirectusApiClient {
         // Default: Load with one level of relations
         params.fields = '*.*';
       }
-      
-      logDebug('Loading items with relations', { collection, ids: ids.length, fields });
       
       const response = await this.retryRequest(() =>
         this.api.get(`/items/${collection}`, { params })
@@ -175,8 +229,6 @@ export class DirectusApiClient implements IDirectusApiClient {
         params.fields = '*.*';
       }
       
-      logDebug('Loading item with relations', { collection, id, fields });
-      
       const response = await this.retryRequest(() =>
         this.api.get(`/items/${collection}/${id}`, { params })
       );
@@ -199,6 +251,29 @@ export class DirectusApiClient implements IDirectusApiClient {
     collection: string
   ): Promise<CollectionMetadata> {
     try {
+      // Check if external API is available for enhanced metadata
+      const hasCustomApi = await this.availabilityChecker.checkCustomApiAvailable();
+      
+      if (hasCustomApi) {
+        // Try to get enhanced metadata from external API
+        try {
+          const response = await this.retryRequest(() =>
+            this.api.get(`/expandable-blocks-api/${collection}/metadata`)
+          );
+          
+          if (response.data) {
+            // If external API returns the old format with displayableFields, use it
+            if (response.data.displayableFields && response.data.displayableFields.length > 0) {
+              return response.data;
+            }
+          }
+        } catch (externalApiError) {
+          logWarn('External API metadata failed, falling back to native', { error: externalApiError });
+          // Fall through to native API
+        }
+      }
+      
+      // Fallback to native Directus API
       // Fetch fields and relations in parallel
       const [fields, relations] = await Promise.all([
         this.getFieldsInfo(collection),
@@ -242,8 +317,6 @@ export class DirectusApiClient implements IDirectusApiClient {
     collection: string
   ): Promise<FieldInfo[]> {
     try {
-      logDebug('Fetching fields info', { collection });
-      
       const response = await this.retryRequest(() =>
         this.api.get(`/fields/${collection}`)
       );
@@ -266,8 +339,6 @@ export class DirectusApiClient implements IDirectusApiClient {
     collection: string
   ): Promise<RelationInfo[]> {
     try {
-      logDebug('Fetching relations info', { collection });
-      
       const response = await this.retryRequest(() =>
         this.api.get('/relations', {
           params: {
@@ -300,8 +371,6 @@ export class DirectusApiClient implements IDirectusApiClient {
     action: 'create' | 'read' | 'update' | 'delete'
   ): Promise<PermissionResult> {
     try {
-      logDebug('Checking permissions', { collection, action });
-      
       // Try to perform a minimal operation to check permission
       let allowed = false;
       let fields: string[] = [];
@@ -309,12 +378,12 @@ export class DirectusApiClient implements IDirectusApiClient {
       if (action === 'read') {
         // Try to read with limit 0 to check permission
         try {
-          const response = await this.api.get(`/items/${collection}`, {
+          await this.api.get(`/items/${collection}`, {
             params: { limit: 0, meta: 'total_count' }
           });
           allowed = true;
           // TODO: Extract allowed fields from response if available
-        } catch (err) {
+        } catch {
           allowed = false;
         }
       } else {
@@ -333,7 +402,7 @@ export class DirectusApiClient implements IDirectusApiClient {
           if (allowed && response.data.data[0]?.fields) {
             fields = response.data.data[0].fields;
           }
-        } catch (err) {
+        } catch {
           // If we can't access permissions endpoint, assume no permission
           allowed = false;
         }
@@ -353,6 +422,36 @@ export class DirectusApiClient implements IDirectusApiClient {
         action,
         allowed: false
       };
+    }
+  }
+
+  /**
+   * Get usage information for an item (requires external API)
+   */
+  async getItemUsage(
+    collection: string,
+    id: string | number
+  ): Promise<{ usage_locations?: any[], usage_summary?: any } | null> {
+    try {
+      // This feature requires the external API
+      const hasCustomApi = await this.availabilityChecker.checkCustomApiAvailable();
+      
+      if (!hasCustomApi) {
+        return null;
+      }
+      
+      const response = await this.retryRequest(() =>
+        this.api.get(`/expandable-blocks-api/${collection}/usage/${id}`)
+      );
+      
+      return {
+        usage_locations: response.data.usage_locations || [],
+        usage_summary: response.data.usage_summary || {}
+      };
+      
+    } catch (error) {
+      logWarn('Failed to get item usage', { collection, id, error });
+      return null;
     }
   }
 
@@ -406,8 +505,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async createItem<T = any>(collection: string, data: Partial<T>): Promise<T> {
     try {
-      logDebug('Creating item', { collection, data });
-      
       const response = await this.retryRequest(() =>
         this.api.post(`/items/${collection}`, data)
       );
@@ -425,8 +522,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async updateItem<T = any>(collection: string, id: string | number, data: Partial<T>): Promise<T> {
     try {
-      logDebug('Updating item', { collection, id, data });
-      
       const response = await this.retryRequest(() =>
         this.api.patch(`/items/${collection}/${id}`, data)
       );
@@ -444,8 +539,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async deleteItem(collection: string, id: string | number): Promise<void> {
     try {
-      logDebug('Deleting item', { collection, id });
-      
       await this.retryRequest(() =>
         this.api.delete(`/items/${collection}/${id}`)
       );
@@ -461,8 +554,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async getCurrentUser<T = any>(): Promise<T> {
     try {
-      logDebug('Getting current user');
-      
       const response = await this.retryRequest(() =>
         this.api.get('/users/me', {
           params: {
@@ -484,8 +575,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async getPresets(filter?: Record<string, any>): Promise<any[]> {
     try {
-      logDebug('Getting presets', { filter });
-      
       const params: Record<string, any> = {};
       if (filter) {
         params.filter = filter;
@@ -508,8 +597,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async createPreset(data: any): Promise<any> {
     try {
-      logDebug('Creating preset', { data });
-      
       const response = await this.retryRequest(() =>
         this.api.post('/presets', data)
       );
@@ -527,8 +614,6 @@ export class DirectusApiClient implements IDirectusApiClient {
    */
   async updatePreset(id: string | number, data: any): Promise<any> {
     try {
-      logDebug('Updating preset', { id, data });
-      
       const response = await this.retryRequest(() =>
         this.api.patch(`/presets/${id}`, data)
       );
@@ -560,12 +645,105 @@ export class DirectusApiClient implements IDirectusApiClient {
     fields: FieldInfo[],
     relations: RelationInfo[]
   ): Promise<TranslationInfo | undefined> {
-    // Look for translations relation
-    const translationRelation = relations.find(r => 
-      r.field === 'translations' &&
-      r.meta?.one_collection_field === 'collection' &&
-      r.meta?.junction_field
-    );
+    // First, try the simple approach: check if a translation table exists
+    // Most common pattern is {collection}_translations
+    const possibleTranslationTable = `${collection}_translations`;
+    
+    try {
+      // Try to get fields from the translation table directly
+      const translationFields = await this.getFieldsInfo(possibleTranslationTable);
+      
+      if (translationFields && translationFields.length > 0) {
+        // Find language field
+        const languageField = translationFields.find(f => 
+          f.field === 'languages_code' || 
+          f.field === 'language' ||
+          f.meta?.interface === 'select-dropdown' && f.meta?.special?.includes('m2o')
+        );
+        
+        if (languageField) {
+          // We found a valid translation table!
+          // Get translatable fields (all non-system fields from the translation table)
+          const systemFields = ['id', 'languages_code', 'language', 'languages_id', `${collection}_id`,
+                               'user_created', 'user_updated', 'date_created', 'date_updated', 'sort', 'status'];
+          
+          // All non-system fields from the translation table are translatable
+          const translatableFields = translationFields
+            .filter(f => !systemFields.includes(f.field))
+            .map(f => f.field);
+          
+          return {
+            translationsCollection: possibleTranslationTable,
+            languageField: languageField.field,
+            translatableFields,
+            languageCodeField: languageField.field
+          };
+        }
+      }
+    } catch {
+      // Table doesn't exist or we can't access it, continue with relation-based detection
+    }
+    
+    // Look for translations relation - be more flexible in detection
+    // BUT exclude system translation tables
+    // Note: Relations can be defined in either direction (from main to translations or vice versa)
+    let translationRelation = relations.find(r => {
+      // Skip system translation tables
+      if (r.related_collection === 'directus_translations') {
+        return false;
+      }
+      
+      // Common patterns for translation relations
+      const isTranslationField = r.field === 'translations' || 
+                                 r.field === 'translation' ||
+                                 r.field?.includes('translation');
+      
+      // Check if it's a one-to-many relation to a translation collection
+      // Specifically look for collection-specific translation tables like 'content_headline_translations'
+      const isCollectionTranslation = r.related_collection?.includes(`${collection}_translations`) ||
+                                      r.related_collection?.includes(`${collection}_translation`);
+      
+      // Also check for general translation pattern but not the system one
+      const isTranslationRelation = (r.related_collection?.includes('translations') ||
+                                     r.related_collection?.includes('translation')) &&
+                                     r.related_collection !== 'directus_translations';
+      
+      // Prioritize collection-specific translations
+      return isCollectionTranslation || (isTranslationField && isTranslationRelation);
+    });
+    
+    // If no direct relation found, check for reverse relations
+    // e.g., content_headline_translations -> content_headline
+    if (!translationRelation) {
+      // Look for relations where the collection is the target (one_collection)
+      // and the source (many_collection) is a translation table
+      translationRelation = relations.find(r => {
+        const sourceCollection = r.collection || r.meta?.many_collection;
+        const isTranslationSource = sourceCollection?.includes(`${collection}_translations`) ||
+                                    sourceCollection?.includes(`${collection}_translation`);
+        
+        if (isTranslationSource) {
+          // Transform to expected format - use the source as related_collection
+          return {
+            ...r,
+            related_collection: sourceCollection,
+            field: 'translations' // Virtual field name
+          };
+        }
+        
+        return false;
+      });
+      
+      // If we found a reverse relation, use the many_collection as the translation collection
+      if (translationRelation) {
+        const sourceCollection = translationRelation.collection || translationRelation.meta?.many_collection;
+        translationRelation = {
+          ...translationRelation,
+          related_collection: sourceCollection || null,
+          field: 'translations'
+        };
+      }
+    }
     
     if (!translationRelation) {
       return undefined;
@@ -590,10 +768,20 @@ export class DirectusApiClient implements IDirectusApiClient {
       return undefined;
     }
     
-    // Translatable fields are all fields except system fields
-    const systemFields = ['id', 'languages_code', 'language', collection];
-    const translatableFields = translationFields
+    // Important: translatable fields are the fields that exist in BOTH collections
+    // System fields that should not be considered translatable
+    const systemFields = ['id', 'languages_code', 'language', 'languages_id', collection, 
+                          'user_created', 'user_updated', 'date_created', 'date_updated', 'sort', 'status'];
+    
+    // Get field names from translation collection (excluding system fields)
+    const translationFieldNames = translationFields
       .filter(f => !systemFields.includes(f.field))
+      .map(f => f.field);
+    
+    // Find which fields from the main collection are translatable
+    // A field is translatable if it exists in both the main collection and the translation collection
+    const translatableFields = fields
+      .filter(f => translationFieldNames.includes(f.field) && !systemFields.includes(f.field))
       .map(f => f.field);
     
     return {

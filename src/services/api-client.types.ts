@@ -201,6 +201,12 @@ export interface IDirectusApiClient {
     action: 'create' | 'read' | 'update' | 'delete'
   ): Promise<PermissionResult>;
 
+  // Usage tracking (requires external API)
+  getItemUsage(
+    collection: string,
+    id: string | number
+  ): Promise<{ usage_locations?: any[], usage_summary?: any } | null>;
+
   // Get raw API instance for direct calls
   getApi(): AxiosInstance;
   
