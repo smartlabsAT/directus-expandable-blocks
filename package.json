@@ -35,7 +35,8 @@
     "path": "dist/index.js",
     "name": "expandable-blocks",
     "source": "src/index.ts",
-    "host": "^11.0.0"
+    "host": "^11.0.0",
+    "icon": "dashboard_customize"
   },
   "scripts": {
     "build": "directus-extension build",
