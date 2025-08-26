@@ -76,65 +76,21 @@
             <p>{{ collectionName || 'Unknown' }}</p>
           </div>
 
-          <!-- Multiple Usage Warning -->
+          <!-- Cannot verify usage warning -->
           <v-notice
-            v-if="!(usageInfo.totalCount === 0 || (usageInfo.totalCount === 1 && usageInfo.currentPageUsage))"
+            v-if="usageInfo.hasUncheckedUsage"
             type="warning"
             icon="warning"
           >
-            This item cannot be permanently deleted because it is used in {{ usageInfo.totalCount - (usageInfo.currentPageUsage ? 1 : 0) }} other {{ (usageInfo.totalCount - (usageInfo.currentPageUsage ? 1 : 0)) === 1 ? 'location' : 'locations' }}. You can only unassign it from this page.
+            <div>
+              <strong style="display: block; margin-bottom: 8px;">Cannot verify item usage</strong>
+              <p style="margin: 0;">For safe deletion with usage checking, please install the <code>expandable-blocks-api</code> extension.</p>
+            </div>
           </v-notice>
 
-          <!-- Usage Details - only show when item is used in multiple places or other locations -->
-          <div v-if="usageInfo.locations && usageInfo.locations.length > 0 && !(usageInfo.totalCount === 1 && usageInfo.currentPageUsage)">
-            <div class="usage-summary">
-              <v-icon name="link" small />
-              <strong>Used in {{ usageInfo.totalCount }} {{ usageInfo.totalCount === 1 ? 'location' : 'locations' }}:</strong>
-            </div>
 
-            <!-- Usage locations always visible with links -->
-            <div class="location-list">
-              <div
-                v-for="location in usageInfo.locations"
-                :key="`${location.collection}-${location.id}`"
-                class="location-item"
-                :class="{ 'current-page': location.id === currentPageId }"
-              >
-                <v-icon
-                  :name="getCollectionIcon(location.collection)"
-                  class="location-icon"
-                  small
-                />
-                <div class="location-info">
-                  <span class="location-title">
-                    {{ location.title || `${location.collection} #${location.id}` }}
-                  </span>
-                  <a
-                    :href="`/admin/content/${location.collection}/${location.id}`"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="location-link"
-                    @click.stop
-                  >
-                    <v-icon
-                      name="open_in_new"
-                      small
-                    />
-                  </a>
-                  <v-chip
-                    v-if="location.id === currentPageId"
-                    x-small
-                    outlined
-                  >
-                    This Page
-                  </v-chip>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Deletion Options -->
-          <div v-if="canProceed" class="deletion-options">
+          <!-- Deletion Options - Always show if we have usage info -->
+          <div v-if="usageInfo" class="deletion-options">
             <v-divider />
             <h4>Choose action:</h4>
             <div class="action-options">
@@ -166,6 +122,90 @@
                     <p>Remove content from database</p>
                   </div>
                 </div>
+              </label>
+            </div>
+            
+            <!-- Usage Details - only show when delete is selected and item is used elsewhere -->
+            <div v-if="deleteContent && !usageInfo.hasUncheckedUsage && usageInfo.locations && usageInfo.locations.length > 0 && !(usageInfo.totalCount === 1 && usageInfo.currentPageUsage)">
+              <!-- Usage Warning -->
+              <v-notice
+                type="danger"
+                icon="warning"
+                style="margin-top: 16px;"
+              >
+                <div>
+                  <strong style="display: block;">This item is used in {{ usageInfo.totalCount - (usageInfo.currentPageUsage ? 1 : 0) }} other {{ (usageInfo.totalCount - (usageInfo.currentPageUsage ? 1 : 0)) === 1 ? 'location' : 'locations' }}</strong>
+                  <span style="display: block; margin-top: 4px;">To delete this item permanently, you must acknowledge each usage location below.</span>
+                </div>
+              </v-notice>
+
+              <div class="usage-summary">
+                <v-icon name="link" small />
+                <strong>Used in {{ usageInfo.totalCount }} {{ usageInfo.totalCount === 1 ? 'location' : 'locations' }}:</strong>
+              </div>
+
+              <!-- Usage locations with acknowledgment checkboxes -->
+              <div class="location-list-with-checks">
+                <div
+                  v-for="(location, index) in usageInfo.locations"
+                  :key="getLocationKey(location, index)"
+                  class="location-item-with-check"
+                  :class="{ 
+                    'current-page': location.id === currentPageId,
+                    'acknowledged': acknowledgedLocations.has(getLocationKey(location, index))
+                  }"
+                >
+                  <!-- Skip checkbox for current page -->
+                  <input
+                    v-if="location.id !== currentPageId"
+                    type="checkbox"
+                    :checked="acknowledgedLocations.has(getLocationKey(location, index))"
+                    @change="toggleLocationAcknowledgment(getLocationKey(location, index))"
+                    class="location-checkbox"
+                  />
+                  <div v-else class="checkbox-spacer"></div>
+                  
+                  <v-icon
+                    :name="getCollectionIcon(location.collection)"
+                    class="location-icon"
+                    small
+                  />
+                  <div class="location-info">
+                    <span class="location-title">
+                      {{ location.title || `${location.collection} #${location.id}` }}
+                    </span>
+                    <a
+                      :href="`/admin/content/${location.collection}/${location.id}`"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="location-link"
+                      @click.stop
+                    >
+                      <v-icon
+                        name="open_in_new"
+                        small
+                      />
+                    </a>
+                    <v-chip
+                      v-if="location.id === currentPageId"
+                      x-small
+                      outlined
+                    >
+                      This Page
+                    </v-chip>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Risk Acknowledgment Checkbox when usage cannot be verified and delete is selected -->
+            <div v-if="usageInfo.hasUncheckedUsage && deleteContent" class="risk-acknowledgment-section">
+              <label class="risk-checkbox">
+                <input
+                  type="checkbox"
+                  v-model="acknowledgeRisk"
+                />
+                <span>I understand the risk and want to delete this item anyway</span>
               </label>
             </div>
           </div>
@@ -249,6 +289,8 @@ const emit = defineEmits<{
 const deleteContent = ref(false);
 const selectedLocations = ref<string[]>([]);
 const selectAll = ref(false);
+const acknowledgeRisk = ref(false);
+const acknowledgedLocations = ref<Set<string>>(new Set());
 
 // Reset state when dialog opens
 watch(() => props.modelValue, (isOpen) => {
@@ -256,6 +298,8 @@ watch(() => props.modelValue, (isOpen) => {
     deleteContent.value = false;
     selectedLocations.value = [];
     selectAll.value = false;
+    acknowledgeRisk.value = false;
+    acknowledgedLocations.value = new Set();
     
     // Auto-select current page
     if (props.currentPageId && props.usageInfo) {
@@ -270,17 +314,39 @@ watch(() => props.modelValue, (isOpen) => {
 });
 
 // Computed properties
+const allAcknowledged = computed(() => {
+  if (!props.usageInfo?.locations) return false;
+  
+  const nonCurrentLocations = props.usageInfo.locations.filter(loc => loc.id !== props.currentPageId);
+  if (nonCurrentLocations.length === 0) return false;
+  
+  return nonCurrentLocations.every((location) => {
+    const fullIndex = props.usageInfo!.locations.indexOf(location);
+    return acknowledgedLocations.value.has(getLocationKey(location, fullIndex));
+  });
+});
+
 const canProceed = computed(() => {
   if (!props.usageInfo) return false;
   if (props.loading) return false;
   
+  // If usage couldn't be verified and user wants to delete permanently,
+  // they must acknowledge the risk
+  if (props.usageInfo.hasUncheckedUsage && deleteContent.value) {
+    return acknowledgeRisk.value;
+  }
+  
+  // If there are external usages and user wants to delete permanently,
+  // all locations must be acknowledged
+  if (!props.usageInfo.canDelete && deleteContent.value) {
+    return allAcknowledged.value;
+  }
+  
   // Can proceed if no usage or only current page
   if (props.usageInfo.canDelete) return true;
   
-  // Can proceed if force delete is allowed and locations are selected
-  if (props.allowForceDelete && selectedLocations.value.length > 0) {
-    return true;
-  }
+  // Can proceed with unassign (not delete)
+  if (!deleteContent.value) return true;
   
   return false;
 });
@@ -289,6 +355,14 @@ const confirmButtonText = computed(() => {
   if (!props.usageInfo) return 'Confirm';
   
   if (deleteContent.value) {
+    // Show special text when deleting with unchecked usage
+    if (props.usageInfo.hasUncheckedUsage) {
+      return 'Delete at Own Risk';
+    }
+    // Show special text when forced deletion with acknowledged locations
+    if (!props.usageInfo.canDelete && allAcknowledged.value) {
+      return 'Force Delete';
+    }
     return 'Delete Permanently';
   }
   
@@ -296,6 +370,27 @@ const confirmButtonText = computed(() => {
 });
 
 // Methods
+function getLocationKey(location: any, index: number): string {
+  // Use junction_id if available for uniqueness, otherwise fall back to index
+  if (location.junction_id) {
+    return `${location.collection}:${location.id}:${location.junction_id}`;
+  }
+  // Fallback to index-based key if no junction_id
+  return `${location.collection}:${location.id}:${index}`;
+}
+
+function toggleLocationAcknowledgment(locationKey: string) {
+  const newSet = new Set(acknowledgedLocations.value);
+  if (newSet.has(locationKey)) {
+    newSet.delete(locationKey);
+  } else {
+    newSet.add(locationKey);
+  }
+  acknowledgedLocations.value = newSet;
+}
+
+// Removed acknowledgeAll function - users must manually check each item
+
 function getStatusLabel(status: string): string {
   const statusLabels: Record<string, string> = {
     'published': 'Published',
@@ -336,6 +431,28 @@ function handleConfirm() {
 </script>
 
 <style scoped>
+/* Dialog Content Scrolling */
+:deep(.v-card) {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.v-card-title) {
+  flex-shrink: 0;
+}
+
+:deep(.v-card-text) {
+  flex: 1;
+  overflow-y: auto;
+  max-height: calc(90vh - 200px); /* Account for header and footer */
+}
+
+:deep(.v-card-actions) {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-subdued);
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -486,55 +603,76 @@ function handleConfirm() {
 }
 
 
-.location-list {
-  max-height: 200px;
+.location-list-with-checks {
+  max-height: 400px; /* Increased from 300px for better visibility */
   overflow-y: auto;
   overflow-x: hidden;
-  border: 1px solid var(--border-subdued);
+  border: 2px solid var(--danger-25);
   border-radius: var(--border-radius);
   background: var(--background-normal);
   scroll-behavior: smooth;
 }
 
 /* Custom scrollbar styling for better UX */
-.location-list::-webkit-scrollbar {
+.location-list-with-checks::-webkit-scrollbar {
   width: 8px;
 }
 
-.location-list::-webkit-scrollbar-track {
+.location-list-with-checks::-webkit-scrollbar-track {
   background: var(--background-subdued);
   border-radius: var(--border-radius);
 }
 
-.location-list::-webkit-scrollbar-thumb {
+.location-list-with-checks::-webkit-scrollbar-thumb {
   background: var(--border-normal);
   border-radius: var(--border-radius);
 }
 
-.location-list::-webkit-scrollbar-thumb:hover {
+.location-list-with-checks::-webkit-scrollbar-thumb:hover {
   background: var(--border-normal-alt);
 }
 
-.location-item {
+.location-item-with-check {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border-subdued);
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
-.location-item:last-child {
+.location-item-with-check:last-of-type {
   border-bottom: none;
 }
 
-.location-item:hover {
+.location-item-with-check:hover {
   background: var(--background-highlight);
 }
 
-.location-item.current-page {
-  background: var(--primary-10);
+.location-item-with-check.current-page {
+  opacity: 0.7;
 }
+
+.location-item-with-check.acknowledged .location-title {
+  text-decoration: line-through;
+  opacity: 0.7;
+  color: var(--foreground-subdued);
+}
+
+.location-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkbox-spacer {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Removed .acknowledge-all styles - button was removed */
 
 .location-icon {
   color: var(--foreground-subdued);
@@ -638,5 +776,47 @@ function handleConfirm() {
   margin-top: 8px;
   margin-bottom: 0;
   font-size: 13px;
+}
+
+.risk-acknowledgment-section {
+  margin-top: 12px;
+}
+
+.risk-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  margin-top: 12px;
+  background: var(--warning-10);
+  border: 2px solid var(--warning-25);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.risk-checkbox:hover {
+  background: var(--warning-15);
+  border-color: var(--warning);
+}
+
+.risk-checkbox input[type="checkbox"] {
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.risk-checkbox span {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--warning);
+}
+
+.acknowledgment-warning {
+  margin-top: 12px;
+}
+
+.acknowledgment-warning .v-notice {
+  margin: 0;
 }
 </style>

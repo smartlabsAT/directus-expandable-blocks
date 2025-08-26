@@ -1,6 +1,8 @@
 import { computed } from 'vue';
 import { logger } from '../utils/logger-wrapper';
 import { isValidPrimaryKey, isItemObject } from '../utils/validation';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 import type { JunctionRecord } from '../types';
 import type { ExpandableBlocksContext } from '../types/composable-context';
 
@@ -24,6 +26,9 @@ export function useM2AData(
   const { api, props, stores: { relationsStore, fieldsStore, collectionsStore }, helpers: { m2aHelper } } = ctx.deps;
   const { mergedOptions } = ctx.ui;
   const { relationInfo, allowedCollections, allowedCollectionsForExisting, m2aStructure } = ctx.data;
+  
+  // Create API client instance
+  const apiClient: IDirectusApiClient = createApiClient(api);
 
   // Computed property for allowed collections map
   const allowedCollectionsMap = computed(() => {
@@ -208,8 +213,8 @@ export function useM2AData(
     // Load additional junction metadata if needed
     if (relationInfo.value?.junctionCollection) {
       try {
-        const junctionFields = await api.get(`/fields/${relationInfo.value.junctionCollection}`);
-        logger.debug('Junction fields loaded:', junctionFields.data.data);
+        const junctionFields = await apiClient.getFieldsInfo(relationInfo.value.junctionCollection);
+        logger.debug('Junction fields loaded:', junctionFields);
       } catch (error) {
         logger.warn('Failed to load junction fields:', error);
       }
@@ -267,10 +272,19 @@ export function useM2AData(
       };
       
       const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-      const response = await api.get(`/items/${junctionCollection}`, { params: query });
+      const response = await apiClient.searchItems(junctionCollection, {
+        fields: fields,
+        limit: -1,
+        sort: relationInfo.value?.meta?.sort_field || undefined,
+        filter: {
+          [relationInfo.value?.foreignKeyField || `${props.collection}_id`]: {
+            _eq: props.primaryKey
+          }
+        }
+      });
       
-      if (response.data.data) {
-        const records = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+      if (response.data) {
+        const records = Array.isArray(response.data) ? response.data : [response.data];
         
         logger.log('📥 LOAD FULL ITEM DATA:', {
           recordsCount: records.length,
@@ -351,8 +365,8 @@ export function useM2AData(
           // Load full item data if only ID is provided
           if (typeof pastedItem['item'] === 'number' || typeof pastedItem['item'] === 'string') {
             try {
-              const itemResponse = await api.get(`/items/${pastedItem['collection']}/${pastedItem['item']}`);
-              pastedItem['item'] = itemResponse.data.data;
+              const itemData = await apiClient.loadItemWithRelations(pastedItem['collection'], pastedItem['item']);
+              pastedItem['item'] = itemData;
             } catch (error) {
               logger.warn(`Failed to load item data for ${pastedItem['collection']}/${pastedItem['item']}:`, error);
             }
@@ -388,8 +402,7 @@ export function useM2AData(
           
           try {
             const junctionCollection = relationInfo.value?.junctionCollection || `${props.collection}_${props.field}`;
-            const response = await api.post(`/items/${junctionCollection}`, junctionData);
-            const createdJunction = response.data.data;
+            const createdJunction = await apiClient.createItem(junctionCollection, junctionData);
             
             createdJunction['item'] = pastedItem['item'];
             pastedIds.add(createdJunction.id);

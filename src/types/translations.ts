@@ -9,9 +9,10 @@ export interface TranslationInfo {
   hasTranslations: boolean;
   translationType: 'combined' | 'table' | 'none';
   translationTable?: string;
+  translationsCollection?: string; // Add missing property for compatibility with API client
   linkField?: string;
   languageField?: string;
-  translationFields: TranslationField[];
+  translationFields: TranslationField[] | string[]; // Allow both object array and string array
   isCombinedTranslation?: boolean;
   message?: string;
   availableLanguages?: LanguageOption[];
@@ -87,5 +88,4 @@ export interface CollectionMetadata {
   displayableFields?: FieldWithTranslation[]; // All fields that can be displayed in UI
   translationInfo?: TranslationInfo;
   possibleLocations?: any[];
-  cached_at?: string;
 }

@@ -61,10 +61,10 @@
               :available-fields="allAvailableFields"
               :display-fields="displayFields"
               :selected-language="selectedLanguageLocal"
-              :available-languages="availableLanguages"
-              :translation-info="translationInfo"
+              :available-languages="props.availableLanguages"
+              :translation-info="props.translationInfo"
               :loading="userPresets.loading.value"
-              :is-field-translatable="isFieldTranslatable"
+              :is-field-translatable="props.isFieldTranslatable"
               :show-ids="showIds"
               :hide-empty-fields="hideEmptyFields"
               :sort-field="sortField"
@@ -274,7 +274,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, nextTick, defineProps, defineEmits, withDefaults} from 'vue';
+import {ref, computed, watch, onMounted, nextTick} from 'vue';
 import {extractItemTitle} from '../utils/helpers';
 import ItemSearchPanel from './ItemSearchPanel.vue';
 import FieldDisplay from './FieldDisplay.vue';
@@ -383,6 +383,14 @@ watch(() => props.itemRelations, (relations) => {
   });
 }, { immediate: true });
 
+watch(() => props.availableLanguages, (languages) => {
+  logger.debug('[ItemSelectorDrawer] availableLanguages prop changed', { 
+    languages,
+    isArray: Array.isArray(languages),
+    length: languages?.length || 0
+  });
+}, { immediate: true, deep: true });
+
 
 // Computed
 const collectionIcon = computed(() => props.collectionIcon || 'box');
@@ -404,35 +412,34 @@ const allAvailableFields = computed(() => {
     });
     
     props.translationInfo.translationFields.forEach((tf: any) => {
-      // Debug log for each translation field
-      if (tf.field === 'description') {
-        logger.debug('Translation field description raw data', {
-          tf,
-          hasInterface: 'interface' in tf,
-          interfaceValue: tf.interface,
-          allKeys: Object.keys(tf)
-        });
+      // Handle both string and object formats for translation fields
+      const fieldName = typeof tf === 'string' ? tf : tf.field;
+      
+      if (!fieldName) {
+        logger.debug('Skipping invalid translation field', { tf });
+        return;
       }
       
       // Don't add if already exists
-      if (!fields.find(f => f.field === tf.field)) {
+      if (!fields.find(f => f.field === fieldName)) {
         const translationField = {
-          ...tf,
-          // Ensure the field has all necessary properties
-          field: tf.field,
-          name: tf.name || tf.field,
-          type: tf.type,
-          interface: tf.interface || null,
-          display: tf.display || null,
-          options: tf.options || null,
+          // Handle string format
+          field: fieldName,
+          name: typeof tf === 'object' ? (tf.name || fieldName) : fieldName,
+          type: typeof tf === 'object' ? (tf.type || 'string') : 'string',
+          interface: typeof tf === 'object' ? (tf.interface || 'input') : 'input',
+          display: typeof tf === 'object' ? (tf.display || null) : null,
+          options: typeof tf === 'object' ? (tf.options || null) : null,
+          display_name: typeof tf === 'object' ? (tf.name || fieldName) : fieldName,
+          searchable: true,
+          weight: 100,
           translatable: true,
-          translation_type: 'combined'
+          translation_type: 'json'
         };
         
         logger.debug('Adding translation field', {
-          field: tf.field,
+          field: fieldName,
           interface: translationField.interface,
-          tfInterface: tf.interface,
           originalTf: tf
         });
         

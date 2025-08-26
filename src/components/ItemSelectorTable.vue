@@ -1,7 +1,8 @@
 <template>
+  <!-- STICKY HEADER FIX: Restructured to separate header and body containers for proper sticky behavior -->
   <div class="item-selector-table-wrapper">
-    <div class="table-scroll-container">
-      <!-- Table Header (Sticky) -->
+    <!-- Fixed Header Container -->
+    <div class="table-header-container" ref="headerContainer">
       <div class="table-header">
         <div class="table-row header-row">
         <!-- Checkbox Column -->
@@ -23,6 +24,10 @@
              }"
              @click="isTitleColumnSortable && handleTitleClick()">
           <span class="field-header-label title-header-label">
+            <!-- Invisible spacer to align with status dot in body -->
+            <span class="header-status-spacer"></span>
+            <!-- Spacer when not sorted -->
+            <span v-if="!isTitleFieldSorted" class="sort-icon-spacer"></span>
             <v-icon 
                 v-if="isTitleFieldSorted"
                 :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
@@ -49,6 +54,8 @@
             @click="isFieldSortable(field) && handleHeaderClick(field)"
         >
           <span class="field-header-label">
+            <!-- Spacer when not sorted to maintain alignment -->
+            <span v-if="props.sortField !== field" class="sort-icon-spacer"></span>
             <v-icon 
                 v-if="props.sortField === field"
                 :name="props.sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'" 
@@ -101,8 +108,10 @@
         </div>
       </div>
     </div>
+    </div>
     
-    <!-- Table Body -->
+    <!-- Scrollable Body Container -->
+    <div class="table-body-container" ref="bodyContainer" @scroll="onBodyScroll">
     <div class="table-body">
       <div 
           v-for="item in items" 
@@ -197,6 +206,7 @@
         </div>
       </div>
     </div>
+    </div>
     
     <!-- Column Width Popover -->
     <ColumnWidthPopover
@@ -209,12 +219,11 @@
         @update:model-value="val => !val && closeColumnSettings()"
         @update-width="width => adjustColumnWidth(activeColumnSettings!, width)"
     />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, defineProps, defineEmits, withDefaults } from 'vue';
+import { computed, ref } from 'vue';
 import FieldDisplay from './FieldDisplay.vue';
 import UsagePopover from './UsagePopover.vue';
 import ColumnWidthPopover from './ColumnWidthPopover.vue';
@@ -286,6 +295,10 @@ const hoveredField = ref<string | null>(null);
 const activeColumnSettings = ref<string | null>(null);
 const columnSettingsAnchor = ref<HTMLElement | null>(null);
 
+// Refs for scroll sync
+const headerContainer = ref<HTMLElement | null>(null);
+const bodyContainer = ref<HTMLElement | null>(null);
+
 // Debug log for activeColumnSettings changes
 import { watch, onMounted } from 'vue';
 watch(activeColumnSettings, (newVal, oldVal) => {
@@ -295,8 +308,13 @@ watch(activeColumnSettings, (newVal, oldVal) => {
 // User-defined column widths (relative percentages)
 const userColumnWidths = ref<Record<string, number>>({});
 
-// Load saved column widths on mount
+// Load saved column widths on mount and setup scroll sync
 onMounted(() => {
+  // Ensure header starts with same scroll position as body
+  if (headerContainer.value && bodyContainer.value) {
+    headerContainer.value.scrollLeft = bodyContainer.value.scrollLeft;
+  }
+  
   logger.log('ItemSelectorTable mounted', {
     hasUserPresets: !!props.userPresets,
     collectionName: props.collectionName,
@@ -642,6 +660,14 @@ function handleTitleClick() {
   }
 }
 
+// Scroll synchronization function
+function onBodyScroll() {
+  if (headerContainer.value && bodyContainer.value) {
+    // Sync horizontal scroll from body to header
+    headerContainer.value.scrollLeft = bodyContainer.value.scrollLeft;
+  }
+}
+
 // Expose reset function for parent component
 ({
   resetAllColumnWidths
@@ -654,24 +680,39 @@ function handleTitleClick() {
   flex-direction: column;
   height: 100%;
   margin-top: 8px;
+  position: relative;
 }
 
-/* Scroll Container - Now the main grid container */
-.table-scroll-container {
-  display: grid;
-  grid-template-columns: v-bind(gridTemplateColumns);
-  height: 100%;
+/* Fixed Header Container */
+.table-header-container {
+  position: sticky;
+  top: 125px;
+  z-index: 20;
+  background: var(--background-page);
+  overflow-x: hidden; /* Will be synced with body scroll */
+  border-bottom: 2px solid var(--border-normal);
+}
+
+/* Scrollable Body Container */
+.table-body-container {
+  flex: 1;
   overflow-x: auto;
   overflow-y: auto;
   position: relative;
-  align-items: start; /* Align items to top */
 }
 
-/* Table Header */
-/* Table sections use display: contents to pass grid to children */
-.table-header,
+/* Table Header - Grid container for header */
+.table-header {
+  display: grid;
+  grid-template-columns: v-bind(gridTemplateColumns);
+  min-width: fit-content;
+}
+
+/* Table Body - Grid container for body */
 .table-body {
-  display: contents;
+  display: grid;
+  grid-template-columns: v-bind(gridTemplateColumns);
+  min-width: fit-content;
 }
 
 .header-row {
@@ -688,24 +729,35 @@ function handleTitleClick() {
   min-height: 48px; /* Ensure consistent height */
 }
 
-/* Header cells need sticky positioning */
+/* Header cells - no longer need sticky since container is sticky */
 .header-row > .table-cell {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: relative;
+  z-index: 1;
   background: var(--background-normal-alt) !important; /* Always grey background */
-  border-bottom: 2px solid var(--border-normal);
 }
 
-/* Header sticky columns need higher z-index */
+/* Header sticky columns need proper background */
 .header-row > .checkbox-cell,
 .header-row > .title-cell,
 .header-row > .actions-cell {
-  z-index: 15; /* Higher than regular header cells */
+  background: var(--background-normal-alt) !important;
 }
 
-/* Table Rows also use display: contents */
-.table-row {
+/* In header container, sticky columns should not be sticky horizontally */
+.table-header-container .checkbox-cell,
+.table-header-container .title-cell,
+.table-header-container .actions-cell {
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+/* Table Rows - Header row uses contents, body rows are grid */
+.header-row {
+  display: contents;
+}
+
+.item-row {
   display: contents;
 }
 
@@ -722,8 +774,22 @@ function handleTitleClick() {
   background-color: var(--theme--background); /* Explicit white background */
 }
 
+/* Ensure sticky columns in body have proper background */
+.item-row > .checkbox-cell,
+.item-row > .title-cell,
+.item-row > .actions-cell {
+  background-color: var(--theme--background);
+}
+
 /* Zebra striping - target cells of even rows */
 .table-body > .item-row:nth-of-type(even) > .table-cell {
+  background-color: var(--theme--background-normal);
+}
+
+/* Ensure sticky columns follow zebra striping */
+.table-body > .item-row:nth-of-type(even) > .checkbox-cell,
+.table-body > .item-row:nth-of-type(even) > .title-cell,
+.table-body > .item-row:nth-of-type(even) > .actions-cell {
   background-color: var(--theme--background-normal);
 }
 
@@ -889,7 +955,7 @@ function handleTitleClick() {
   gap: 4px;
   flex: 1;
   padding-right: 3px; /* Space for absolute positioned button */
-  padding-left: 18px; /* Space for sort icon - slightly more */
+  padding-left: 0; /* No fixed padding - will be handled by sort icon */
   min-width: 0;
   position: relative;
 }
@@ -916,11 +982,24 @@ function handleTitleClick() {
 
 /* Special handling for title header label */
 .title-header-label {
-  padding-left: 17px; /* Space for sort icon - slightly closer */
+  padding-left: 0; /* No padding - icon will be inline */
   
   .sort-icon {
-    left: 0; /* Position icon at the start */
+    position: relative !important; /* Override absolute positioning */
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin-right: 4px;
   }
+}
+
+/* Spacer to align header with body that has status dots */
+.header-status-spacer {
+  display: inline-block;
+  width: 8px; /* Same width as status dot */
+  height: 8px;
+  margin-right: 8px; /* Same gap as status dot */
+  flex-shrink: 0;
 }
 
 /* Sortable Headers */
@@ -948,10 +1027,17 @@ function handleTitleClick() {
 /* Sort Icon */
 .sort-icon {
   color: var(--primary);
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* Spacer for alignment when no sort icon is shown */
+.sort-icon-spacer {
+  display: inline-block;
+  width: 18px; /* Same width as sort icon */
+  margin-right: 4px; /* Same margin as sort icon */
+  flex-shrink: 0;
 }
 
 /* Column Settings Button */
@@ -1112,40 +1198,22 @@ function handleTitleClick() {
   background-color: var(--primary-25) !important;
 }
 
-/* Scrollbar styling */
-.table-body::-webkit-scrollbar {
+/* Scrollbar styling for body container */
+.table-body-container::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 
-.table-body::-webkit-scrollbar-track {
+.table-body-container::-webkit-scrollbar-track {
   background: var(--background-normal);
 }
 
-.table-body::-webkit-scrollbar-thumb {
+.table-body-container::-webkit-scrollbar-thumb {
   background-color: var(--border-normal);
   border-radius: 4px;
 }
 
-.table-body::-webkit-scrollbar-thumb:hover {
-  background-color: var(--border-normal-alt);
-}
-
-/* Horizontal scrollbar for the container */
-.table-scroll-container::-webkit-scrollbar {
-  height: 8px;
-}
-
-.table-scroll-container::-webkit-scrollbar-track {
-  background: var(--background-normal);
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb {
-  background-color: var(--border-normal);
-  border-radius: 4px;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb:hover {
+.table-body-container::-webkit-scrollbar-thumb:hover {
   background-color: var(--border-normal-alt);
 }
 </style>

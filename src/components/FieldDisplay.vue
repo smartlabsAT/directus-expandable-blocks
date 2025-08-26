@@ -244,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, defineProps, withDefaults } from 'vue';
+import { computed, watch, ref } from 'vue';
 import { createScopedLogger } from '../utils/logger-wrapper';
 
 const logger = createScopedLogger('FieldDisplay');
