@@ -83,7 +83,7 @@ export class DirectusApiClient implements IDirectusApiClient {
           };
           
           return result;
-        } catch (externalApiError) {
+        } catch {
           // Silently fall back to native API
           // This is expected when the external API is not available
         }
@@ -184,7 +184,7 @@ export class DirectusApiClient implements IDirectusApiClient {
           
           // External API provides enhanced data with usage_locations and usage_summary
           return items;
-        } catch (externalApiError) {
+        } catch {
           // Silently fall back to native API
           // This is expected when the external API endpoints are not available
         }
@@ -277,7 +277,7 @@ export class DirectusApiClient implements IDirectusApiClient {
               return response.data;
             }
           }
-        } catch (externalApiError) {
+        } catch {
           // Silently fall back to native API
           // This is expected when the external API is not available
         }
@@ -469,7 +469,7 @@ export class DirectusApiClient implements IDirectusApiClient {
       
       return null;
       
-    } catch (error) {
+    } catch {
       // This is expected when the API is not available
       logDebug('Item usage check failed (API may not be available)', { collection, id });
       return null;
