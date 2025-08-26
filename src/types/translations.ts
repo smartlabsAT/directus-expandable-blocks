@@ -88,5 +88,4 @@ export interface CollectionMetadata {
   displayableFields?: FieldWithTranslation[]; // All fields that can be displayed in UI
   translationInfo?: TranslationInfo;
   possibleLocations?: any[];
-  cached_at?: string;
 }

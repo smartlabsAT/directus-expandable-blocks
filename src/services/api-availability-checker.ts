@@ -175,16 +175,6 @@ export class ApiAvailabilityChecker {
   }
   
   /**
-   * Reset availability checks to force fresh checks
-   */
-  resetChecks(): void {
-    this.customApiAvailable = null;
-    this.nativeApiAvailable = null;
-    this.hasChecked = false;
-    logDebug('API availability checks reset');
-  }
-  
-  /**
    * Get a human-readable status message
    */
   async getStatusMessage(): Promise<string> {
