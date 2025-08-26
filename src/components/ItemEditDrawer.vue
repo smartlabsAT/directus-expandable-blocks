@@ -86,6 +86,8 @@ import { ref, computed, watch } from 'vue';
 import { useApi, useStores } from '@directus/extensions-sdk';
 import { createScopedLogger } from '../utils/logger-wrapper';
 import { notifyError, notifySuccess } from '../utils/notifications';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 
 const logger = createScopedLogger('ItemEditDrawer');
 
@@ -107,6 +109,9 @@ const api = useApi();
 const { useFieldsStore, useCollectionsStore } = useStores();
 const fieldsStore = useFieldsStore();
 const collectionsStore = useCollectionsStore();
+
+// Create API client instance
+const apiClient: IDirectusApiClient = createApiClient(api);
 
 // State
 const loading = ref(false);
@@ -172,13 +177,11 @@ async function loadItem() {
   try {
     logger.debug('Loading item', { collection: props.collection, primaryKey: props.primaryKey });
     
-    const response = await api.get(`/items/${props.collection}/${props.primaryKey}`, {
-      params: {
-        fields: '*'
-      }
-    });
-    
-    item.value = response.data.data;
+    item.value = await apiClient.loadItemWithRelations(
+      props.collection,
+      props.primaryKey,
+      ['*']
+    );
     logger.debug('Item loaded', { item: item.value });
   } catch (err: any) {
     logger.error('Failed to load item', err);
@@ -197,7 +200,7 @@ async function handleSave() {
   try {
     logger.debug('Saving item', { collection: props.collection, primaryKey: props.primaryKey, edits: edits.value });
     
-    await api.patch(`/items/${props.collection}/${props.primaryKey}`, edits.value);
+    await apiClient.updateItem(props.collection, props.primaryKey, edits.value);
     
     notifySuccess('Item updated successfully');
     emit('refresh');

@@ -1,6 +1,8 @@
 import { computed, ref, onMounted, type ComputedRef } from 'vue';
 import { useStores, useApi } from '@directus/extensions-sdk';
 import { logDebug } from '../utils/logger-wrapper';
+import { createApiClient } from '../services/api-client';
+import type { IDirectusApiClient } from '../services/api-client.types';
 import type { ExpandableBlocksOptions } from '../types';
 
 interface PermissionChecks {
@@ -20,6 +22,7 @@ export function usePermissionChecks(mergedOptions: ComputedRef<ExpandableBlocksO
   const { useUserStore } = useStores();
   const userStore = useUserStore();
   const api = useApi();
+  const apiClient: IDirectusApiClient = createApiClient(api);
   
   // Get current user and their role
   const currentUser = computed(() => userStore.currentUser);
@@ -39,14 +42,10 @@ export function usePermissionChecks(mergedOptions: ComputedRef<ExpandableBlocksO
       try {
         // Load current user with populated role
         // We need to explicitly request the role relation to be populated
-        const response = await api.get('/users/me', {
-          params: {
-            fields: ['*', 'role.*']
-          }
-        });
+        const userData = await apiClient.getCurrentUser();
         
-        if (response.data?.data?.role) {
-          const role = response.data.data.role;
+        if (userData?.role) {
+          const role = userData.role;
           if (role.name && role.id) {
             // Store the mapping
             roleIdToName.value = { [role.id]: role.name };
