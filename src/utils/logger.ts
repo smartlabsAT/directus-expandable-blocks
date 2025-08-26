@@ -8,9 +8,7 @@
  */
 
 // Check if we're in development mode
-const isDevelopment = process.env.NODE_ENV === 'development' || 
-                     import.meta.env?.MODE === 'development' ||
-                     import.meta.env?.DEV === true;
+const isDevelopment = import.meta.env?.MODE === 'development' || false;
 
 // Enable debug based on environment or manual override
 const DEBUG = isDevelopment || 
