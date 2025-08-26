@@ -2,8 +2,23 @@
  * Type definitions for the Directus API Client
  */
 
-import type { AxiosInstance } from 'axios';
 import type { FeatureSet } from './api-availability-checker';
+
+// Define our own API interface instead of using AxiosInstance
+export interface ApiResponse<T = any> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers?: Record<string, any>;
+}
+
+export interface DirectusApiInstance {
+  get<T = any>(url: string, config?: any): Promise<ApiResponse<T>>;
+  post<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>>;
+  patch<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>>;
+  delete<T = any>(url: string, config?: any): Promise<ApiResponse<T>>;
+  request<T = any>(config: any): Promise<ApiResponse<T>>;
+}
 
 /**
  * Search query options
@@ -219,7 +234,7 @@ export interface IDirectusApiClient {
   ): Promise<ItemUsageResult | null>;
 
   // Get raw API instance for direct calls
-  getApi(): AxiosInstance;
+  getApi(): DirectusApiInstance;
   
   // Feature availability
   getAvailableFeatures(): Promise<FeatureSet>;

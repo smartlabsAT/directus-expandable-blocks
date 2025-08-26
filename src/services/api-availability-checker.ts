@@ -5,8 +5,8 @@
  * for graceful degradation when custom API is not available.
  */
 
-import type { AxiosInstance } from 'axios';
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
+import type { DirectusApiInstance } from './api-client.types';
 
 /**
  * Available features based on API availability
@@ -41,13 +41,13 @@ interface ApiEndpoints {
 
 
 export class ApiAvailabilityChecker {
-  private api: AxiosInstance;
+  private api: DirectusApiInstance;
   private endpoints: ApiEndpoints;
   private customApiAvailable: boolean | null = null;
   private nativeApiAvailable: boolean | null = null;
   private hasChecked: boolean = false;
   
-  constructor(api: AxiosInstance) {
+  constructor(api: DirectusApiInstance) {
     this.api = api;
     this.endpoints = {
       custom: '/expandable-blocks-api/health',
@@ -74,7 +74,7 @@ export class ApiAvailabilityChecker {
       // We use a lightweight endpoint that should respond quickly
       const response = await this.api.get(this.endpoints.custom, {
         timeout: 3000, // 3 second timeout
-        validateStatus: (status) => status === 200 || status === 404
+        validateStatus: (status: number) => status === 200 || status === 404
       });
       
       const available = response.status === 200;
@@ -122,7 +122,7 @@ export class ApiAvailabilityChecker {
       // We do a simple check just to be sure
       const response = await this.api.get(this.endpoints.native, {
         timeout: 3000,
-        validateStatus: (status) => status === 200
+        validateStatus: (status: number) => status === 200
       });
       
       const available = response.status === 200;
@@ -203,6 +203,6 @@ export class ApiAvailabilityChecker {
 /**
  * Factory function to create availability checker
  */
-export function createApiAvailabilityChecker(api: AxiosInstance): ApiAvailabilityChecker {
+export function createApiAvailabilityChecker(api: DirectusApiInstance): ApiAvailabilityChecker {
   return new ApiAvailabilityChecker(api);
 }
