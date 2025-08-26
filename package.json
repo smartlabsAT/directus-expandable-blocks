@@ -73,7 +73,6 @@
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.54.2",
     "@testing-library/jest-dom": "^6.1.5",
-    "@testing-library/vue": "^8.0.1",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.10.5",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
