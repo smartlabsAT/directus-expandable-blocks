@@ -314,18 +314,13 @@ watch(() => props.modelValue, (isOpen) => {
 });
 
 // Computed properties
-const nonCurrentPageLocations = computed(() => {
-  if (!props.usageInfo?.locations) return [];
-  return props.usageInfo.locations.filter(loc => loc.id !== props.currentPageId);
-});
-
 const allAcknowledged = computed(() => {
   if (!props.usageInfo?.locations) return false;
   
   const nonCurrentLocations = props.usageInfo.locations.filter(loc => loc.id !== props.currentPageId);
   if (nonCurrentLocations.length === 0) return false;
   
-  return nonCurrentLocations.every((location, index) => {
+  return nonCurrentLocations.every((location) => {
     const fullIndex = props.usageInfo!.locations.indexOf(location);
     return acknowledgedLocations.value.has(getLocationKey(location, fullIndex));
   });

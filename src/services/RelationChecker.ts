@@ -68,7 +68,7 @@ export class RelationChecker {
         
         // Try to get usage info from custom API
         const usageInfo = await this.apiClient.getItemUsage(collection, itemId);
-        logDebug('Raw usage info from API', usageInfo);
+        logDebug('Raw usage info from API', usageInfo || undefined);
         
         if (usageInfo !== null) {
           // Process the usage info from custom API
