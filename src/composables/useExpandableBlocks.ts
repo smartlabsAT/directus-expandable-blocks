@@ -472,11 +472,17 @@ export function useExpandableBlocks(
             if (item.usage_summary?.total_count > 0) {
               const allUsageLocations = Array.isArray(item.usage_locations) ? item.usage_locations : [];
               
-              // Filter out locations from current parent
-              // Only filter if we have a valid currentParentId
+              // Count locations on current page and external pages
               let externalLocations = allUsageLocations;
+              let locationsOnCurrentPage = 0;
+              
               if (currentParentId !== undefined && currentParentId !== null && currentParentId !== '') {
                 const currentParentIdStr = String(currentParentId);
+                // Count how many times it's used on current page
+                locationsOnCurrentPage = allUsageLocations.filter((location: any) => 
+                  String(location.id) === currentParentIdStr
+                ).length;
+                // External locations are those NOT on current page
                 externalLocations = allUsageLocations.filter((location: any) => 
                   String(location.id) !== currentParentIdStr
                 );
@@ -484,19 +490,20 @@ export function useExpandableBlocks(
               
               // Calculate counts
               const externalCount = externalLocations.length;
-              const internalCount = allUsageLocations.length - externalCount;
+              // Internal count is how many MORE times it's used on this page (minus the current one)
+              const internalCount = locationsOnCurrentPage > 0 ? locationsOnCurrentPage - 1 : 0;
               
-              // Only store if there are external usages
-              if (externalCount > 0) {
+              // Store usage info if there are any usages (external OR internal)
+              if (externalCount > 0 || internalCount > 0) {
                 const key = `${collection}:${item.id}`;
                 // Create plain object without Vue reactivity proxies
                 const usageInfo = {
-                  usageCount: externalCount, // Only count external
+                  usageCount: externalCount + internalCount, // Total visible count
                   externalCount,
                   internalCount,
                   externalLocations,
                   usageSummary: {
-                    total_count: externalCount,
+                    total_count: item.usage_summary?.total_count || 0, // Keep original total
                     by_collection: item.usage_summary?.by_collection || {},
                     by_status: item.usage_summary?.by_status || {}
                   }

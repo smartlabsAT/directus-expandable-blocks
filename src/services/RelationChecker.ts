@@ -8,6 +8,7 @@ export interface ItemUsageLocation {
   field: string;
   title?: string;
   status?: string;
+  junction_id?: string | number;  // Unique identifier for each usage
 }
 
 export interface ItemUsageInfo {
@@ -15,6 +16,7 @@ export interface ItemUsageInfo {
   currentPageUsage: boolean;
   locations: ItemUsageLocation[];
   canDelete: boolean;
+  hasUncheckedUsage?: boolean;  // Indicates usage couldn't be verified
 }
 
 interface DirectusAPI {
@@ -66,38 +68,44 @@ export class RelationChecker {
         
         // Try to get usage info from custom API
         const usageInfo = await this.apiClient.getItemUsage(collection, itemId);
+        logDebug('Raw usage info from API', usageInfo);
         
-        if (usageInfo) {
+        if (usageInfo !== null) {
           // Process the usage info from custom API
           const locations: ItemUsageLocation[] = [];
           let currentPageUsage = false;
           
           // Process locations from the custom API response
-          // Filter out current page from locations
+          // Keep ALL locations, just mark which ones are on current page
           if (usageInfo.locations && Array.isArray(usageInfo.locations)) {
             for (const location of usageInfo.locations) {
               // Check if this is the current page
               if (this.currentPageId && String(location.id) === String(this.currentPageId)) {
                 currentPageUsage = true;
-                // Skip adding this location to the list
-                continue;
               }
               
+              // Add ALL locations to the list (including current page)
               locations.push({
                 collection: location.collection,
                 id: location.id,
                 field: location.field || 'unknown',
                 title: location.title || `${location.collection} #${location.id}`,
-                status: location.status
+                status: location.status,
+                junction_id: location.junction_id  // Include junction_id for uniqueness
               });
             }
           }
           
-          // Calculate real external count (excluding current page)
-          const externalCount = locations.length;
+          // Get total count from API or calculate from locations
+          const totalCount = usageInfo.total_count || locations.length;
+          
+          // Count external locations (not on current page)
+          const externalCount = locations.filter(loc => 
+            !this.currentPageId || String(loc.id) !== String(this.currentPageId)
+          ).length;
           
           return {
-            totalCount: externalCount, // Only count external locations
+            totalCount,
             currentPageUsage,
             locations,
             canDelete: externalCount === 0 // Can delete if no external usage
@@ -108,18 +116,20 @@ export class RelationChecker {
       // Fallback: If custom API is not available or failed, try native approach
       logDebug('Custom API not available, using native API fallback', { collection, itemId });
       
-      // If relation checking is not available at all, return permissive defaults
+      // If relation checking is not available at all, return with warning flag
       if (!this.isRelationCheckingAvailable) {
-        logDebug('Relation checking not available, returning permissive defaults', { collection, itemId });
+        logDebug('Relation checking not available, returning with warning flag', { collection, itemId });
         return {
           totalCount: 0,
           currentPageUsage: false,
           locations: [],
-          canDelete: true // Allow deletion when we can't check (will show warning in UI)
+          canDelete: true, // Allow deletion but with warning
+          hasUncheckedUsage: true // Flag that usage couldn't be verified
         };
       }
 
-      // Use native API client to get item data with relations
+      // Try to use native API, but it won't have usage_locations or usage_summary
+      // These are custom fields only available through the expandable-blocks-api
       const items = await this.apiClient.loadItemsWithRelations(
         collection,
         [itemId],
@@ -134,14 +144,15 @@ export class RelationChecker {
           totalCount: 0,
           currentPageUsage: false,
           locations: [],
-          canDelete: true
+          canDelete: true,
+          hasUncheckedUsage: true // Can't verify without data
         };
       }
 
       const locations: ItemUsageLocation[] = [];
       let currentPageUsage = false;
 
-      // Process usage locations if available
+      // Process usage locations if available (only with custom API)
       if (itemData.usage_locations && Array.isArray(itemData.usage_locations)) {
         // Use a Set to track unique locations
         const uniqueLocationKeys = new Set<string>();
@@ -159,21 +170,40 @@ export class RelationChecker {
           // Check if this is the current page (compare as strings)
           if (this.currentPageId && String(location.id) === String(this.currentPageId)) {
             currentPageUsage = true;
-            // Skip adding this location to the list
-            continue;
           }
           
-          // Get additional info about the location
+          // Add ALL locations (including current page)
           const locationInfo: ItemUsageLocation = {
             collection: location.collection,
             id: location.id,
             field: location.field || 'unknown',
             title: location.title || `${location.collection} #${location.id}`,
-            status: location.status
+            status: location.status,
+            junction_id: location.junction_id  // Include junction_id if available
           };
 
           locations.push(locationInfo);
         }
+      }
+
+      // Check if we have usage data (only available with custom API)
+      const hasUsageData = itemData.usage_summary || itemData.usage_locations;
+      
+      if (!hasUsageData) {
+        // Native API doesn't provide usage data, return with warning
+        logDebug('No usage data available (native API), returning with warning flag', { collection, itemId });
+        logDebug('Item data received:', { 
+          hasUsageSummary: !!itemData.usage_summary,
+          hasUsageLocations: !!itemData.usage_locations,
+          keys: Object.keys(itemData)
+        });
+        return {
+          totalCount: 0,
+          currentPageUsage: false,
+          locations: [],
+          canDelete: true,
+          hasUncheckedUsage: true // Native API can't provide usage info
+        };
       }
 
       const totalCount = itemData.usage_summary?.total_count || 0;
@@ -188,12 +218,13 @@ export class RelationChecker {
     } catch (error) {
       logError('Failed to check item usage', error, { collection, itemId });
       
-      // In case of error, be permissive to not block users
+      // In case of error, be permissive to not block users but flag as unchecked
       return {
         totalCount: 0,
         currentPageUsage: false,
         locations: [],
-        canDelete: true // Allow deletion on error (UI will show warning)
+        canDelete: true, // Allow deletion on error 
+        hasUncheckedUsage: true // Flag that usage couldn't be verified due to error
       };
     }
   }
@@ -204,16 +235,17 @@ export class RelationChecker {
   async checkMultipleItemsUsage(items: Array<{ collection: string; id: string | number }>): Promise<Map<string, ItemUsageInfo>> {
     const results = new Map<string, ItemUsageInfo>();
 
-    // If relation checking is not available, return safe defaults for all items
+    // If relation checking is not available, return with warning flag for all items
     if (!this.isRelationCheckingAvailable) {
-      logDebug('Relation checking not available, returning safe defaults for all items');
+      logDebug('Relation checking not available, returning with warning flag for all items');
       for (const item of items) {
         const key = `${item.collection}:${item.id}`;
         results.set(key, {
           totalCount: 0,
           currentPageUsage: false,
           locations: [],
-          canDelete: false // Be conservative
+          canDelete: true, // Allow deletion but with warning
+          hasUncheckedUsage: true // Flag that usage couldn't be verified
         });
       }
       return results;

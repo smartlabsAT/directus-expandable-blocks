@@ -94,13 +94,15 @@ Unlike other block editors, this extension **works directly with Directus' nativ
 - ⚠️ **Permission Indicators** - Visual feedback for restricted actions
 - 🛡️ **Security** - Built-in validation and permission checks
 
-#### **Usage Tracking & References** 🚀 *(Killer Feature)*
+#### **Usage Tracking & References** 🚀 *(Requires API Extension)*
 - 🔍 **Reference Detection** - Instantly see ALL places where an item is used across your entire Directus instance
 - 📍 **Cross-Collection References** - Track usage across different collections and relationships
 - 🔗 **Deep Links** - Navigate directly to parent items with one click
 - ⚠️ **Usage Warnings** - Get alerts before deleting items that are referenced elsewhere
 - 📊 **Usage Paths** - Visual breadcrumbs showing complete relationship chains
 - 🎯 **Smart Prevention** - Prevents accidental deletion of referenced content
+
+> **Note:** These features require the optional [API extension](https://www.npmjs.com/package/directus-extension-expandable-blocks-api) to be installed.
 
 #### **Inline Editing**
 - ✏️ **Edit Drawer** - Edit items without leaving the interface
@@ -139,13 +141,21 @@ Unlike other block editors, this extension **works directly with Directus' nativ
 ### Via NPM (Recommended)
 
 ```bash
+# Install the interface extension
 npm install directus-extension-expandable-blocks
+
+# Optional: Install the API extension for advanced usage tracking
+npm install directus-extension-expandable-blocks-api
 ```
 
 ### Via pnpm
 
 ```bash
+# Install the interface extension
 pnpm add directus-extension-expandable-blocks
+
+# Optional: Install the API extension for advanced usage tracking
+pnpm add directus-extension-expandable-blocks-api
 ```
 
 ### Manual Installation
@@ -153,12 +163,31 @@ pnpm add directus-extension-expandable-blocks
 1. Download the latest release from [GitHub Releases](https://github.com/smartlabsAT/directus-expandable-blocks/releases)
 2. Extract to your Directus `extensions/` directory
 3. Restart Directus
+4. **Optional**: Install the [API extension](https://github.com/smartlabsAT/directus-expandable-blocks-api) for usage tracking
 
 ### Docker Installation
 
 ```dockerfile
+# Install the interface extension
 RUN npm install directus-extension-expandable-blocks
+
+# Optional: Install the API extension for advanced usage tracking
+RUN npm install directus-extension-expandable-blocks-api
 ```
+
+### 📝 Important Note About the API Extension
+
+**The API extension is now a separate, optional package.** The core Expandable Blocks interface works perfectly without it, using Directus' native API for all standard operations.
+
+#### When to install the API extension:
+- ✅ You want to see where items are used before deleting them
+- ✅ You need to track references across M2A relationships
+- ✅ You want protection against accidentally deleting referenced content
+
+#### The interface works without the API extension:
+- ✅ All core features (editing, sorting, adding blocks) work normally
+- ✅ Uses native Directus API for all operations
+- ⚠️ Cannot verify item usage before deletion (shows warning instead)
 
 ## 🚀 Usage
 
