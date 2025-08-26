@@ -20,8 +20,7 @@ import type {
   ApiError,
   TranslationInfo,
   ItemUsageResult,
-  DirectusApiInstance,
-  ApiResponse
+  DirectusApiInstance
 } from './api-client.types';
 
 /**
