@@ -396,6 +396,15 @@ export function useExpandableBlocks(
    */
   async function loadBlockUsageData() {
     try {
+      // First check if usage tracking is available at all
+      const hasUsageTracking = await apiClient.isFeatureAvailable('usageTracking');
+      
+      // If API is not available, skip loading usage data entirely
+      if (!hasUsageTracking) {
+        logDebug('Usage tracking not available, skipping usage data loading');
+        return;
+      }
+      
       // Get all existing item IDs grouped by collection
       const itemsByCollection = new Map<string, (string | number)[]>();
       
@@ -421,32 +430,20 @@ export function useExpandableBlocks(
       
       const usagePromises = Array.from(itemsByCollection.entries()).map(async ([collection, ids]) => {
         try {
-          // First check if custom API is available for usage data
-          const hasUsageTracking = await apiClient.isFeatureAvailable('usageTracking');
-          
-          let responseData;
-          if (hasUsageTracking) {
-            // Use custom API to get usage data for each item
-            const usageDataPromises = ids.map(async (id) => {
-              const usage = await apiClient.getItemUsage(collection, id);
-              if (usage) {
-                return {
-                  id,
-                  usage_summary: usage.usage_summary,
-                  usage_locations: usage.usage_locations
-                };
-              }
-              return { id };
-            });
-            responseData = await Promise.all(usageDataPromises);
-          } else {
-            // Fallback to native API (won't have usage data)
-            responseData = await apiClient.loadItemsWithRelations(
-              collection,
-              ids,
-              ['*.*']
-            );
-          }
+          // We already know the API is available from the check above
+          // Use custom API to get usage data for each item
+          const usageDataPromises = ids.map(async (id) => {
+            const usage = await apiClient.getItemUsage(collection, id);
+            if (usage) {
+              return {
+                id,
+                usage_summary: usage.usage_summary,
+                usage_locations: usage.usage_locations
+              };
+            }
+            return { id };
+          });
+          const responseData = await Promise.all(usageDataPromises);
           
           // Store usage data by item ID
           

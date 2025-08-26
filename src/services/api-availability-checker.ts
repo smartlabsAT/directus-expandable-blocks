@@ -6,7 +6,7 @@
  */
 
 import type { AxiosInstance } from 'axios';
-import { logDebug, logWarn } from '../utils/logger-wrapper';
+import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 
 /**
  * Available features based on API availability
@@ -39,29 +39,16 @@ interface ApiEndpoints {
   native: string;
 }
 
-/**
- * Cache for API availability checks
- */
-interface AvailabilityCache {
-  customApi: boolean | null;
-  nativeApi: boolean | null;
-  lastCheck: number;
-  ttl: number; // Time to live in milliseconds
-}
 
 export class ApiAvailabilityChecker {
   private api: AxiosInstance;
-  private cache: AvailabilityCache;
   private endpoints: ApiEndpoints;
+  private customApiAvailable: boolean | null = null;
+  private nativeApiAvailable: boolean | null = null;
+  private hasChecked: boolean = false;
   
   constructor(api: AxiosInstance) {
     this.api = api;
-    this.cache = {
-      customApi: null,
-      nativeApi: null,
-      lastCheck: 0,
-      ttl: 5 * 60 * 1000 // 5 minutes cache
-    };
     this.endpoints = {
       custom: '/expandable-blocks-api/health',
       native: '/server/info'
@@ -72,14 +59,16 @@ export class ApiAvailabilityChecker {
    * Check if custom API is available
    */
   async checkCustomApiAvailable(): Promise<boolean> {
-    // Check cache first
-    if (this.isCacheValid() && this.cache.customApi !== null) {
-      logDebug('Using cached custom API availability', { available: this.cache.customApi });
-      return this.cache.customApi;
+    // Use stored result if we've already checked
+    if (this.hasChecked && this.customApiAvailable !== null) {
+      return this.customApiAvailable;
     }
     
     try {
-      logDebug('Checking custom API availability');
+      // Only log on first check
+      if (!this.hasChecked) {
+        logDebug('Checking custom API availability');
+      }
       
       // Try to access the custom API health endpoint
       // We use a lightweight endpoint that should respond quickly
@@ -90,23 +79,30 @@ export class ApiAvailabilityChecker {
       
       const available = response.status === 200;
       
-      // Cache the result
-      this.cache.customApi = available;
-      this.cache.lastCheck = Date.now();
+      // Store the result
+      this.customApiAvailable = available;
       
-      if (available) {
-        logDebug('Custom expandable-blocks-api is available');
-      } else {
-        logWarn('Custom expandable-blocks-api is not available - using degraded mode');
+      // Log only on first check
+      if (!this.hasChecked) {
+        if (available) {
+          logDebug('Custom expandable-blocks-api is available');
+        } else {
+          logDebug('Custom expandable-blocks-api is not available - using native API only');
+        }
       }
+      
+      this.hasChecked = true;
       
       return available;
     } catch (error: any) {
-      logWarn('Failed to check custom API availability', { error: error.message });
+      // Only log on first check to avoid console spam
+      if (!this.hasChecked) {
+        logDebug('Custom API not found, using native API', { message: error.message });
+      }
       
-      // Cache the negative result
-      this.cache.customApi = false;
-      this.cache.lastCheck = Date.now();
+      // Store the negative result
+      this.customApiAvailable = false;
+      this.hasChecked = true;
       
       return false;
     }
@@ -116,16 +112,14 @@ export class ApiAvailabilityChecker {
    * Check if native Directus API is available
    */
   async checkNativeApiAvailable(): Promise<boolean> {
-    // Check cache first
-    if (this.isCacheValid() && this.cache.nativeApi !== null) {
-      logDebug('Using cached native API availability', { available: this.cache.nativeApi });
-      return this.cache.nativeApi;
+    // Use stored result if we've already checked
+    if (this.nativeApiAvailable !== null) {
+      return this.nativeApiAvailable;
     }
     
     try {
-      logDebug('Checking native API availability');
-      
-      // Try to access a basic Directus endpoint
+      // Native API should always be available in Directus context
+      // We do a simple check just to be sure
       const response = await this.api.get(this.endpoints.native, {
         timeout: 3000,
         validateStatus: (status) => status === 200
@@ -133,9 +127,8 @@ export class ApiAvailabilityChecker {
       
       const available = response.status === 200;
       
-      // Cache the result
-      this.cache.nativeApi = available;
-      this.cache.lastCheck = Date.now();
+      // Store the result
+      this.nativeApiAvailable = available;
       
       if (!available) {
         logWarn('Native Directus API is not responding properly');
@@ -143,10 +136,10 @@ export class ApiAvailabilityChecker {
       
       return available;
     } catch (error: any) {
-      logWarn('Failed to check native API availability', { error: error.message });
-      
-      // Native API should always be available in Directus context
+      // Native API should always be available
       // If it's not, something is seriously wrong
+      logError('Critical: Native Directus API is not available', error);
+      this.nativeApiAvailable = false;
       return false;
     }
   }
@@ -182,25 +175,13 @@ export class ApiAvailabilityChecker {
   }
   
   /**
-   * Clear the cache to force fresh checks
+   * Reset availability checks to force fresh checks
    */
-  clearCache(): void {
-    this.cache = {
-      customApi: null,
-      nativeApi: null,
-      lastCheck: 0,
-      ttl: this.cache.ttl
-    };
-    logDebug('API availability cache cleared');
-  }
-  
-  /**
-   * Check if cache is still valid
-   */
-  private isCacheValid(): boolean {
-    const now = Date.now();
-    const age = now - this.cache.lastCheck;
-    return age < this.cache.ttl;
+  resetChecks(): void {
+    this.customApiAvailable = null;
+    this.nativeApiAvailable = null;
+    this.hasChecked = false;
+    logDebug('API availability checks reset');
   }
   
   /**

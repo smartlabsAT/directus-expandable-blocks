@@ -84,8 +84,8 @@ export class DirectusApiClient implements IDirectusApiClient {
           
           return result;
         } catch (externalApiError) {
-          logWarn('External API search failed, falling back to native', { error: externalApiError });
-          // Fall through to native API
+          // Silently fall back to native API
+          // This is expected when the external API is not available
         }
       }
       
@@ -185,8 +185,8 @@ export class DirectusApiClient implements IDirectusApiClient {
           // External API provides enhanced data with usage_locations and usage_summary
           return items;
         } catch (externalApiError) {
-          logWarn('External API detail failed, falling back to native', { error: externalApiError });
-          // Fall through to native API
+          // Silently fall back to native API
+          // This is expected when the external API endpoints are not available
         }
       }
       
@@ -278,8 +278,8 @@ export class DirectusApiClient implements IDirectusApiClient {
             }
           }
         } catch (externalApiError) {
-          logWarn('External API metadata failed, falling back to native', { error: externalApiError });
-          // Fall through to native API
+          // Silently fall back to native API
+          // This is expected when the external API is not available
         }
       }
       
@@ -470,7 +470,8 @@ export class DirectusApiClient implements IDirectusApiClient {
       return null;
       
     } catch (error) {
-      logWarn('Failed to get item usage', { collection, id, error });
+      // This is expected when the API is not available
+      logDebug('Item usage check failed (API may not be available)', { collection, id });
       return null;
     }
   }
