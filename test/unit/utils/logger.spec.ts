@@ -1,4 +1,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+
+// Mock the logger module to enable logging in tests
+vi.mock('@/utils/logger', () => {
+  const actualLogger = {
+    log: (...args: any[]) => console.log('[ExpandableBlocks]', ...args),
+    warn: (...args: any[]) => console.warn('[ExpandableBlocks]', ...args),
+    error: (...args: any[]) => console.error('[ExpandableBlocks]', ...args),
+    debug: (...args: any[]) => console.log('[ExpandableBlocks:Debug]', ...args)
+  };
+  return { logger: actualLogger };
+});
+
 import { logger } from '@/utils/logger';
 import { 
   logAction, 

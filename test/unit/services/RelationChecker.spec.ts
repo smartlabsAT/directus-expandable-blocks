@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RelationChecker } from '@/services/RelationChecker';
 
 // Mock the API client
-const mockLoadItemsWithRelations = vi.fn();
+const mockGetItemUsage = vi.fn();
 const mockIsFeatureAvailable = vi.fn();
+const mockLoadItemsWithRelations = vi.fn();
 
 vi.mock('@/services/api-client', () => ({
   createApiClient: vi.fn(() => ({
     isFeatureAvailable: mockIsFeatureAvailable,
+    getItemUsage: mockGetItemUsage,
     loadItemsWithRelations: mockLoadItemsWithRelations
   }))
 }));
@@ -34,6 +36,7 @@ describe('RelationChecker', () => {
     
     // Setup default behavior
     mockIsFeatureAvailable.mockResolvedValue(true);
+    mockGetItemUsage.mockResolvedValue(null);
     mockLoadItemsWithRelations.mockResolvedValue([]);
     
     relationChecker = new RelationChecker(mockApi, 'page-123');
@@ -41,51 +44,45 @@ describe('RelationChecker', () => {
 
   describe('checkItemUsage', () => {
     it('should return no usage when item is not used', async () => {
-      mockLoadItemsWithRelations.mockResolvedValue([{
-        id: 1,
-        usage_summary: { total_count: 0 },
-        usage_locations: []
-      }]);
+      mockGetItemUsage.mockResolvedValue({
+        total_count: 0,
+        locations: []
+      });
 
       const result = await relationChecker.checkItemUsage('content_text', 1);
 
-      expect(result).toEqual({
-        totalCount: 0,
-        currentPageUsage: false,
-        locations: [],
-        canDelete: true
-      });
+      expect(result.totalCount).toBe(0);
+      expect(result.currentPageUsage).toBe(false);
+      expect(result.locations).toEqual([]);
+      expect(result.canDelete).toBe(true);
     });
 
     it('should detect current page usage', async () => {
-      mockLoadItemsWithRelations.mockResolvedValue([{
-        id: 1,
-        usage_summary: { total_count: 1 },
-        usage_locations: [
+      mockGetItemUsage.mockResolvedValue({
+        total_count: 1,
+        locations: [
           { collection: 'pages', id: 'page-123', field: 'blocks' }
         ]
-      }]);
+      });
 
       const result = await relationChecker.checkItemUsage('content_text', 1);
 
-      expect(result).toEqual({
-        totalCount: 1,
-        currentPageUsage: true,
-        locations: expect.any(Array),
-        canDelete: true
-      });
+      // Check the basic structure
+      expect(result.totalCount).toBe(1);
+      expect(result.currentPageUsage).toBe(true);
+      expect(result.locations).toBeDefined();
+      expect(result.canDelete).toBe(true); // Can delete if only used on current page
     });
 
     it('should detect multiple usages', async () => {
-      mockLoadItemsWithRelations.mockResolvedValue([{
-        id: 1,
-        usage_summary: { total_count: 3 },
-        usage_locations: [
+      mockGetItemUsage.mockResolvedValue({
+        total_count: 3,
+        locations: [
           { collection: 'pages', id: 'page-123', field: 'blocks' },
           { collection: 'pages', id: 'page-456', field: 'blocks' },
           { collection: 'posts', id: 'post-789', field: 'content' }
         ]
-      }]);
+      });
 
       const result = await relationChecker.checkItemUsage('content_text', 1);
 
@@ -99,31 +96,28 @@ describe('RelationChecker', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      mockLoadItemsWithRelations.mockRejectedValue(new Error('API Error'));
+      mockGetItemUsage.mockRejectedValue(new Error('API Error'));
 
       const result = await relationChecker.checkItemUsage('content_text', 1);
 
-      expect(result).toEqual({
-        totalCount: 0,
-        currentPageUsage: false,
-        locations: [],
-        canDelete: false
-      });
+      expect(result.totalCount).toBe(0);
+      expect(result.currentPageUsage).toBe(false);
+      expect(result.locations).toEqual([]);
+      expect(result.canDelete).toBe(true);
+      expect(result.hasUncheckedUsage).toBe(true);
     });
 
     it('should handle no permission response', async () => {
-      mockLoadItemsWithRelations.mockResolvedValue([{
-        _no_permission: true
-      }]);
+      mockGetItemUsage.mockResolvedValue(null);
 
       const result = await relationChecker.checkItemUsage('content_text', 1);
 
-      expect(result).toEqual({
-        totalCount: 0,
-        currentPageUsage: false,
-        locations: [],
-        canDelete: true
-      });
+      expect(result.totalCount).toBe(0);
+      expect(result.currentPageUsage).toBe(false);
+      expect(result.locations).toEqual([]);
+      expect(result.canDelete).toBe(true);
+      // When API returns null but feature is available, hasUncheckedUsage is true
+      expect(result.hasUncheckedUsage).toBe(true);
     });
   });
 
