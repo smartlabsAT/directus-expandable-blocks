@@ -5,7 +5,6 @@
  * This replaces the custom API extension with direct Directus API calls.
  */
 
-import type { AxiosInstance } from 'axios';
 import { logDebug, logError, logWarn } from '../utils/logger-wrapper';
 import { createApiAvailabilityChecker } from './api-availability-checker';
 import type { ApiAvailabilityChecker, FeatureSet } from './api-availability-checker';
@@ -20,18 +19,20 @@ import type {
   PermissionResult,
   ApiError,
   TranslationInfo,
-  ItemUsageResult
+  ItemUsageResult,
+  DirectusApiInstance,
+  ApiResponse
 } from './api-client.types';
 
 /**
  * Main Directus API Client implementation
  */
 export class DirectusApiClient implements IDirectusApiClient {
-  private api: AxiosInstance;
+  private api: DirectusApiInstance;
   private config: ApiClientConfig;
   private availabilityChecker: ApiAvailabilityChecker;
 
-  constructor(api: AxiosInstance, config: ApiClientConfig = {}) {
+  constructor(api: DirectusApiInstance, config: ApiClientConfig = {}) {
     this.api = api;
     this.config = {
       retry: true,
@@ -479,7 +480,7 @@ export class DirectusApiClient implements IDirectusApiClient {
   /**
    * Get the raw API instance for direct calls
    */
-  getApi(): AxiosInstance {
+  getApi(): DirectusApiInstance {
     return this.api;
   }
 
@@ -859,7 +860,7 @@ export class DirectusApiClient implements IDirectusApiClient {
  * Factory function to create API client instance
  */
 export function createApiClient(
-  api: AxiosInstance,
+  api: DirectusApiInstance,
   config?: ApiClientConfig
 ): IDirectusApiClient {
   return new DirectusApiClient(api, config);
