@@ -8,7 +8,7 @@
 [![Tests](https://img.shields.io/badge/tests-470%20passing-success?style=flat-square)](https://github.com/smartlabsAT/directus-expandable-blocks)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
-A powerful, production-ready M2A (Many-to-Any) interface extension for Directus with inline expandable editing, advanced item selection, comprehensive permissions, and seamless integration with Directus' native save system.
+A powerful, production-ready M2A (Many-to-Any) interface extension for Directus with inline expandable editing, advanced item selection, comprehensive permissions, and seamless integration with Directus' native save system. **Also provides reusable ItemSelector components for other extensions.**
 
 ![Directus Expandable Blocks Extension - Feature Presentation](https://raw.githubusercontent.com/wiki/smartlabsAT/directus-expandable-blocks/assets/demo.gif)
 
@@ -24,6 +24,7 @@ A powerful, production-ready M2A (Many-to-Any) interface extension for Directus 
 - [Installation](#-installation)
 - [Usage](#-usage)
 - [Configuration](#️-configuration)
+- [Shared Components](#-shared-components-for-other-extensions)
 - [Testing](#-testing)
 - [Development](#-development)
 - [Documentation](#-documentation)
@@ -268,6 +269,88 @@ EXPANDABLE_BLOCKS_CACHE_TTL_PATHS=10
 EXPANDABLE_BLOCKS_CACHE_MAX_SIZE=50000
 ```
 
+## 🔗 Shared Components for Other Extensions
+
+This extension provides **reusable ItemSelector components** that can be used in other Directus extensions, allowing you to avoid code duplication and maintain consistent UX across extensions.
+
+### Quick Start for Extension Developers
+
+```bash
+# Add as dependency to your extension
+npm install directus-extension-expandable-blocks
+```
+
+```typescript
+// Import shared components in your extension
+import { 
+  useItemSelector, 
+  ItemSelectorDrawer,
+  type ItemSelectorConfig 
+} from 'directus-extension-expandable-blocks/shared';
+
+// Configure for your extension
+const itemSelector = useItemSelector(api, ['pages', 'articles'], {
+  loggerPrefix: '[MyExtension]',
+  allowLink: true,
+  allowDuplicate: false,
+  collectionIcons: {
+    'pages': 'description',
+    'articles': 'article'
+  }
+});
+```
+
+### Available Shared Components
+
+- **`useItemSelector`** - Core composable with all functionality
+- **`ItemSelectorDrawer`** - Main selector interface  
+- **`ItemSearchPanel`** - Advanced search with operators
+- **`FieldDisplay`** - Field value display component
+- **`UsagePopover`** - Shows item usage across collections
+
+### Configuration Options
+
+```typescript
+interface ItemSelectorConfig {
+  loggerPrefix?: string;           // Custom logging prefix
+  allowLink?: boolean;             // Allow linking items
+  allowDuplicate?: boolean;        // Allow duplicating items  
+  defaultItemsPerPage?: number;    // Pagination size
+  defaultLanguage?: string;        // Translation language
+  collectionIcons?: Record<string, string>; // Custom icons
+  fieldMappings?: Record<string, string>;   // Field name mappings
+  debug?: boolean;                 // Enable debug logging
+}
+```
+
+### Full Documentation
+
+📖 **[Complete Shared Components Documentation](SHARED_COMPONENTS.md)** - Detailed usage guide, examples, and API reference for extension developers.
+
+### Example Usage in LayoutBlocks Extension
+
+```vue
+<template>
+  <ItemSelectorDrawer
+    :open="itemSelector.isOpen.value"
+    :collection="itemSelector.selectedCollection.value"
+    :items="itemSelector.availableItems.value"
+    :loading="itemSelector.loading.value"
+    :logger-prefix="'[LayoutBlocks]'"
+    @close="itemSelector.close"
+    @confirm="handleItemsSelected"
+  />
+</template>
+
+<script setup>
+import { useItemSelector, ItemSelectorDrawer } from 'directus-extension-expandable-blocks/shared';
+
+const itemSelector = useItemSelector(api, ['layouts'], {
+  loggerPrefix: '[LayoutBlocks]',
+  allowDuplicate: false
+});
+</script>
+```
 
 ## 🧪 Testing
 
