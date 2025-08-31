@@ -1,7 +1,7 @@
 {
   "name": "directus-extension-expandable-blocks",
-  "version": "1.2.0",
-  "description": "M2A interface with inline expandable editing for Directus",
+  "version": "1.3.0",
+  "description": "M2A interface with inline expandable editing for Directus. Provides reusable ItemSelector components for other extensions.",
   "author": "Christopher Schwarz <christopher@neugebauerschwarz.com>",
   "license": "MIT",
   "homepage": "https://github.com/smartlabsAT/directus-expandable-blocks#readme",
@@ -18,7 +18,10 @@
     "directus-custom-interface",
     "m2a",
     "blocks",
-    "cms"
+    "cms",
+    "reusable-components",
+    "item-selector",
+    "shared-components"
   ],
   "type": "module",
   "files": [
@@ -27,6 +30,23 @@
     "LICENSE",
     "package.json"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "import": "./dist/shared/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "shared": [
+        "./dist/shared/index.d.ts"
+      ]
+    }
+  },
   "engines": {
     "node": ">=16"
   },
@@ -39,7 +59,7 @@
     "icon": "dashboard_customize"
   },
   "scripts": {
-    "build": "directus-extension build",
+    "build": "directus-extension build && node build-types.js",
     "dev": "directus-extension build -w --no-minify",
     "link": "directus-extension link",
     "type-check": "tsc --noEmit && echo '✅ TypeScript type-check passed!'",
