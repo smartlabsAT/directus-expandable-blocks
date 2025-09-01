@@ -1,6 +1,9 @@
 import { defineInterface } from '@directus/extensions-sdk';
 import InterfaceComponent from './interface.vue';
 
+// Export shared components for use in other extensions
+export * from './exports';
+
 export default defineInterface({
   id: 'expandable-blocks',
   name: 'Expandable Blocks',

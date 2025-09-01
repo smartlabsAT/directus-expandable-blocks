@@ -56,7 +56,7 @@ export {
 } from '../index.js';
 
 // Export version info
-export const SHARED_VERSION = '1.3.1';
+export const SHARED_VERSION = '1.3.2';
 `;
 
     fs.writeFileSync('dist/shared/index.js', sharedExportContent.trim());
