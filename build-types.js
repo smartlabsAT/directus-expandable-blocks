@@ -27,7 +27,7 @@ async function buildTypeDefinitions() {
       console.log('✅ Copied shared type definitions to dist/shared/index.d.ts');
     }
     
-    // Create a simple shared module export for Directus compatibility
+    // Create proper shared module exports
     const sharedExportContent = `
 /**
  * Shared ItemSelector components for other extensions
@@ -36,11 +36,27 @@ async function buildTypeDefinitions() {
  * import { useItemSelector, ItemSelectorDrawer } from 'directus-extension-expandable-blocks/shared';
  */
 
-// Re-export everything from the main extension that's needed for sharing
-export * from '../index.js';
+// Export composables
+export { useItemSelector } from '../index.js';
+
+// Export components
+export { 
+  ItemSelectorDrawer,
+  ItemSearchPanel,
+  FieldDisplay,
+  UsagePopover,
+  FieldSettingsMenu,
+  ItemEditDrawer,
+  ItemSelectorTable
+} from '../index.js';
+
+// Export types
+export { 
+  DEFAULT_ITEM_SELECTOR_CONFIG
+} from '../index.js';
 
 // Export version info
-export const SHARED_VERSION = '1.2.0';
+export const SHARED_VERSION = '1.3.1';
 `;
 
     fs.writeFileSync('dist/shared/index.js', sharedExportContent.trim());
