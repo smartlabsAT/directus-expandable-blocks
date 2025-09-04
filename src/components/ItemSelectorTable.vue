@@ -141,7 +141,10 @@
                   :class="`status-${item.status}`"
                   v-tooltip.top="capitalizeField(item.status)"
               />
-              <span class="item-title">{{ extractItemTitle(item) }}</span>
+              <span 
+                  class="item-title"
+                  v-tooltip.top="extractItemTitle(item)"
+              >{{ extractItemTitle(item) }}</span>
             </div>
             <!-- Update Info -->
             <span v-if="showLastUpdate && item?.date_updated" class="update-info">
