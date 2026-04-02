@@ -115,8 +115,6 @@ export function useBlockWatchers(
         let hasJustIds = false;
         let hasObjectsWithId = false;
         let hasObjectsWithoutId = false;
-        let hasMixedData = false;
-        
         newVal.forEach(item => {
           if (typeof item === 'number' || typeof item === 'string') {
             hasJustIds = true;
@@ -130,8 +128,8 @@ export function useBlockWatchers(
             }
           }
         });
-        
-        hasMixedData = (hasJustIds && (hasObjectsWithId || hasObjectsWithoutId)) || 
+
+        const hasMixedData = (hasJustIds && (hasObjectsWithId || hasObjectsWithoutId)) ||
                        (hasObjectsWithId && hasObjectsWithoutId);
         
         // Detect paste: Mixed data OR objects without ID OR significant structure change
