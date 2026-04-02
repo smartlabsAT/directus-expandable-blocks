@@ -5,20 +5,22 @@ import type { ExpandableBlocksContext } from '../../../src/types/composable-cont
 
 // Mock M2AHelper
 vi.mock('../../../src/utils/m2a-helper', () => ({
-  M2AHelper: vi.fn().mockImplementation(() => ({
-    analyzeM2AStructure: vi.fn().mockResolvedValue({
-      field: 'content_blocks',
-      collection: 'pages',
-      junctionCollection: 'pages_content_blocks',
-      foreignKeyField: 'pages_id',
-      allowedCollections: ['content_text', 'content_image', 'content_hero'],
-      nestedM2AFields: {}
-    }),
-    loadM2AData: vi.fn().mockResolvedValue([
-      { id: 1, collection: 'content_text', item: { id: 101, title: 'Text Block' } },
-      { id: 2, collection: 'content_image', item: { id: 102, url: '/image.jpg' } }
-    ])
-  }))
+  M2AHelper: vi.fn().mockImplementation(function () {
+    return {
+      analyzeM2AStructure: vi.fn().mockResolvedValue({
+        field: 'content_blocks',
+        collection: 'pages',
+        junctionCollection: 'pages_content_blocks',
+        foreignKeyField: 'pages_id',
+        allowedCollections: ['content_text', 'content_image', 'content_hero'],
+        nestedM2AFields: {}
+      }),
+      loadM2AData: vi.fn().mockResolvedValue([
+        { id: 1, collection: 'content_text', item: { id: 101, title: 'Text Block' } },
+        { id: 2, collection: 'content_image', item: { id: 102, url: '/image.jpg' } }
+      ])
+    };
+  })
 }));
 
 // Mock logger
