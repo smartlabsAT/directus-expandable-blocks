@@ -88,8 +88,8 @@
     "precommit": "npm run type-check && npm run lint"
   },
   "devDependencies": {
-    "@directus/extensions-sdk": "^11.0.0",
-    "@directus/types": "^13.5.0",
+    "@directus/extensions-sdk": "^17.1.1",
+    "@directus/types": "^15.0.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",

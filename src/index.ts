@@ -4,7 +4,9 @@ import InterfaceComponent from './interface.vue';
 // Export shared components for use in other extensions
 export * from './exports';
 
-export default defineInterface({
+// Workaround: Extract config to avoid TS 6.0.2 crash with SDK v17 complex types
+// See: TypeScript Debug Failure in resolveCallExpression with defineInterface generics
+const interfaceConfig = {
   id: 'expandable-blocks',
   name: 'Expandable Blocks',
   icon: 'dashboard_customize',
@@ -531,4 +533,6 @@ export default defineInterface({
 
     return baseOptions;
   }
-});
+};
+
+export default defineInterface(interfaceConfig as any);
