@@ -4,6 +4,25 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-04-04
+
+### Changed
+- **Dependencies**: Updated all 23 outdated packages across 6 phases
+  - ESLint 9 → 10, TypeScript 5 → 6, Vitest 1 → 4, Vite (new) → 8
+  - @directus/extensions-sdk 11 → 17, @directus/types 13 → 15
+  - happy-dom 12 → 20, @vitejs/plugin-vue 4 → 6
+  - lodash-es 4.18.1, vue 3.5.32, sass 1.99.0, @types/node 22.x
+  - All minor/patch linting, testing, and framework packages
+- **tsconfig.json**: `moduleResolution` changed from `"node"` to `"bundler"`, removed unused `baseUrl`/`paths`
+- **CI**: Updated to Node 20/22 and pnpm 10
+
+### Fixed
+- Fixed 3 `no-useless-assignment` lint errors detected by ESLint 10 (FieldDisplay.vue, useBlockWatchers.ts)
+- Fixed 2 pre-existing unused import lint errors (build-types.js, useItemSelector.test.ts)
+- Fixed `vi.fn()` constructor mock for Vitest 4 compatibility (useM2AData.spec.ts)
+- Added workaround for TypeScript 6.0.2 compiler crash with SDK v17 types (src/index.ts)
+- Updated `vue-shim.d.ts` to use `import type` for DefineComponent
+
 ## [1.1.1] - 2025-08-23
 
 ### Fixed
