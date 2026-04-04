@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["ES2020", "dom"],
     "strict": true,
     "esModuleInterop": true,
@@ -14,11 +14,7 @@
     "allowSyntheticDefaultImports": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "types": ["node"],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "types": ["node"]
   },
   "include": ["src/**/*", "src/**/*.vue", "src/**/*.d.ts", "src/api/**/*.ts", "src/vue-macros.d.ts", "src/env.d.ts"],
   "exclude": ["node_modules", "dist"]

@@ -3,7 +3,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
 import { useItemSelector } from '../../../src/shared/composables/useItemSelector';
 import type { ItemSelectorConfig } from '../../../src/shared/types/ItemSelectorConfig';
 

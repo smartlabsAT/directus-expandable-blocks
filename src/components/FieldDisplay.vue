@@ -753,8 +753,8 @@ function handleImageError(event: Event) {
 function downloadFile() {
   if (!props.value) return;
   
-  let downloadUrl = '';
-  
+  let downloadUrl: string;
+
   // If it's a UUID (Directus file), construct the download URL
   if (fieldType.value === 'uuid' || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(props.value)) {
     downloadUrl = `/assets/${props.value}?download`;
