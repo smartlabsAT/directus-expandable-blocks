@@ -97,10 +97,10 @@
     "@types/node": "^22.19.15",
     "@typescript-eslint/eslint-plugin": "^8.58.0",
     "@typescript-eslint/parser": "^8.58.0",
-    "@vitejs/plugin-vue": "^6.0.5",
+    "@vitejs/plugin-vue": "^6.0.6",
     "@vitest/coverage-v8": "^4.1.2",
     "@vitest/ui": "^4.1.2",
-    "@vue/test-utils": "^2.4.3",
+    "@vue/test-utils": "^2.4.10",
     "dotenv": "^17.4.0",
     "eslint": "^10.1.0",
     "eslint-plugin-vue": "^10.8.0",
@@ -109,7 +109,7 @@
     "typescript": "^6.0.2",
     "vite": "^8.0.12",
     "vitest": "^4.1.2",
-    "vue": "^3.5.31",
+    "vue": "^3.5.34",
     "vue-eslint-parser": "^10.4.0"
   },
   "dependencies": {
