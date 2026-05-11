@@ -1,8 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config({ path: '../.env' });
+// Load environment variables (project root .env, run from project root)
+dotenv.config();
+
+// DIRECTUS_URL may include a scheme; bare hosts default to https for backwards compatibility.
+const directusURL = process.env.DIRECTUS_URL ?? '';
+const resolvedBaseURL = directusURL.includes('://') ? directusURL : `https://${directusURL}`;
 
 /**
  * Playwright configuration specifically optimized for Demo Videos
@@ -29,7 +33,7 @@ export default defineConfig({
   /* Demo-optimized settings */
   use: {
     /* Base URL */
-    baseURL: `https://${process.env.DIRECTUS_URL}`,
+    baseURL: resolvedBaseURL,
 
     /* Always record video for demos */
     video: 'on',

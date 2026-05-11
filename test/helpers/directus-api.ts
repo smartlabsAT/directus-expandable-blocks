@@ -3,11 +3,18 @@
  * Provides Admin and Editor API contexts with proper authentication
  */
 
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, BrowserContext, Page } from '@playwright/test';
 import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
+
+// DIRECTUS_URL may be a full URL ("http://localhost:8058") or a bare host
+// ("backend.smartlabs.dev"). Bare hosts default to https for backwards compatibility.
+function resolveBaseURL(): string {
+  const url = process.env.DIRECTUS_URL ?? '';
+  return url.includes('://') ? url : `https://${url}`;
+}
 
 export interface DirectusUser {
   role: 'admin' | 'editor';
@@ -27,7 +34,7 @@ export function getAdminUser(): DirectusUser {
   return {
     role: 'admin',
     token,
-    baseURL: `https://${process.env.DIRECTUS_URL}`
+    baseURL: resolveBaseURL()
   };
 }
 
@@ -43,7 +50,7 @@ export function getEditorUser(): DirectusUser {
   return {
     role: 'editor',
     token,
-    baseURL: `https://${process.env.DIRECTUS_URL}`
+    baseURL: resolveBaseURL()
   };
 }
 
@@ -208,6 +215,45 @@ export async function createTestItems(api: APIRequestContext, collectionName: st
   }
 
   return response.json();
+}
+
+/**
+ * Login admin via API and attach the session cookie to the browser context.
+ * Bearer tokens cannot drive the Directus admin SPA (it reads from cookies/localStorage),
+ * so UI tests must establish a real session.
+ */
+export async function loginAdminUI(page: Page, request: APIRequestContext): Promise<void> {
+  const email = process.env.DIRECTUS_ADMIN_EMAIL;
+  const password = process.env.DIRECTUS_ADMIN_PASSWORD;
+  if (!email || !password) {
+    throw new Error('DIRECTUS_ADMIN_EMAIL or DIRECTUS_ADMIN_PASSWORD missing in environment');
+  }
+
+  const baseURL = resolveBaseURL();
+  const response = await request.post(`${baseURL}/auth/login`, {
+    data: { email, password, mode: 'session' },
+  });
+  if (!response.ok()) {
+    throw new Error(`Admin login failed: ${response.status()} ${await response.text()}`);
+  }
+
+  const setCookie = response.headers()['set-cookie'] ?? '';
+  const match = setCookie.match(/directus_session_token=([^;]+)/);
+  if (!match) {
+    throw new Error('directus_session_token cookie not found in login response');
+  }
+
+  const url = new URL(baseURL);
+  await (page.context() as BrowserContext).addCookies([
+    {
+      name: 'directus_session_token',
+      value: match[1],
+      domain: url.hostname,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
 }
 
 /**
