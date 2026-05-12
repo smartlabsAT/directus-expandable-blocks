@@ -108,34 +108,40 @@ test.describe('ExpandableBlocks Extension - Basic Functionality', () => {
     }
   });
 
-  test('Can access test collection and see ExpandableBlocks interface', async ({ page, request }) => {
+  test('Can access content module as logged-in admin', async ({ page, request }) => {
     await loginAdminUI(page, request);
 
+    await page.goto('/admin/content');
+    await page.waitForLoadState('networkidle');
+
+    expect(page.url()).toContain('/admin/content');
+    const moduleBar = page.locator('[data-cy="navigation"], .module-bar, .sidebar, .app-sidebar');
+    await expect(moduleBar.first()).toBeVisible();
+  });
+
+  test('Can open ExpandableBlocks interface in test collection @requires-fixtures', async ({ page, request }) => {
+    const adminUser = getAdminUser();
+
+    // Probe the fixture collection before doing UI work — without it, the
+    // assertion below cannot meaningfully exercise the ExpandableBlocks interface.
+    const probe = await request.get(`${adminUser.baseURL}/items/${testCollections.content_blocks}?limit=1`, {
+      headers: getAPIHeaders(adminUser),
+    });
+    test.skip(!probe.ok(), `Fixture collection "${testCollections.content_blocks}" not present on this Directus instance`);
+
+    await loginAdminUI(page, request);
     await page.goto(`/admin/content/${testCollections.content_blocks}`);
     await page.waitForLoadState('networkidle');
 
-    // The test collection may not exist locally; in that case Directus redirects
-    // to /admin/content. Either landing place is acceptable for this smoke test.
-    const url = page.url();
-    expect(url).toMatch(new RegExp(`/admin/content(/${testCollections.content_blocks})?`));
+    expect(page.url()).toContain(testCollections.content_blocks);
 
-    // The admin shell must be present regardless of whether the collection exists.
-    const moduleBar = page.locator('[data-cy="navigation"], .module-bar, .sidebar, .app-sidebar');
-    await expect(moduleBar.first()).toBeVisible();
+    const addButton = page.locator('button:has-text("Add"), button:has-text("Create"), [data-cy="add-item"]').first();
+    await expect(addButton).toBeVisible();
+    await addButton.click();
+    await page.waitForLoadState('networkidle');
 
-    console.log('✅ Successfully accessed content area at:', url);
-
-    // If we landed on the actual collection, try the create flow.
-    if (url.includes(testCollections.content_blocks)) {
-      const addButton = page.locator('button:has-text("Add"), button:has-text("Create"), [data-cy="add-item"]').first();
-      if (await addButton.isVisible().catch(() => false)) {
-        await addButton.click();
-        await page.waitForLoadState('networkidle');
-        const formFields = page.locator('input, textarea, select, .interface, .field');
-        await expect(formFields.first()).toBeVisible();
-        console.log('✅ Item creation form loaded - ExpandableBlocks interface available');
-      }
-    }
+    const formFields = page.locator('input, textarea, select, .interface, .field');
+    await expect(formFields.first()).toBeVisible();
   });
 });
 

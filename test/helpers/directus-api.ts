@@ -251,6 +251,7 @@ export async function loginAdminUI(page: Page, request: APIRequestContext): Prom
       domain: url.hostname,
       path: '/',
       httpOnly: true,
+      secure: url.protocol === 'https:',
       sameSite: 'Lax',
     },
   ]);
