@@ -4,6 +4,8 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ## [Unreleased]
 
+## [1.3.5] - 2026-05-12
+
 ### Changed
 - **Dependencies**: Patch/minor updates across the toolchain
   - vite 8.0.3 → 8.0.12 (fixes 2 HIGH CVEs: dev server WebSocket file read, server.fs.deny bypass)
@@ -14,6 +16,22 @@ All notable changes to the Directus Expandable Blocks extension are documented h
   - typescript 6.0.2 → 6.0.3, eslint 10.1.0 → 10.3.0, eslint-plugin-vue 10.8.0 → 10.9.1
   - @typescript-eslint/eslint-plugin, @typescript-eslint/parser 8.58.0 → 8.59.3
   - dotenv 17.4.0 → 17.4.2
+
+### Fixed
+- **E2E configuration**: `DIRECTUS_URL` is now scheme-aware, accepting full URLs
+  (`http://localhost:8058`) while bare hostnames continue to default to `https://`
+  (backwards-compatible). Playwright configs now load `.env` from project root
+  instead of a non-existent `../.env`.
+- **E2E UI tests**: Replaced Bearer-header auth (which the Directus Vue admin SPA
+  cannot consume) with a new `loginAdminUI` helper that performs API login in
+  cookie mode and attaches the `directus_session_token` to the browser context.
+- **E2E `/server/info` assertion**: Modernized for Directus 11, which only exposes
+  `data.project.*` on this endpoint (previously asserted on `data.directus.version`).
+- **E2E selector bug**: Fixed a latent CSS+text-engine mix in the content
+  navigation locator by switching to Playwright's `.or()` combinator.
+- **E2E fixture handling**: Split the ExpandableBlocks-interface test so the
+  admin-shell check always runs while the fixture-dependent part skips with a
+  clear reason when the test collection is absent.
 
 ### Notes
 - Remaining `pnpm audit` findings stem from transitive dependencies of @directus/extensions-sdk
