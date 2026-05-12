@@ -1,8 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config({ path: '../.env' });
+// Load environment variables (project root .env, run from project root)
+dotenv.config();
+
+// DIRECTUS_URL may include a scheme; bare hosts default to https for backwards compatibility.
+const directusURL = process.env.DIRECTUS_URL ?? '';
+const resolvedBaseURL = directusURL.includes('://') ? directusURL : `https://${directusURL}`;
 
 /**
  * Playwright configuration for ExpandableBlocks Extension E2E Tests
@@ -23,7 +27,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: `https://${process.env.DIRECTUS_URL}`,
+    baseURL: resolvedBaseURL,
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',

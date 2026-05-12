@@ -69,19 +69,22 @@ test.describe('ExpandableBlocks Extension - API Tests', () => {
 
   test('Can access Directus info endpoint', async ({ request }) => {
     const editorUser = getEditorUser();
-    
+
     const response = await request.get(`${editorUser.baseURL}/server/info`, {
       headers: getAPIHeaders(editorUser)
     });
-    
+
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
-    
+
+    // Directus 11 only exposes the project metadata block on /server/info to
+    // non-admin and unauthenticated callers. The previous data.directus.version /
+    // data.node.version assertions reflected an older response shape.
     expect(data.data).toBeDefined();
-    expect(data.data.directus).toBeDefined();
-    
-    console.log('✅ Directus Version:', data.data.directus.version);
-    console.log('✅ Node Version:', data.data.node.version);
+    expect(data.data.project).toBeDefined();
+    expect(data.data.project.project_name).toBeDefined();
+
+    console.log('✅ Project:', data.data.project.project_name);
   });
 });
 

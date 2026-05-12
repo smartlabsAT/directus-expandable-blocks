@@ -4,6 +4,22 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ## [Unreleased]
 
+### Changed
+- **Dependencies**: Patch/minor updates across the toolchain
+  - vite 8.0.3 → 8.0.12 (fixes 2 HIGH CVEs: dev server WebSocket file read, server.fs.deny bypass)
+  - @directus/extensions-sdk 17.1.1 → 17.1.4, @directus/types 15.0.1 → 15.0.3
+  - vue 3.5.32 → 3.5.34, @vitejs/plugin-vue 6.0.5 → 6.0.6, @vue/test-utils 2.4.6 → 2.4.10
+  - vitest, @vitest/coverage-v8, @vitest/ui 4.1.2 → 4.1.6
+  - @playwright/test 1.59.1 → 1.60.0, happy-dom 20.8.9 → 20.9.0
+  - typescript 6.0.2 → 6.0.3, eslint 10.1.0 → 10.3.0, eslint-plugin-vue 10.8.0 → 10.9.1
+  - @typescript-eslint/eslint-plugin, @typescript-eslint/parser 8.58.0 → 8.59.3
+  - dotenv 17.4.0 → 17.4.2
+
+### Notes
+- Remaining `pnpm audit` findings stem from transitive dependencies of @directus/extensions-sdk
+  (axios, lodash-es subdep, fast-xml-parser, unhead, postcss, follow-redirects) and require an
+  upstream Directus SDK release to resolve.
+
 ## [1.3.4] - 2026-04-04
 
 ### Changed
