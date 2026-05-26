@@ -44,7 +44,8 @@ vi.mock('@/utils/helpers', () => ({
 }));
 
 vi.mock('@/utils/validation', () => ({
-  isTemporaryId: vi.fn((id) => typeof id === 'string' && (id.startsWith('new_') || id.startsWith('dup_') || id.startsWith('temp_')))
+  isTemporaryId: vi.fn((id) => typeof id === 'string' && (id.startsWith('new_') || id.startsWith('dup_') || id.startsWith('temp_') || id.startsWith('existing_'))),
+  isExistingLink: vi.fn((id) => typeof id === 'string' && id.startsWith('existing_'))
 }));
 
 describe('useBlockState', () => {
@@ -205,22 +206,61 @@ describe('useBlockState', () => {
   describe('State Persistence', () => {
     it('maintains separate state for each block', () => {
       const state = useBlockState(relationInfo);
-      
+
       state.blockOriginalStates.value.set('1', { title: 'Block 1' });
       state.blockOriginalStates.value.set('2', { title: 'Block 2' });
-      
+
       expect(state.blockOriginalStates.value.get('1')).toEqual({ title: 'Block 1' });
       expect(state.blockOriginalStates.value.get('2')).toEqual({ title: 'Block 2' });
     });
 
     it('can remove block state', () => {
       const state = useBlockState(relationInfo);
-      
+
       state.blockOriginalStates.value.set('123', { title: 'Test' });
       expect(state.blockOriginalStates.value.has('123')).toBe(true);
-      
+
       state.removeBlockState('123');
       expect(state.blockOriginalStates.value.has('123')).toBe(false);
+    });
+  });
+
+  describe('prepareItemsForEmit', () => {
+    it('emits bare PK for linked existing items (existing_ prefix)', () => {
+      const { items, prepareItemsForEmit } = useBlockState(relationInfo);
+
+      const linkedItem = {
+        id: 'existing_1234_0',
+        collection: 'content_text',
+        item: { id: 42, title: 'Original Title', status: 'published' }
+      };
+
+      items.value = [linkedItem];
+
+      const result = prepareItemsForEmit(items.value, 'sort');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].item).toBe(42); // bare PK, not full object
+      expect(result[0].collection).toBe('content_text');
+      expect(typeof result[0].item).toBe('number');
+    });
+
+    it('emits full object for truly new items (new_ prefix)', () => {
+      const { items, prepareItemsForEmit } = useBlockState(relationInfo);
+
+      const newItem = {
+        id: 'new_1234',
+        collection: 'content_text',
+        item: { title: 'New Block' }
+      };
+
+      items.value = [newItem];
+
+      const result = prepareItemsForEmit(items.value, 'sort');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].item).toEqual({ title: 'New Block' });
+      expect(typeof result[0].item).toBe('object');
     });
   });
 });

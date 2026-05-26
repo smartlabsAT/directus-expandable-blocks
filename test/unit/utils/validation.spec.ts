@@ -4,6 +4,7 @@ import {
   isItemObject,
   isNotNullish,
   isTemporaryId,
+  isExistingLink,
   isValidCollection,
   isValidM2AField
 } from '../../../src/utils/validation';
@@ -149,6 +150,28 @@ describe('validation', () => {
       expect(isTemporaryId('NEW_123')).toBe(false);
       expect(isTemporaryId('TEMP_123')).toBe(false);
       expect(isTemporaryId('DUP_123')).toBe(false);
+    });
+  });
+
+  describe('isExistingLink', () => {
+    it('returns true for existing_ prefixed IDs', () => {
+      expect(isExistingLink('existing_1234_0')).toBe(true);
+      expect(isExistingLink('existing_5678_1')).toBe(true);
+    });
+
+    it('returns false for other temporary IDs', () => {
+      expect(isExistingLink('new_1234')).toBe(false);
+      expect(isExistingLink('dup_1234')).toBe(false);
+      expect(isExistingLink('temp_1234')).toBe(false);
+    });
+
+    it('returns false for real IDs', () => {
+      expect(isExistingLink(42)).toBe(false);
+      expect(isExistingLink('abc-uuid')).toBe(false);
+    });
+
+    it('returns false for undefined/null', () => {
+      expect(isExistingLink(undefined)).toBe(false);
     });
   });
 

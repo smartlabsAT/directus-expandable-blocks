@@ -44,6 +44,16 @@ export function isTemporaryId(id: string | number | undefined): boolean {
 }
 
 /**
+ * Check if an ID represents a linked existing item (not a truly new item)
+ * @param id - The ID to check
+ * @returns true if the ID was created by addExistingItems (existing_ prefix)
+ */
+export function isExistingLink(id: string | number | undefined): boolean {
+  if (!id) return false;
+  return String(id).startsWith('existing_');
+}
+
+/**
  * Validate that a collection name is provided
  * @param collection - The collection name to validate
  * @returns true if collection name is valid
