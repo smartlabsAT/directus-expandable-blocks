@@ -511,15 +511,55 @@ describe('useM2AData', () => {
         { collection: 'content_image', name: 'Image', icon: 'image' },
         { collection: 'content_hero', name: 'Hero', icon: 'star' }
       ];
-      
+
       const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
-      
+
       const map = m2aData.allowedCollectionsMap.value;
       expect(map).toHaveProperty('content_text');
       expect(map).toHaveProperty('content_image');
       expect(map).toHaveProperty('content_hero');
-      
+
       expect(map.content_text.collection).toBe('content_text');
+    });
+  });
+
+  describe('loadAllowedCollectionsForExisting', () => {
+    it('falls back to allowedCollections when allowedCollectionsForExisting is empty', async () => {
+      ctx.data.allowedCollectionsForExisting = ref([]);
+      ctx.deps.stores.collectionsStore = {
+        getCollection: vi.fn().mockReturnValue({
+          name: 'Content Text',
+          meta: { icon: 'article', singleton: false }
+        })
+      };
+      ctx.data.allowedCollections.value = [
+        { collection: 'content_text', name: 'Content Text', icon: 'article', singleton: false },
+        { collection: 'content_image', name: 'Content Image', icon: 'image', singleton: false }
+      ];
+      ctx.ui.mergedOptions.value = { allowedCollections: ['content_text', 'content_image'] };
+
+      const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
+      await m2aData.loadAllowedCollectionsForExisting();
+
+      expect(ctx.data.allowedCollectionsForExisting.value).toHaveLength(2);
+      expect(ctx.data.allowedCollectionsForExisting.value[0].collection).toBe('content_text');
+    });
+
+    it('uses explicit allowedCollectionsForExisting when provided', async () => {
+      ctx.data.allowedCollectionsForExisting = ref([]);
+      ctx.deps.stores.collectionsStore = {
+        getCollection: vi.fn().mockReturnValue({
+          name: 'Content Text',
+          meta: { icon: 'article', singleton: false }
+        })
+      };
+      ctx.ui.mergedOptions.value = { allowedCollectionsForExisting: ['content_text'] };
+
+      const m2aData = useM2AData(ctx, updateOriginalItemOrder, clearStateTracking);
+      await m2aData.loadAllowedCollectionsForExisting();
+
+      expect(ctx.data.allowedCollectionsForExisting.value).toHaveLength(1);
+      expect(ctx.data.allowedCollectionsForExisting.value[0].collection).toBe('content_text');
     });
   });
 });
