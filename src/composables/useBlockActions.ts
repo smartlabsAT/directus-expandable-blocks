@@ -798,37 +798,64 @@ export function useBlockActions(ctx: ExpandableBlocksContext) {
    */
   function addExistingItems(collection: string, selectedItems: ItemRecord[]): void {
     if (props.disabled) return;
-    
+
     if (!isValidPrimaryKey(props.primaryKey)) {
       notifyWarning('Save Required', 'Please save the item first before adding blocks.');
       return;
     }
-    
+
     if (!selectedItems || selectedItems.length === 0) {
       return;
     }
-    
+
+    // Filter out items already linked in this record for the same collection
+    const alreadyLinkedIds = new Set(
+      items.value
+        .filter(i => i.collection === collection && i.item)
+        .map(i => {
+          const itemData = i.item;
+          return typeof itemData === 'object' && itemData !== null
+            ? String((itemData as ItemRecord).id)
+            : String(itemData);
+        })
+        .filter(Boolean)
+    );
+
+    const uniqueItems = selectedItems.filter(item => !alreadyLinkedIds.has(String(item.id)));
+    const skipped = selectedItems.length - uniqueItems.length;
+
+    if (skipped > 0) {
+      notifyWarning('Duplicates Skipped', `${skipped} item(s) already linked, skipped.`);
+    }
+
+    if (uniqueItems.length === 0) {
+      return;
+    }
+
     logAction('addExistingItems', {
       collection,
-      itemCount: selectedItems.length,
-      itemIds: selectedItems.map(item => item.id)
+      itemCount: uniqueItems.length,
+      itemIds: uniqueItems.map(item => item.id),
+      skippedDuplicates: skipped
     });
-    
+
     // Create junction entries using helper
-    const newJunctionEntries = createJunctionEntries(collection, selectedItems, {
+    const newJunctionEntries = createJunctionEntries(collection, uniqueItems, {
       idPrefix: 'existing_'
     });
-    
+
     // Add items to list and emit changes
     addItemsToList(newJunctionEntries, 'ADD EXISTING - addExistingItems', {
       function: 'addExistingItems',
       collection: collection,
-      addedCount: selectedItems.length
+      addedCount: uniqueItems.length,
+      skippedDuplicates: skipped
     });
-    
+
     logDebug('Added existing items', {
       collection,
-      count: selectedItems.length,
+      count: uniqueItems.length,
+      skipped,
       totalItems: items.value.length
     });
   }
