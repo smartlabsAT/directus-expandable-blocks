@@ -1,7 +1,8 @@
 import type { Ref, ComputedRef } from 'vue';
-import type { 
-  JunctionRecord, 
-  UseExpandableBlocksProps, 
+import type {
+  JunctionRecord,
+  CollectionInfo,
+  UseExpandableBlocksProps,
   ExpandableBlocksOptions,
   DirectusFormValues,
   M2AFieldInfo
@@ -73,8 +74,8 @@ export interface BlockUIContext {
  */
 export interface BlockDataContext {
   relationInfo: Ref<any>;
-  allowedCollections: Ref<any[]>;
-  allowedCollectionsForExisting: Ref<any[]>;
+  allowedCollections: Ref<CollectionInfo[]>;
+  allowedCollectionsForExisting: Ref<CollectionInfo[]>;
   m2aStructure: Ref<M2AFieldInfo | null>;
   values: Ref<DirectusFormValues>;
   initialValues: Ref<DirectusFormValues>;
