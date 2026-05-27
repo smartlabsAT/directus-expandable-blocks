@@ -358,10 +358,64 @@ describe('useBlockActions', () => {
   describe('onSort', () => {
     it('emits changes after sort', () => {
       const actions = useBlockActions(ctx);
-      
+
       actions.onSort();
-      
+
       expect(vi.mocked(emitChanges)).toHaveBeenCalled();
+    });
+  });
+
+  describe('addExistingItems', () => {
+    it('filters out items that are already linked in the current record', () => {
+      ctx.state.items = ref([
+        { id: 10, collection: 'content_text', item: { id: 42, title: 'Existing' } }
+      ]);
+      ctx.deps.props.primaryKey = 123;
+      ctx.deps.props.disabled = false;
+
+      const actions = useBlockActions(ctx);
+
+      actions.addExistingItems('content_text', [
+        { id: 42, title: 'Existing' },
+        { id: 99, title: 'Brand New' }
+      ]);
+
+      expect(ctx.state.items.value).toHaveLength(2);
+      const newItem = ctx.state.items.value.find((i) => i.collection === 'content_text' && i.item?.id === 99);
+      expect(newItem).toBeDefined();
+      expect(newItem?.item?.id).toBe(99);
+    });
+
+    it('skips all items if all are already linked', () => {
+      ctx.state.items = ref([
+        { id: 10, collection: 'content_text', item: { id: 42, title: 'Existing' } }
+      ]);
+      ctx.deps.props.primaryKey = 123;
+      ctx.deps.props.disabled = false;
+
+      const actions = useBlockActions(ctx);
+
+      actions.addExistingItems('content_text', [
+        { id: 42, title: 'Existing' }
+      ]);
+
+      expect(ctx.state.items.value).toHaveLength(1);
+    });
+
+    it('allows linking the same item to different collections', () => {
+      ctx.state.items = ref([
+        { id: 10, collection: 'content_text', item: { id: 42, title: 'As Text' } }
+      ]);
+      ctx.deps.props.primaryKey = 123;
+      ctx.deps.props.disabled = false;
+
+      const actions = useBlockActions(ctx);
+
+      actions.addExistingItems('content_image', [
+        { id: 42, title: 'As Image' }
+      ]);
+
+      expect(ctx.state.items.value).toHaveLength(2);
     });
   });
 });

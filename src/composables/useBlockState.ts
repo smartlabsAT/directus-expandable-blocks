@@ -1,8 +1,8 @@
 import { ref, computed, type Ref } from 'vue';
 import { logger } from '../utils/logger-wrapper';
 import { deepClone, deepEqual } from '../utils/helpers';
-import { isTemporaryId } from '../utils/validation';
-import type { JunctionRecord } from '../types';
+import { isTemporaryId, isExistingLink } from '../utils/validation';
+import type { JunctionRecord, ItemRecord } from '../types';
 
 /**
  * Composable for managing block state in the expandable blocks extension
@@ -213,23 +213,26 @@ export function useBlockState(_relationInfo?: Ref<any>) {
         }
       }
       
-      // New block - always emit full object
-      logger.debug(`Emitting full object for new block at index ${index}`);
-      debugInfo['items'].push({
-        index,
-        blockId: 'NEW',
-        isDirty: true,
-        isNew: true
-      });
-      
-      // Create a copy without the temporary ID
-      const { id: _id, ...itemWithoutId } = item;
-      
-      // If sort field exists, ensure it's set
-      if (sortField) {
-        itemWithoutId[sortField] = index;
+      // New block handling
+      const isLink = isExistingLink(item.id);
+
+      if (isLink && item.item && typeof item.item === 'object' && item.item !== null && 'id' in item.item) {
+        // Linked existing item: emit bare PK to avoid writing/mutating the source item
+        logger.debug(`Emitting bare PK reference for linked existing block at index ${index}`);
+        debugInfo['items'].push({ index, blockId: 'LINK', isDirty: false, isNew: true });
+
+        const { id: _id, ...itemWithoutId } = item;
+        itemWithoutId.item = (item.item as ItemRecord).id; // bare PK only
+        if (sortField) { itemWithoutId[sortField] = index; }
+        return itemWithoutId;
       }
-      
+
+      // Truly new block: emit full object without the temporary wrapper ID
+      logger.debug(`Emitting full object for new block at index ${index}`);
+      debugInfo['items'].push({ index, blockId: 'NEW', isDirty: true, isNew: true });
+
+      const { id: _id, ...itemWithoutId } = item;
+      if (sortField) { itemWithoutId[sortField] = index; }
       return itemWithoutId;
     });
 

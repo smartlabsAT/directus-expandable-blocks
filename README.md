@@ -244,7 +244,7 @@ The interface provides extensive configuration grouped into logical sections:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `collection` | array | `[]` | Collections for new blocks |
-| `allowedCollectionsExisting` | array | `[]` | Collections for existing items |
+| `allowedCollectionsForExisting` | array | Falls back to `collection` | Collections for existing items |
 
 ### Advanced
 

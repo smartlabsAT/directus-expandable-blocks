@@ -194,8 +194,8 @@ export function useM2AData(
         }));
       }
     } else {
-      // If not specified, no collections are allowed for existing blocks
-      allowedCollectionsForExisting.value = [];
+      // Fallback: use the same collections as allowedCollections (as documented in option note)
+      allowedCollectionsForExisting.value = [...allowedCollections.value];
     }
   }
 

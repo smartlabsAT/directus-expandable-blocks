@@ -24,6 +24,8 @@ export interface ItemRecord {
 export interface CollectionInfo {
   collection: string;
   name: string;
+  icon?: string;
+  singleton?: boolean;
   meta?: {
     icon?: string;
     [key: string]: any;
