@@ -4,6 +4,16 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ## [Unreleased]
 
+## [1.3.6] - 2026-05-27
+
+### Fixed
+- **Add Existing fallback**: Empty `allowedCollectionsForExisting` now falls back to `allowedCollections` as documented ([#65](https://github.com/smartlabsAT/directus-expandable-blocks/issues/65))
+- **Link mutation**: Linking existing items no longer writes back to the source item on save
+- **Duplicate links**: Same item can no longer be linked multiple times into one record
+
+### Changed
+- **Type safety**: `allowedCollections` / `allowedCollectionsForExisting` refs typed as `CollectionInfo[]` instead of `any[]`
+
 ## [1.3.5] - 2026-05-12
 
 ### Changed
