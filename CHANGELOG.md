@@ -13,6 +13,7 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ### Changed
 - **Type safety**: `allowedCollections` / `allowedCollectionsForExisting` refs typed as `CollectionInfo[]` instead of `any[]`
+- **Dependencies**: Patch/minor updates for vite, vitest, vue, eslint, @typescript-eslint, sass, @vitejs/plugin-vue
 
 ## [1.3.5] - 2026-05-12
 
