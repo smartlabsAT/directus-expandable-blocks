@@ -1,117 +1,109 @@
 /**
- * Directus CSS Custom Properties (Theme Variables)
- * These are defined by Directus and available in all extensions
- * 
- * This file is for IDE support only - it does NOT set any values!
- * The actual values come from Directus theme system.
- */
-
-/* 
- * IMPORTANT: This file only documents available variables for IDE support.
- * Do NOT import this file in your CSS!
- * Directus provides these variables globally.
+ * Directus CSS Custom Properties - reference for IDE support only.
+ *
+ * This file sets no values and must NOT be imported. Directus provides these
+ * variables globally; the empty declarations exist so editors can autocomplete them.
+ *
+ * Everything listed here was verified to resolve in BOTH Directus 11.11 and 12.1.1.
+ * Anything not listed here should be treated as non-existent - see the warning at the
+ * bottom of this file.
  */
 
 :root {
-  /* Background Colors */
-  --background-page: ;
-  --background-normal: ;
-  --background-normal-alt: ;
-  --background-subdued: ;
-  --background-highlight: ;
-  --background-danger: ;
-  --background-warning: ;
-  --background-success: ;
-  --background-info: ;
+  /* ---------------------------------------------------------------------------
+   * Theme system (Directus 10.9+). Prefer these - they are the supported API and
+   * follow the active light/dark theme.
+   * ------------------------------------------------------------------------- */
 
-  /* Foreground/Text Colors */
-  --foreground-normal: ;
-  --foreground-normal-alt: ;
-  --foreground-subdued: ;
-  --foreground-inverted: ;
+  /* Surfaces */
+  --theme--background: ;
+  --theme--background-normal: ;
+  --theme--background-subdued: ;
+  --theme--background-accent: ;
 
-  /* Border Colors */
-  --border-normal: ;
-  --border-normal-alt: ;
-  --border-subdued: ;
-  --border-highlight: ;
+  /* Text */
+  --theme--foreground: ;
+  --theme--foreground-subdued: ;
+  --theme--foreground-accent: ;
 
-  /* Primary Theme Colors */
-  --primary: ;
-  --primary-alt: ;
-  --primary-subdued: ;
-  --primary-highlight: ;
-  --primary-rgb: ; /* RGB values of primary color */
+  /* Borders */
+  --theme--border-color: ;
+  --theme--border-color-subdued: ;
+  --theme--border-color-accent: ;
+  --theme--border-radius: ;
 
-  /* Status Colors */
-  --success: ;
-  --warning: ;
-  --danger: ;
-  --info: ;
-
-  /* Spacing */
-  --border-radius: ;
-  --border-radius-small: ;
-  --border-radius-large: ;
-
-  /* Form Elements */
-  --form-vertical-gap: ;
-  --form-horizontal-gap: ;
-  --input-height: ;
-  --input-height-small: ;
-  --input-height-large: ;
-  --input-padding: ;
-  --input-font-size: ;
+  /* Brand and status */
+  --theme--primary: ;
+  --theme--primary-background: ;
+  --theme--primary-subdued: ;
+  --theme--primary-accent: ;
+  --theme--danger: ;
+  --theme--danger-background: ;
+  --theme--warning: ;
+  --theme--warning-background: ;
+  --theme--success: ;
+  --theme--success-background: ;
+  --theme--info: ;
+  --theme--info-background: ;
 
   /* Typography */
-  --v-title-font-size: ;
-  --v-subtitle-font-size: ;
-  --v-list-item-min-height: ;
+  --theme--fonts--monospace--font-family: ;
 
-  /* Layout */
-  --header-bar-height: ;
-  --sidebar-width: ;
+  /* Form fields */
+  --theme--form--column-gap: ;
+  --theme--form--field--input--background: ;
+  --theme--form--field--input--background-subdued: ;
+  --theme--form--field--input--border-color: ;
+  --theme--form--field--input--border-color-hover: ;
+
+  /* Sidebar */
+  --theme--sidebar--section--toggle--background: ;
+
+  /* ---------------------------------------------------------------------------
+   * Legacy aliases that still resolve. They have no exact --theme--* counterpart,
+   * so they are still in use - but do not introduce new ones.
+   * ------------------------------------------------------------------------- */
+
+  --primary: ;
+  --primary-10: ;
+  --primary-25: ;
+  --primary-75: ;
+  --danger: ;
+  --danger-10: ;
+  --danger-25: ;
+  --danger-75: ;
+  --warning: ;
+  --warning-10: ;
+  --warning-25: ;
+  --success: ;
+  --success-25: ;
+  --background-normal-alt: ;
+  --background-highlight: ;
   --content-padding: ;
-
-  /* Transitions */
   --fast: ;
-  --medium: ;
-  --slow: ;
-
-  /* Shadows */
-  --card-shadow: ;
-  --card-shadow-hover: ;
-
-  /* Z-Index */
-  --z-index-dropdown: ;
-  --z-index-dialog: ;
-  --z-index-tooltip: ;
-
-  /* Theme Colors - Additional */
-  --theme-primary: ;
-  --theme-background: ;
-  --theme-background-accent: ;
-  --theme-foreground: ;
-  --theme-foreground-accent: ;
-  --theme-border-color: ;
-  --theme-border-color-accent: ;
-
-  /* Component Specific */
-  --v-button-background-color: ;
-  --v-button-background-color-hover: ;
-  --v-button-background-color-active: ;
-  --v-button-color: ;
-  --v-button-color-hover: ;
-  --v-button-color-active: ;
-  --v-button-color-disabled: ;
-
-  /* Status Specific */
-  --success-background: ;
-  --success-border: ;
-  --warning-background: ;
-  --warning-border: ;
-  --danger-background: ;
-  --danger-border: ;
-  --info-background: ;
-  --info-border: ;
+  --white: ;
+  --project-color: ;
 }
+
+/*
+ * WARNING - these legacy variables no longer exist in Directus 11 or 12. A declaration
+ * referencing one of them is silently dropped by the browser, so the styling simply does
+ * not apply. Use the --theme--* variable on the right instead.
+ *
+ *   --background-page       ->  --theme--background
+ *   --background-normal     ->  --theme--background-normal
+ *   --background-subdued    ->  --theme--background-subdued
+ *   --background-accent     ->  --theme--background-accent
+ *   --background            ->  --theme--background
+ *   --border-normal         ->  --theme--border-color
+ *   --border-normal-alt     ->  --theme--border-color-accent
+ *   --border-subdued        ->  --theme--border-color-subdued
+ *   --border-radius         ->  --theme--border-radius
+ *   --foreground-normal     ->  --theme--foreground
+ *   --foreground-subdued    ->  --theme--foreground-subdued
+ *   --foreground            ->  --theme--foreground
+ *   --family-monospace      ->  --theme--fonts--monospace--font-family
+ *   --primary-rgb           ->  color-mix(in srgb, transparent, var(--theme--primary) X%)
+ *   --primary-5             ->  color-mix(in srgb, transparent, var(--theme--primary) 5%)
+ *   --warning-15            ->  color-mix(in srgb, transparent, var(--theme--warning) 15%)
+ */

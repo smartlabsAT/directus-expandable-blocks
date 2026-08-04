@@ -6,17 +6,9 @@
     @update:model-value="handleClose"
     @cancel="handleCancel"
   >
-    <!-- Subtitle Slot -->
-    <template #subtitle>
-      <v-breadcrumb 
-        v-if="collectionInfo" 
-        :items="[{ name: collectionInfo.name || collectionInfo.collection || props.collection, disabled: true }]" 
-      />
-    </template>
-
     <!-- Title Icon -->
     <template #title-outer:prepend>
-      <v-button class="header-icon" rounded icon secondary disabled>
+      <v-button class="header-icon" icon secondary disabled>
         <v-icon :name="collectionIcon" />
       </v-button>
     </template>
@@ -26,7 +18,6 @@
       <v-button
         v-tooltip.bottom="'Save'"
         icon
-        rounded
         :loading="saving"
         :disabled="!hasEdits || saving"
         @click="handleSave"
@@ -130,20 +121,25 @@ const collectionInfo = computed(() => {
 const collectionIcon = computed(() => collectionInfo.value?.icon || 'box');
 
 // Computed
+// The collection name used to be rendered in the drawer's #subtitle slot via
+// <v-breadcrumb>. Both are deprecated in Directus 12, so it is part of the title now.
 const drawerTitle = computed(() => {
-  if (!item.value || !collectionInfo.value) return 'Edit Item';
-  
+  const collectionLabel = collectionInfo.value?.name || collectionInfo.value?.collection || props.collection || '';
+  const prefix = collectionLabel ? `${collectionLabel}: ` : '';
+
+  if (!item.value || !collectionInfo.value) return `${prefix}Edit Item`;
+
   // Try to get display template
   const displayTemplate = collectionInfo.value.meta?.display_template;
   if (displayTemplate) {
     // Simple template replacement (you might want to use Directus' template renderer)
-    return displayTemplate.replace(/{{(\w+)}}/g, (match: string, field: string) => {
+    return prefix + displayTemplate.replace(/{{(\w+)}}/g, (match: string, field: string) => {
       return item.value?.[field] || '';
     });
   }
-  
+
   // Fallback to primary key
-  return `Edit Item #${props.primaryKey}`;
+  return `${prefix}Edit Item #${props.primaryKey}`;
 });
 
 const hasEdits = computed(() => {
@@ -261,7 +257,7 @@ watch(
 );
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .drawer-content {
   padding: var(--content-padding);
   padding-top: 0;
@@ -282,7 +278,7 @@ watch(
 .dialog-content {
   padding: var(--content-padding);
   text-align: center;
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
 }
 
 .dialog-actions {

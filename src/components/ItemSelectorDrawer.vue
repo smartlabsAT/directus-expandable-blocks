@@ -4,16 +4,12 @@
       @update:model-value="$emit('close')"
       @cancel="handleClose"
       :icon="collectionIcon"
-      :title="'Select Item(s)'"
+      :title="drawerTitle"
       :small-header="false"
       :header-shadow="false"
   >
-    <template #subtitle>
-      <v-breadcrumb :items="[{ name: collectionName, disabled: true }]"/>
-    </template>
-
     <template #title-outer:prepend>
-      <v-button class="header-icon" rounded icon secondary disabled>
+      <v-button class="header-icon" icon secondary disabled>
         <v-icon :name="collectionIcon"/>
       </v-button>
     </template>
@@ -395,6 +391,9 @@ watch(() => props.availableLanguages, (languages) => {
 // Computed
 const collectionIcon = computed(() => props.collectionIcon || 'box');
 const collectionName = computed(() => props.collectionName || props.collection || 'Items');
+// The collection name used to be rendered in the drawer's #subtitle slot via
+// <v-breadcrumb>. Both are deprecated in Directus 12, so it is part of the title now.
+const drawerTitle = computed(() => `${collectionName.value}: Select Item(s)`);
 const totalPages = computed(() => {
   if (!props.totalItems || !props.itemsPerPage) return 1;
   return Math.ceil(props.totalItems / props.itemsPerPage);
@@ -1090,7 +1089,7 @@ onMounted(async () => {
 </script>
 
 
-<style scoped>
+<style scoped lang="scss">
 /* Translation icon in field labels */
 
 /* Bold text in search info */
@@ -1141,9 +1140,9 @@ onMounted(async () => {
   }
   
   .item-id-badge {
-    background-color: var(--background-subdued);
-    color: var(--foreground-subdued);
-    font-family: var(--family-monospace);
+    background-color: var(--theme--background-subdued);
+    color: var(--theme--foreground-subdued);
+    font-family: var(--theme--fonts--monospace--font-family);
     font-size: 11px;
     min-width: 80px;
     text-align: center;
@@ -1152,7 +1151,7 @@ onMounted(async () => {
     :deep(.v-icon) {
       margin-right: 4px;
       --v-icon-size: 14px;
-      color: var(--foreground-subdued);
+      color: var(--theme--foreground-subdued);
     }
   }
   
@@ -1164,7 +1163,7 @@ onMounted(async () => {
 /* Update info styling */
 .update-info {
   font-size: 12px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   margin-left: 8px;
   white-space: nowrap;
 }
@@ -1189,11 +1188,7 @@ onMounted(async () => {
 
 .search-issue-hint {
   font-size: 13px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   font-style: italic;
 }
-</style>
-
-<style>
-/* Dynamic drawer width styles */
 </style>

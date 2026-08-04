@@ -126,11 +126,11 @@ function formatFieldName(name: string): string {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .nested-blocks {
   margin-top: 12px;
   padding-left: 20px;
-  border-left: 2px solid var(--border-normal);
+  border-left: 2px solid var(--theme--border-color);
 }
 
 .nested-header {
@@ -138,7 +138,7 @@ function formatFieldName(name: string): string {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   font-size: 13px;
   font-weight: 600;
 }
@@ -150,9 +150,9 @@ function formatFieldName(name: string): string {
 }
 
 .nested-block-item {
-  background: var(--background-normal);
-  border: 1px solid var(--border-subdued);
-  border-radius: var(--border-radius);
+  background: var(--theme--background-normal);
+  border: 1px solid var(--theme--border-color-subdued);
+  border-radius: var(--theme--border-radius);
   padding: 8px 12px;
 }
 
@@ -170,13 +170,13 @@ function formatFieldName(name: string): string {
 
 .block-collection {
   font-size: 11px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 .nested-block-content {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--border-subdued);
+  border-top: 1px solid var(--theme--border-color-subdued);
 }
 
 .nested-field {
@@ -186,12 +186,12 @@ function formatFieldName(name: string): string {
 .nested-field label {
   display: block;
   font-size: 12px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   margin-bottom: 4px;
 }
 
 .field-value {
   font-size: 13px;
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
 }
 </style>

@@ -146,7 +146,7 @@ defineEmits<{
 }>();
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .usage-warning {
   margin-bottom: 20px;
 }

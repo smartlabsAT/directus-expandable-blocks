@@ -110,12 +110,12 @@ function updateWidth(value: number) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .column-width-popover {
   padding: 14px 13px 5px;
   min-width: 180px;
-  background: var(--background-page);
-  border-radius: var(--border-radius);
+  background: var(--theme--background);
+  border-radius: var(--theme--border-radius);
   position: relative;
   z-index: 9999;
 }
@@ -143,7 +143,7 @@ function updateWidth(value: number) {
     transform: translate(-50%, -50%);
     width: 2px;
     height: 12px;
-    background: var(--border-normal);
+    background: var(--theme--border-color);
     z-index: 1;
   }
 }

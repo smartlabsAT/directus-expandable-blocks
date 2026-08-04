@@ -4,6 +4,75 @@ All notable changes to the Directus Expandable Blocks extension are documented h
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-03
+
+Styling release. Three independent defects meant a large part of this extension's CSS
+never reached the browser: the main stylesheet was missing from the bundle entirely,
+around 170 declarations referenced variables Directus does not define, and several style
+blocks shipped as uncompiled SCSS. Alongside that, the extension is now free of APIs that
+Directus 12 removed or deprecated.
+
+### Fixed
+- **Missing interface styles**: The main stylesheet (`src/interface.scss`) was dropped from
+  the published bundle since 1.3.4, leaving the interface completely unstyled ([#85](https://github.com/smartlabsAT/directus-expandable-blocks/issues/85)).
+  The SDK update in 1.3.4 (extensions-sdk 11 → 17, Rollup 3 → 4) made
+  `rollup-plugin-styler` parse the `@use`-only style block of `interface.vue` as valid
+  JavaScript, so it skipped the block as "already processed". Affects 1.3.4, 1.3.5 and
+  1.3.6 on every Directus version; 1.3.3 and earlier are unaffected.
+- **Dead CSS variables**: 16 legacy Directus custom properties (`--background-page`,
+  `--border-normal`, `--foreground-subdued`, `--border-radius`, `--primary-rgb` and
+  others) resolve to nothing in Directus 11 and 12, so every declaration using them was
+  silently discarded by the browser - roughly 260 usages. Among the casualties were the
+  block card background, its border and corner radius, and the primary highlight that
+  marks the expanded block. All of them now use the corresponding `--theme--*` variable,
+  verified to resolve in both Directus 11.11 and 12.1.1.
+- **Uncompiled SCSS in the bundle**: 16 style blocks declared plain CSS while using SCSS
+  nesting. Sass never ran on them, so raw nested rules ended up in the bundle and the
+  scoping attribute was placed on the wrong selector, which silently disabled some rules.
+  Every style block now declares `lang="scss"`.
+
+### Changed
+- **Directus 12 compatibility**: removed the `rounded` prop from `v-button` (removed in
+  Directus 12) and replaced the deprecated `v-drawer` `#subtitle` slot and `v-breadcrumb`
+  component. The collection name is now part of the drawer title
+  (`Block Text: Select Item(s)`), and usage paths render as a plain path display.
+- **Extension host range**: `directus:extension.host` widened to `^11.0.0 || ^12.0.0`.
+- **Dependencies**: major and minor updates across the toolchain
+  - @directus/extensions-sdk 17.1.4 → 18.0.2, @directus/types 15.0.3 → 16.1.0
+  - @testing-library/jest-dom 6.9.1 → 7.0.0, @types/node 22.19.15 → 26.1.2
+  - vite 8.0.14 → 8.2.0, vitest / @vitest/coverage-v8 / @vitest/ui 4.1.7 → 4.1.10
+  - vue 3.5.35 → 3.5.40, @vitejs/plugin-vue 6.0.7 → 6.0.8, @vue/test-utils 2.4.10 → 2.4.11
+  - sass 1.100.0 → 1.102.0, happy-dom 20.9.0 → 20.11.1
+  - eslint 10.4.0 → 10.8.0, eslint-plugin-vue 10.9.1 → 10.10.0,
+    vue-eslint-parser 10.4.0 → 10.4.1
+  - @typescript-eslint/eslint-plugin, @typescript-eslint/parser 8.60.0 → 8.65.0
+  - @playwright/test 1.60.0 → 1.62.1
+  - Held back deliberately:
+    - **TypeScript 7.0.2** breaks the toolchain - `@vue/compiler-sfc` fails with
+      "Failed to resolve extends base type", ESLint fails to load and one test file
+      fails. Stays on 6.0.3 until the Vue tooling catches up.
+    - **vuedraggable** stays on 4.1.0. Its npm `latest` tag points at 2.24.3, which is
+      the Vue 2 line - "updating" would be a downgrade that breaks the extension.
+
+### Added
+- **Build verification**: `npm run build` now fails when the bundle is missing expected
+  CSS or contains uncompiled SCSS, instead of only emitting a rollup warning
+  (`config/scripts/verify-build-output.mjs`)
+
+### Removed
+- Orphaned `src/components/FieldSettingsMenu.scss` (not referenced anywhere) and a
+  comment-only `<style>` block in `ItemSelectorDrawer.vue`.
+
+### Security
+- `.npmrc` is now git-ignored. It holds the npm publish token and was previously only
+  uncommitted by luck.
+- `pnpm audit` reports 4 advisories (1 low, 3 moderate) in `unhead` and `joi`. Both are
+  transitive dependencies of `@directus/extensions-sdk`, which is a devDependency: they
+  are part of the build toolchain and are never contained in the published `dist/`
+  bundle, so installations of this extension are not exposed. Resolving them requires an
+  upstream update in Directus; forcing versions via overrides was considered and rejected
+  as the greater risk.
+
 ## [1.3.6] - 2026-05-27
 
 ### Fixed
