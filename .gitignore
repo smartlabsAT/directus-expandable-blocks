@@ -86,3 +86,6 @@ docs/assets/*.gif
 docs/assets/*.mp4
 docs/assets/*.mov
 
+
+# npm auth token for publishing - must never be committed
+.npmrc

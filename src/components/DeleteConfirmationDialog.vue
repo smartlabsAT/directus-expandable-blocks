@@ -430,7 +430,7 @@ function handleConfirm() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 /* Dialog Content Scrolling */
 :deep(.v-card) {
   max-height: 90vh;
@@ -450,7 +450,7 @@ function handleConfirm() {
 
 :deep(.v-card-actions) {
   flex-shrink: 0;
-  border-top: 1px solid var(--border-subdued);
+  border-top: 1px solid var(--theme--border-color-subdued);
 }
 
 .loading-container {
@@ -459,15 +459,15 @@ function handleConfirm() {
   align-items: center;
   gap: 16px;
   padding: 40px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 /* Custom Block Display Styles */
 .block-display {
   margin: 20px 0;
   background: var(--background-normal-alt);
-  border: 2px solid var(--border-normal);
-  border-radius: var(--border-radius);
+  border: 2px solid var(--theme--border-color);
+  border-radius: var(--theme--border-radius);
   overflow: hidden;
 }
 
@@ -476,7 +476,7 @@ function handleConfirm() {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--background-subdued);
+  background: var(--theme--background-subdued);
 }
 
 .block-icon-wrapper {
@@ -487,7 +487,7 @@ function handleConfirm() {
 }
 
 .block-icon {
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
   font-size: 20px;
 }
 
@@ -498,7 +498,7 @@ function handleConfirm() {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 2px solid var(--background-page);
+  border: 2px solid var(--theme--background);
 }
 
 .status-indicator.deleted {
@@ -525,7 +525,7 @@ function handleConfirm() {
 .block-display-title {
   font-weight: 600;
   font-size: 14px;
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
@@ -533,7 +533,7 @@ function handleConfirm() {
 }
 
 .block-display-title.deleted {
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   text-decoration: line-through;
   opacity: 0.7;
 }
@@ -549,7 +549,7 @@ function handleConfirm() {
   align-items: center;
   gap: 6px;
   padding: 2px 8px;
-  border-radius: var(--border-radius);
+  border-radius: var(--theme--border-radius);
   font-size: 12px;
   margin-left: auto;
 }
@@ -558,7 +558,7 @@ function handleConfirm() {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--foreground-subdued);
+  background: var(--theme--foreground-subdued);
   flex-shrink: 0;
 }
 
@@ -567,7 +567,7 @@ function handleConfirm() {
 }
 
 .status-dot.status-draft {
-  background: var(--foreground-normal);
+  background: var(--theme--foreground);
 }
 
 .status-dot.status-archived {
@@ -575,7 +575,7 @@ function handleConfirm() {
 }
 
 .status-text {
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   text-transform: capitalize;
   font-size: 12px;
 }
@@ -594,12 +594,12 @@ function handleConfirm() {
 .usage-summary strong {
   font-size: 13px;
   font-weight: 600;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   text-transform: uppercase;
 }
 
 .usage-summary .v-icon {
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 
@@ -608,8 +608,8 @@ function handleConfirm() {
   overflow-y: auto;
   overflow-x: hidden;
   border: 2px solid var(--danger-25);
-  border-radius: var(--border-radius);
-  background: var(--background-normal);
+  border-radius: var(--theme--border-radius);
+  background: var(--theme--background-normal);
   scroll-behavior: smooth;
 }
 
@@ -619,17 +619,17 @@ function handleConfirm() {
 }
 
 .location-list-with-checks::-webkit-scrollbar-track {
-  background: var(--background-subdued);
-  border-radius: var(--border-radius);
+  background: var(--theme--background-subdued);
+  border-radius: var(--theme--border-radius);
 }
 
 .location-list-with-checks::-webkit-scrollbar-thumb {
-  background: var(--border-normal);
-  border-radius: var(--border-radius);
+  background: var(--theme--border-color);
+  border-radius: var(--theme--border-radius);
 }
 
 .location-list-with-checks::-webkit-scrollbar-thumb:hover {
-  background: var(--border-normal-alt);
+  background: var(--theme--border-color-accent);
 }
 
 .location-item-with-check {
@@ -637,7 +637,7 @@ function handleConfirm() {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-subdued);
+  border-bottom: 1px solid var(--theme--border-color-subdued);
   transition: all 0.2s;
 }
 
@@ -656,7 +656,7 @@ function handleConfirm() {
 .location-item-with-check.acknowledged .location-title {
   text-decoration: line-through;
   opacity: 0.7;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 .location-checkbox {
@@ -675,7 +675,7 @@ function handleConfirm() {
 /* Removed .acknowledge-all styles - button was removed */
 
 .location-icon {
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 .location-info {
@@ -711,7 +711,7 @@ function handleConfirm() {
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 .action-options {
@@ -724,16 +724,16 @@ function handleConfirm() {
   display: flex;
   align-items: flex-start;
   padding: 12px;
-  border: 2px solid var(--border-normal);
-  border-radius: var(--border-radius);
+  border: 2px solid var(--theme--border-color);
+  border-radius: var(--theme--border-radius);
   cursor: pointer;
   transition: all 0.2s;
-  background: var(--background-page);
+  background: var(--theme--background);
 }
 
 .action-option:hover {
   border-color: var(--primary);
-  background: var(--background-normal);
+  background: var(--theme--background-normal);
 }
 
 .action-option.selected {
@@ -765,7 +765,7 @@ function handleConfirm() {
 .option-content p {
   margin: 0;
   font-size: 12px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 .v-notice {
@@ -790,13 +790,13 @@ function handleConfirm() {
   margin-top: 12px;
   background: var(--warning-10);
   border: 2px solid var(--warning-25);
-  border-radius: var(--border-radius);
+  border-radius: var(--theme--border-radius);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .risk-checkbox:hover {
-  background: var(--warning-15);
+  background: color-mix(in srgb, transparent, var(--theme--warning) 15%);
   border-color: var(--warning);
 }
 

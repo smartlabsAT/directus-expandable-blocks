@@ -677,7 +677,7 @@ function onBodyScroll() {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .item-selector-table-wrapper {
   display: flex;
   flex-direction: column;
@@ -691,9 +691,9 @@ function onBodyScroll() {
   position: sticky;
   top: 125px;
   z-index: 20;
-  background: var(--background-page);
+  background: var(--theme--background);
   overflow-x: hidden; /* Will be synced with body scroll */
-  border-bottom: 2px solid var(--border-normal);
+  border-bottom: 2px solid var(--theme--border-color);
 }
 
 /* Scrollable Body Container */
@@ -727,7 +727,7 @@ function onBodyScroll() {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   background: var(--background-normal-alt);
   min-height: 48px; /* Ensure consistent height */
 }
@@ -767,7 +767,7 @@ function onBodyScroll() {
 /* Style row backgrounds on the cells instead */
 .item-row > .table-cell {
   min-height: 52px;
-  border-bottom: 1px solid var(--border-subdued);
+  border-bottom: 1px solid var(--theme--border-color-subdued);
   transition: background-color 0.2s;
 }
 
@@ -840,7 +840,7 @@ function onBodyScroll() {
   position: sticky;
   left: 0;
   z-index: 3;
-  background: var(--background-page);
+  background: var(--theme--background);
   
   /* Shadow on right edge */
   &::after {
@@ -862,7 +862,7 @@ function onBodyScroll() {
   position: sticky;
   left: 48px; /* Width of checkbox column */
   z-index: 2;
-  background: var(--background-page);
+  background: var(--theme--background);
   
   /* Shadow on right edge when scrolling */
   &::after {
@@ -899,7 +899,7 @@ function onBodyScroll() {
   position: sticky;
   right: 0;
   z-index: 3;
-  background: var(--background-page);
+  background: var(--theme--background);
   
   /* Shadow on left edge */
   &::before {
@@ -919,7 +919,7 @@ function onBodyScroll() {
 .header-actions-cell {
   justify-content: center;
   text-align: center;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   
   &.is-sortable {
     cursor: pointer;
@@ -1055,7 +1055,7 @@ function onBodyScroll() {
   z-index: 2;
   
   --v-button-background-color: var(--background-normal-alt);
-  --v-button-background-color-hover: var(--background-normal);
+  --v-button-background-color-hover: var(--theme--background-normal);
 }
 
 .field-cell:hover .column-settings-trigger {
@@ -1096,7 +1096,7 @@ function onBodyScroll() {
 /* Item Title */
 .item-title {
   font-weight: 600;
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1123,14 +1123,14 @@ function onBodyScroll() {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--foreground-subdued);
+  background: var(--theme--foreground-subdued);
   
   &.status-published {
     background: var(--primary);
   }
   
   &.status-draft {
-    background: var(--foreground-normal);
+    background: var(--theme--foreground);
   }
   
   &.status-archived {
@@ -1155,9 +1155,9 @@ function onBodyScroll() {
 }
 
 .item-id-badge {
-  background-color: var(--background-subdued);
-  color: var(--foreground-subdued);
-  font-family: var(--family-monospace);
+  background-color: var(--theme--background-subdued);
+  color: var(--theme--foreground-subdued);
+  font-family: var(--theme--fonts--monospace--font-family);
   font-size: 11px;
   
   :deep(.v-icon) {
@@ -1191,7 +1191,7 @@ function onBodyScroll() {
   bottom: -1000px;
   left: 0;
   right: 0;
-  background-color: var(--primary-5);
+  background-color: color-mix(in srgb, transparent, var(--theme--primary) 5%);
   pointer-events: none;
   z-index: -1;
 }
@@ -1208,15 +1208,15 @@ function onBodyScroll() {
 }
 
 .table-body-container::-webkit-scrollbar-track {
-  background: var(--background-normal);
+  background: var(--theme--background-normal);
 }
 
 .table-body-container::-webkit-scrollbar-thumb {
-  background-color: var(--border-normal);
+  background-color: var(--theme--border-color);
   border-radius: 4px;
 }
 
 .table-body-container::-webkit-scrollbar-thumb:hover {
-  background-color: var(--border-normal-alt);
+  background-color: var(--theme--border-color-accent);
 }
 </style>

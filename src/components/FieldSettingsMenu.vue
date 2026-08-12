@@ -360,7 +360,7 @@ function capitalizeField(fieldName: string): string {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 /* Two-column layout */
 .settings-menu-content {
   width: 600px;
@@ -381,7 +381,7 @@ function capitalizeField(fieldName: string): string {
 
 .settings-column-left {
   flex: 0 0 250px;
-  border-right: 1px solid var(--border-normal);
+  border-right: 1px solid var(--theme--border-color);
 }
 
 .settings-column-right {
@@ -437,16 +437,16 @@ function capitalizeField(fieldName: string): string {
 }
 
 .field-list-scrollable::-webkit-scrollbar-track {
-  background: var(--background-subdued);
+  background: var(--theme--background-subdued);
 }
 
 .field-list-scrollable::-webkit-scrollbar-thumb {
-  background: var(--border-normal);
+  background: var(--theme--border-color);
   border-radius: 2px;
 }
 
 .field-list-scrollable::-webkit-scrollbar-thumb:hover {
-  background: var(--border-normal-alt);
+  background: var(--theme--border-color-accent);
 }
 
 /* Language selector */
@@ -458,7 +458,7 @@ function capitalizeField(fieldName: string): string {
 .slider-value {
   text-align: center;
   font-size: 12px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   margin-top: -8px;
 }
 

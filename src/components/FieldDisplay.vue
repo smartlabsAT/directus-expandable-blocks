@@ -180,7 +180,6 @@
             <v-button 
                 class="modal-close-button"
                 icon
-                rounded
                 secondary
                 @click="showImageModal = false"
             >
@@ -861,7 +860,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .field-display {
   display: flex;
   align-items: center;
@@ -871,7 +870,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .field-value {
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -891,7 +890,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 
 /* Select chip */
 .select-chip {
-  background-color: var(--background-accent);
+  background-color: var(--theme--background-accent);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -927,7 +926,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
   max-height: 400px;
   overflow: auto;
   padding: 16px;
-  background: var(--background-page);
+  background: var(--theme--background);
 }
 
 .wysiwyg-content {
@@ -953,8 +952,8 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .json-chip {
-  background-color: var(--background-normal);
-  color: var(--foreground-subdued);
+  background-color: var(--theme--background-normal);
+  color: var(--theme--foreground-subdued);
   font-family: monospace;
   font-size: 10px;
 }
@@ -972,7 +971,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
   max-height: 400px;
   overflow: auto;
   padding: 16px;
-  background: var(--background-page);
+  background: var(--theme--background);
 }
 
 .json-popover pre {
@@ -996,11 +995,11 @@ function getRelationDisplay(item: Record<string, unknown>): string {
   max-height: 120px;
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--theme--border-color);
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  background: var(--background-subdued);
+  background: var(--theme--background-subdued);
 }
 
 .image-preview:hover {
@@ -1043,11 +1042,11 @@ function getRelationDisplay(item: Record<string, unknown>): string {
   position: absolute;
   top: 20px;
   right: 20px;
-  background: var(--background-page) !important;
+  background: var(--theme--background) !important;
   z-index: 10;
   
   &:hover {
-    background: var(--background-normal) !important;
+    background: var(--theme--background-normal) !important;
   }
 }
 
@@ -1081,8 +1080,8 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .tag-chip {
-  background-color: var(--background-normal);
-  color: var(--foreground-normal);
+  background-color: var(--theme--background-normal);
+  color: var(--theme--foreground);
 }
 
 /* Color field */
@@ -1098,7 +1097,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--theme--border-color);
   flex-shrink: 0;
   cursor: pointer;
   transition: all 0.2s;
@@ -1112,7 +1111,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 .color-value {
   font-family: monospace;
   font-size: 12px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   animation: fadeIn 0.2s ease-in-out;
 }
 
@@ -1130,7 +1129,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .icon-preview {
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
 }
 
 /* Rating field */
@@ -1141,7 +1140,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .rating-star {
-  color: var(--border-normal);
+  color: var(--theme--border-color);
 }
 
 .rating-star.filled {
@@ -1150,7 +1149,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 
 .rating-value {
   margin-left: 8px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   font-size: 12px;
 }
 
@@ -1176,15 +1175,15 @@ function getRelationDisplay(item: Record<string, unknown>): string {
   left: 50%;
   transform: translateX(-50%);
   font-size: 11px;
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
   font-weight: 600;
-  background: var(--background-page);
+  background: var(--theme--background);
   padding: 0 4px;
 }
 
 .slider-track {
   height: 4px;
-  background-color: var(--background-normal);
+  background-color: var(--theme--background-normal);
   border-radius: 2px;
   position: relative;
   width: 100%;
@@ -1218,7 +1217,7 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .user-name {
-  color: var(--foreground-normal);
+  color: var(--theme--foreground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1260,12 +1259,12 @@ function getRelationDisplay(item: Record<string, unknown>): string {
 }
 
 .relation-more {
-  background-color: var(--background-normal);
-  color: var(--foreground-subdued);
+  background-color: var(--theme--background-normal);
+  color: var(--theme--foreground-subdued);
   margin-top: 4px;
 }
 
 .field-value.empty {
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 </style>

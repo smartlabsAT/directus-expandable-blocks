@@ -63,11 +63,22 @@
                 <v-icon name="open_in_new" x-small />
               </v-button>
             </div>
-            <v-breadcrumb
+            <!-- Plain path display: <v-breadcrumb> is deprecated in Directus 12 and
+                 every segment here is non-clickable anyway. -->
+            <div
               v-if="getPathArray(usedIn).length > 0"
-              :items="formatPathAsBreadcrumbs(getPathArray(usedIn))"
-              class="usage-item-breadcrumb"
-            />
+              class="usage-item-path"
+            >
+              <span
+                v-for="(segment, segmentIndex) in formatPathAsBreadcrumbs(getPathArray(usedIn))"
+                :key="segmentIndex"
+                class="usage-item-path-segment"
+              >
+                <v-icon v-if="segmentIndex > 0" name="chevron_right" x-small />
+                <v-icon :name="segment.icon" x-small />
+                {{ segment.name }}
+              </span>
+            </div>
             <v-list-item-subtitle v-else-if="usedIn.path && typeof usedIn.path === 'string'">
               {{ usedIn.path }}
             </v-list-item-subtitle>
@@ -230,7 +241,7 @@ function formatPathAsBreadcrumbs(pathArray: Array<{ collection: string; id: stri
   max-width: 400px;
   
   .collection-header {
-    background-color: var(--background-subdued);
+    background-color: var(--theme--background-subdued);
     font-weight: 600;
     
     :deep(.v-list-item-content) {
@@ -239,7 +250,7 @@ function formatPathAsBreadcrumbs(pathArray: Array<{ collection: string; id: stri
     
     :deep(.v-chip) {
       margin-left: 8px;
-      background-color: var(--background-normal);
+      background-color: var(--theme--background-normal);
     }
   }
   
@@ -278,27 +289,29 @@ function formatPathAsBreadcrumbs(pathArray: Array<{ collection: string; id: stri
       }
     }
     
-    .usage-item-breadcrumb {
+    .usage-item-path {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2px;
       margin-top: 4px;
-      
-      :deep(.v-breadcrumb) {
-        font-size: 11px;
-        opacity: 0.7;
-        
-        .v-list-item {
-          min-height: unset;
-          padding: 0;
-        }
-        
-        .v-icon {
-          --v-icon-size: 12px;
-        }
+      font-size: 11px;
+      opacity: 0.7;
+
+      .usage-item-path-segment {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      :deep(.v-icon) {
+        --v-icon-size: 12px;
       }
     }
     
     :deep(.v-list-item-subtitle) {
       font-size: 12px;
-      color: var(--foreground-subdued);
+      color: var(--theme--foreground-subdued);
       margin-top: 2px;
     }
   }

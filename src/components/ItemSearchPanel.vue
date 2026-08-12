@@ -269,7 +269,7 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 <style scoped lang="scss">
 .search-container {
   padding: 16px;
-  border-bottom: 1px solid var(--border-subdued);
+  border-bottom: 1px solid var(--theme--border-color-subdued);
 }
 
 .search-input {
@@ -297,9 +297,9 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 
 .search-help-panel {
   margin-top: 12px;
-  background: var(--background-subdued);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--border-subdued);
+  background: var(--theme--background-subdued);
+  border-radius: var(--theme--border-radius);
+  border: 1px solid var(--theme--border-color-subdued);
   overflow: hidden;
 }
 
@@ -367,7 +367,7 @@ function addLogicalOperator(op: 'AND' | 'OR') {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
 }
 
 /* Field Chips */
@@ -415,13 +415,13 @@ function addLogicalOperator(op: 'AND' | 'OR') {
   align-items: center;
   gap: 8px;
   padding: 4px;
-  border-radius: var(--border-radius);
+  border-radius: var(--theme--border-radius);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .operator-item:hover {
-  background-color: var(--background-normal);
+  background-color: var(--theme--background-normal);
 }
 
 .operator-button {
@@ -438,12 +438,12 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 .operator-name {
   font-size: 12px;
   font-weight: 500;
-  color: var(--foreground);
+  color: var(--theme--foreground);
 }
 
 .operator-example {
   font-size: 11px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   font-family: monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -458,9 +458,9 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 
 .logical-operator-button {
   padding: 8px 24px;
-  border: 2px solid var(--border-normal);
-  border-radius: var(--border-radius);
-  background: var(--background);
+  border: 2px solid var(--theme--border-color);
+  border-radius: var(--theme--border-radius);
+  background: var(--theme--background);
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -468,8 +468,8 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 }
 
 .logical-operator-button:hover {
-  background: var(--background-normal);
-  border-color: var(--border-normal-alt);
+  background: var(--theme--background-normal);
+  border-color: var(--theme--border-color-accent);
 }
 
 .logical-operator-button.active {
@@ -489,8 +489,8 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 
 .logical-examples {
   padding: 12px;
-  background: var(--background);
-  border-radius: var(--border-radius);
+  background: var(--theme--background);
+  border-radius: var(--theme--border-radius);
   font-size: 13px;
 }
 
@@ -509,7 +509,7 @@ function addLogicalOperator(op: 'AND' | 'OR') {
 }
 
 .logical-examples code {
-  background: var(--background-subdued);
+  background: var(--theme--background-subdued);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
@@ -519,16 +519,16 @@ function addLogicalOperator(op: 'AND' | 'OR') {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   font-style: italic;
 }
 
 .search-help-tips {
   padding: 8px 12px;
   background: var(--background-normal-alt);
-  border-radius: var(--border-radius);
+  border-radius: var(--theme--border-radius);
   font-size: 12px;
-  color: var(--foreground-subdued);
+  color: var(--theme--foreground-subdued);
   text-align: center;
 }
 </style>

@@ -362,5 +362,26 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
+/*
+ * Build-critical: this block MUST contain at least one literal CSS rule.
+ *
+ * rollup-plugin-styler (used by the Directus extensions SDK build) decides whether a
+ * style block still needs processing by trying to parse its content as JavaScript. A
+ * block consisting solely of `@use` / `@import` parses cleanly as JS, so the plugin
+ * treats it as already-processed and drops the whole stylesheet without failing the
+ * build. Keeping a real rule here forces a parse error and the SCSS gets compiled.
+ * See https://github.com/smartlabsAT/directus-expandable-blocks/issues/85
+ *
+ * Note: only C-style comments are allowed here - Vue's scoped-style transform parses
+ * this block as plain CSS, where `//` is a syntax error. Rules from the @use'd file are
+ * emitted globally (no data-v attribute), which is intentional: they style elements
+ * rendered by child components.
+ */
 @use './interface.scss';
+
+/* Root container of this interface (also declared in interface.scss). */
+.expandable-blocks {
+  display: flex;
+  flex-direction: column;
+}
 </style>

@@ -155,7 +155,7 @@ const usageTooltip = computed(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .usage-indicator {
   background-color: var(--warning-10);
   color: var(--warning);
